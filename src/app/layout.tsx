@@ -1,23 +1,24 @@
-import type { Metadata } from "next";
-import type { Viewport } from "next";
-import { Barlow, Bebas_Neue, Roboto_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Fraunces, IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
-const display = Bebas_Neue({
+const display = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: "400",
+  display: "swap",
 });
 
-const body = Barlow({
+const body = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const mono = Roboto_Mono({
+const mono = IBM_Plex_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s | Projeto 30",
   },
   description:
-    "Plataforma mobile first de desafios de 30 dias para corpo, mente, espírito, hábitos e propósito.",
+    "Produto premium mobile first para ciclos de evolucao pessoal com habitos, diario e ritmo diario.",
 };
 
 export const viewport: Viewport = {

@@ -27,6 +27,7 @@ tmp/
 .tmp/
 temp/
 *.tmp
+supabase/.temp/
 
 # debug
 npm-debug.log*

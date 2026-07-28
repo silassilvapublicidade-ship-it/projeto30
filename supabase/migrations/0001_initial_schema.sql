@@ -98,7 +98,7 @@ create table if not exists public.challenges (
   name text not null,
   slug text not null unique,
   description text,
-  duration_days integer not null default 30 check (duration_days between 1 and 366),
+  duration_days integer not null check (duration_days between 1 and 366),
   start_date date,
   end_date date,
   enrollment_start date,
@@ -122,6 +122,7 @@ create table if not exists public.challenge_days (
   unlock_rule jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (id, challenge_id),
   unique (challenge_id, day_number)
 );
 
@@ -140,26 +141,32 @@ create table if not exists public.habits (
   sort_order integer not null default 0,
   active boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, challenge_id)
 );
 
 create table if not exists public.challenge_day_habits (
   id uuid primary key default gen_random_uuid(),
-  challenge_day_id uuid not null references public.challenge_days(id) on delete cascade,
-  habit_id uuid not null references public.habits(id) on delete cascade,
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
+  challenge_day_id uuid not null,
+  habit_id uuid not null,
   override_points integer check (override_points is null or override_points >= 0),
   override_description text,
   sort_order integer not null default 0,
   required boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (challenge_day_id, habit_id)
+  unique (challenge_day_id, habit_id),
+  foreign key (challenge_day_id, challenge_id)
+    references public.challenge_days(id, challenge_id) on delete cascade,
+  foreign key (habit_id, challenge_id)
+    references public.habits(id, challenge_id) on delete cascade
 );
 
 create table if not exists public.challenge_enrollments (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
-  challenge_id uuid not null references public.challenges(id) on delete cascade,
+  challenge_id uuid not null references public.challenges(id) on delete restrict,
   personal_start_date date not null,
   current_day integer not null default 1 check (current_day > 0),
   status public.enrollment_status not null default 'active',
@@ -172,7 +179,10 @@ create table if not exists public.challenge_enrollments (
   streak_best integer not null default 0 check (streak_best >= 0),
   completion_percent numeric(5, 2) not null default 0 check (completion_percent between 0 and 100),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, user_id),
+  unique (id, challenge_id),
+  unique (id, user_id, challenge_id)
 );
 
 create unique index if not exists challenge_enrollments_one_active_per_user_challenge
@@ -181,8 +191,9 @@ create unique index if not exists challenge_enrollments_one_active_per_user_chal
 
 create table if not exists public.daily_logs (
   id uuid primary key default gen_random_uuid(),
-  enrollment_id uuid not null references public.challenge_enrollments(id) on delete cascade,
-  challenge_day_id uuid not null references public.challenge_days(id) on delete restrict,
+  enrollment_id uuid not null,
+  challenge_id uuid not null,
+  challenge_day_id uuid not null,
   log_date date not null,
   status public.daily_log_status not null default 'in_progress',
   completion_percent numeric(5, 2) not null default 0 check (completion_percent between 0 and 100),
@@ -192,27 +203,41 @@ create table if not exists public.daily_logs (
   editable_until timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (id, enrollment_id),
+  unique (id, challenge_id),
+  unique (id, enrollment_id, challenge_id),
+  unique (id, challenge_day_id),
   unique (enrollment_id, challenge_day_id),
-  unique (enrollment_id, log_date)
+  unique (enrollment_id, log_date),
+  foreign key (enrollment_id, challenge_id)
+    references public.challenge_enrollments(id, challenge_id) on delete cascade,
+  foreign key (challenge_day_id, challenge_id)
+    references public.challenge_days(id, challenge_id) on delete restrict
 );
 
 create table if not exists public.habit_logs (
   id uuid primary key default gen_random_uuid(),
-  daily_log_id uuid not null references public.daily_logs(id) on delete cascade,
-  habit_id uuid not null references public.habits(id) on delete restrict,
+  daily_log_id uuid not null,
+  challenge_day_id uuid not null,
+  habit_id uuid not null,
   status public.habit_log_status not null default 'pending',
   value_json jsonb not null default '{}'::jsonb,
   note text,
   completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (daily_log_id, habit_id)
+  unique (daily_log_id, habit_id),
+  foreign key (daily_log_id, challenge_day_id)
+    references public.daily_logs(id, challenge_day_id) on delete cascade,
+  foreign key (challenge_day_id, habit_id)
+    references public.challenge_day_habits(challenge_day_id, habit_id) on delete restrict
 );
 
 create table if not exists public.journal_entries (
   id uuid primary key default gen_random_uuid(),
-  daily_log_id uuid not null unique references public.daily_logs(id) on delete cascade,
-  user_id uuid not null references public.users(id) on delete cascade,
+  daily_log_id uuid not null unique,
+  enrollment_id uuid not null,
+  user_id uuid not null,
   content text,
   gratitude text,
   difficulty text,
@@ -220,20 +245,29 @@ create table if not exists public.journal_entries (
   tomorrow_focus text,
   mood text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  foreign key (daily_log_id, enrollment_id)
+    references public.daily_logs(id, enrollment_id) on delete cascade,
+  foreign key (enrollment_id, user_id)
+    references public.challenge_enrollments(id, user_id) on delete cascade
 );
 
 create table if not exists public.point_events (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.users(id) on delete cascade,
-  enrollment_id uuid not null references public.challenge_enrollments(id) on delete cascade,
-  daily_log_id uuid references public.daily_logs(id) on delete cascade,
+  user_id uuid not null,
+  enrollment_id uuid not null,
+  challenge_id uuid not null,
+  daily_log_id uuid,
   source_type text not null,
   source_id uuid,
   points integer not null,
   idempotency_key text not null unique,
   metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  foreign key (enrollment_id, user_id, challenge_id)
+    references public.challenge_enrollments(id, user_id, challenge_id) on delete cascade,
+  foreign key (daily_log_id, enrollment_id, challenge_id)
+    references public.daily_logs(id, enrollment_id, challenge_id) on delete cascade
 );
 
 create index if not exists point_events_user_created_idx on public.point_events (user_id, created_at desc);
@@ -241,7 +275,7 @@ create index if not exists point_events_enrollment_idx on public.point_events (e
 
 create table if not exists public.achievements (
   id uuid primary key default gen_random_uuid(),
-  challenge_id uuid references public.challenges(id) on delete cascade,
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
   name text not null,
   slug text not null,
   description text,
@@ -252,20 +286,26 @@ create table if not exists public.achievements (
   active boolean not null default true,
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, challenge_id)
 );
 
 create unique index if not exists achievements_scope_slug_unique
-  on public.achievements (coalesce(challenge_id, '00000000-0000-0000-0000-000000000000'::uuid), slug);
+  on public.achievements (challenge_id, slug);
 
 create table if not exists public.user_achievements (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.users(id) on delete cascade,
-  enrollment_id uuid not null references public.challenge_enrollments(id) on delete cascade,
-  achievement_id uuid not null references public.achievements(id) on delete cascade,
+  user_id uuid not null,
+  enrollment_id uuid not null,
+  challenge_id uuid not null,
+  achievement_id uuid not null,
   unlocked_at timestamptz not null default now(),
   metadata jsonb not null default '{}'::jsonb,
-  unique (user_id, enrollment_id, achievement_id)
+  unique (user_id, enrollment_id, achievement_id),
+  foreign key (enrollment_id, user_id, challenge_id)
+    references public.challenge_enrollments(id, user_id, challenge_id) on delete cascade,
+  foreign key (achievement_id, challenge_id)
+    references public.achievements(id, challenge_id) on delete cascade
 );
 
 create table if not exists public.reading_plans (
@@ -300,26 +340,34 @@ create table if not exists public.reading_plan_items (
 
 create table if not exists public.share_templates (
   id uuid primary key default gen_random_uuid(),
-  challenge_id uuid references public.challenges(id) on delete cascade,
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
   name text not null,
   config jsonb not null default '{}'::jsonb,
   preview_url text,
   active boolean not null default true,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, challenge_id)
 );
 
 create table if not exists public.share_cards (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.users(id) on delete cascade,
-  enrollment_id uuid not null references public.challenge_enrollments(id) on delete cascade,
-  daily_log_id uuid not null references public.daily_logs(id) on delete cascade,
-  template_id uuid references public.share_templates(id) on delete set null,
+  user_id uuid not null,
+  enrollment_id uuid not null,
+  challenge_id uuid not null,
+  daily_log_id uuid not null,
+  template_id uuid,
   image_url text,
   share_config jsonb not null default '{}'::jsonb,
   generated_at timestamptz not null default now(),
   downloaded_at timestamptz,
-  shared_at timestamptz
+  shared_at timestamptz,
+  foreign key (enrollment_id, user_id, challenge_id)
+    references public.challenge_enrollments(id, user_id, challenge_id) on delete cascade,
+  foreign key (daily_log_id, enrollment_id, challenge_id)
+    references public.daily_logs(id, enrollment_id, challenge_id) on delete cascade,
+  foreign key (template_id, challenge_id)
+    references public.share_templates(id, challenge_id) on delete restrict
 );
 
 create table if not exists public.content_items (
@@ -512,7 +560,6 @@ create or replace function public.is_admin()
 returns boolean
 language sql
 stable
-security definer
 set search_path = public
 as $$
   select public.current_user_role() in ('admin', 'super_admin');
@@ -548,6 +595,50 @@ as $$
       and ce.user_id = auth.uid()
   );
 $$;
+
+create or replace function public.enforce_notification_user_read_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if public.is_admin() then
+    return new;
+  end if;
+
+  if auth.uid() is null or old.user_id is distinct from auth.uid() then
+    raise exception 'Users can only mark their own notifications as read.'
+      using errcode = '42501';
+  end if;
+
+  if new.id is distinct from old.id
+    or new.user_id is distinct from old.user_id
+    or new.type is distinct from old.type
+    or new.title is distinct from old.title
+    or new.body is distinct from old.body
+    or new.data is distinct from old.data
+    or new.channel is distinct from old.channel
+    or new.scheduled_at is distinct from old.scheduled_at
+    or new.sent_at is distinct from old.sent_at
+    or new.created_at is distinct from old.created_at then
+    raise exception 'Only notification read status can be changed by the owner.'
+      using errcode = '42501';
+  end if;
+
+  if new.status is distinct from 'read'::public.notification_status then
+    raise exception 'Notifications can only be marked as read by the owner.'
+      using errcode = '42501';
+  end if;
+
+  new.read_at = coalesce(old.read_at, now());
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_notification_user_read_update on public.notifications;
+create trigger enforce_notification_user_read_update
+  before update on public.notifications
+  for each row execute function public.enforce_notification_user_read_update();
 
 alter table public.users enable row level security;
 alter table public.user_preferences enable row level security;
@@ -606,7 +697,6 @@ create policy "Anyone can read active challenge days"
         and c.status = 'active'
         and c.deleted_at is null
     )
-    or public.is_admin()
   );
 
 create policy "Admins can manage challenge days"
@@ -625,7 +715,6 @@ create policy "Anyone can read active habits"
         and c.status = 'active'
         and c.deleted_at is null
     )
-    or public.is_admin()
   );
 
 create policy "Admins can manage habits"
@@ -645,7 +734,6 @@ create policy "Anyone can read active day habits"
         and c.status = 'active'
         and c.deleted_at is null
     )
-    or public.is_admin()
   );
 
 create policy "Admins can manage day habits"
@@ -711,7 +799,7 @@ create policy "Admins can manage point events"
 
 create policy "Anyone can read active achievements"
   on public.achievements for select
-  using (active or public.is_admin());
+  using (active);
 
 create policy "Admins can manage achievements"
   on public.achievements for all
@@ -740,7 +828,6 @@ create policy "Anyone can read active reading plans"
         and c.status = 'active'
         and c.deleted_at is null
     )
-    or public.is_admin()
   );
 
 create policy "Admins can manage reading plans"
@@ -761,7 +848,6 @@ create policy "Anyone can read reading plan items"
         and c.status = 'active'
         and c.deleted_at is null
     )
-    or public.is_admin()
   );
 
 create policy "Admins can manage reading plan items"
@@ -772,7 +858,7 @@ create policy "Admins can manage reading plan items"
 
 create policy "Anyone can read active share templates"
   on public.share_templates for select
-  using (active or public.is_admin());
+  using (active);
 
 create policy "Admins can manage share templates"
   on public.share_templates for all
@@ -793,7 +879,7 @@ create policy "Admins can manage share cards"
 
 create policy "Anyone can read published content"
   on public.content_items for select
-  using (status = 'published' or public.is_admin());
+  using (status = 'published');
 
 create policy "Admins can manage content"
   on public.content_items for all
@@ -801,11 +887,22 @@ create policy "Admins can manage content"
   using (public.is_admin())
   with check (public.is_admin());
 
-create policy "Users can manage own notifications"
+create policy "Users can read own notifications"
+  on public.notifications for select
+  to authenticated
+  using (user_id = auth.uid());
+
+create policy "Users can mark own notifications read"
+  on public.notifications for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid() and status = 'read');
+
+create policy "Admins can manage notifications"
   on public.notifications for all
   to authenticated
-  using (user_id = auth.uid() or public.is_admin())
-  with check (user_id = auth.uid() or public.is_admin());
+  using (public.is_admin())
+  with check (public.is_admin());
 
 create policy "Admins can read audit logs"
   on public.admin_audit_logs for select
@@ -820,4 +917,16 @@ create policy "Admins can insert audit logs"
 grant usage on schema public to anon, authenticated;
 grant select on all tables in schema public to anon, authenticated;
 grant insert, update, delete on all tables in schema public to authenticated;
-grant execute on all functions in schema public to authenticated;
+
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
+revoke execute on function public.handle_new_auth_user() from public, anon, authenticated;
+revoke execute on function public.current_user_role() from public, anon, authenticated;
+revoke execute on function public.is_admin() from public, anon, authenticated;
+revoke execute on function public.owns_enrollment(uuid) from public, anon, authenticated;
+revoke execute on function public.owns_daily_log(uuid) from public, anon, authenticated;
+revoke execute on function public.enforce_notification_user_read_update() from public, anon, authenticated;
+
+grant execute on function public.current_user_role() to authenticated;
+grant execute on function public.is_admin() to authenticated;
+grant execute on function public.owns_enrollment(uuid) to authenticated;
+grant execute on function public.owns_daily_log(uuid) to authenticated;

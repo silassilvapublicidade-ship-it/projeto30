@@ -119,12 +119,14 @@ on conflict (id) do update set
   updated_at = now();
 
 insert into public.challenge_day_habits (
+  challenge_id,
   challenge_day_id,
   habit_id,
   sort_order,
   required
 )
 select
+  cd.challenge_id,
   cd.id,
   h.id,
   h.sort_order,
