@@ -6,7 +6,10 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/server/services/auth-session.service";
-import { joinFirstAvailableChallenge } from "@/server/services/member-area.service";
+import {
+  getJourneyRpcClient,
+  getSafeJourneyErrorMessage,
+} from "@/server/services/journey-rpc.service";
 
 export type MemberActionResult =
   | {
@@ -173,5 +176,16 @@ export async function completeOnboardingAction(
 }
 
 export async function joinAvailableChallengeAction() {
-  await joinFirstAvailableChallenge();
+  await requireAuthUser("/app/hoje");
+
+  const supabase = await createSupabaseServerClient();
+  const rpc = getJourneyRpcClient(supabase);
+  const { error } = await rpc.rpc("join_available_challenge");
+
+  if (error) {
+    const message = encodeURIComponent(getSafeJourneyErrorMessage(error));
+    redirect(`/app/hoje?journey=error&message=${message}`);
+  }
+
+  redirect("/app/hoje?journey=joined");
 }

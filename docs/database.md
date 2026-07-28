@@ -69,6 +69,27 @@ conservadora:
   servidor ou ao administrador;
 - administradores usam políticas específicas via `public.is_admin()`.
 
+## Jornada Diaria
+
+A Fase 2D propoe a migration `0002_daily_journey_core.sql` para evitar que o cliente
+seja fonte de verdade. As tabelas `challenge_enrollments`, `daily_logs`,
+`habit_logs`, `journal_entries`, `point_events` e `user_achievements` continuam sem
+escrita direta para usuario comum. A aplicacao chama RPCs autenticadas, com
+`SECURITY DEFINER`, `search_path` explicito e validacao de `auth.uid()` antes de
+qualquer alteracao.
+
+RPCs propostas:
+
+- `join_available_challenge()`
+- `ensure_today_daily_log(uuid)`
+- `update_habit_log(uuid, uuid, habit_log_status, jsonb, text)`
+- `save_journal_entry(uuid, text, text, text, text, text, text)`
+- `finalize_daily_log(uuid)`
+
+A finalizacao e idempotente: pontos sao gravados em `point_events` com
+`idempotency_key`, a sequencia e recalculada no servidor e conquistas sao registradas
+com constraint unica em `user_achievements`.
+
 ## Pontuação
 
 `point_events` é o ledger de pontuação. Cada evento tem `idempotency_key` única para

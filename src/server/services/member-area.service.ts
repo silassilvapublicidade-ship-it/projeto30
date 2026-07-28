@@ -2,11 +2,16 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  calculateChallengeDay,
+  getDateOnlyInTimeZone,
+} from "@/features/challenges/date.core";
+import { calculateDailyProgress } from "@/features/journey/progress.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/database";
+import type { Json, Tables } from "@/types/database";
 
 import { requireAuthUser } from "./auth-session.service";
+import { getJourneyRpcClient, getSafeJourneyErrorMessage } from "./journey-rpc.service";
 
 export type MemberProfile = Pick<
   Tables<"users">,
@@ -25,25 +30,25 @@ export type ActiveEnrollment = Tables<"challenge_enrollments"> & {
 };
 
 export type TodayMissionState =
-  | "completed"
-  | "in_progress"
-  | "not_applicable"
-  | "pending"
-  | "skipped";
+  "completed" | "in_progress" | "not_applicable" | "pending" | "skipped";
 
 export type TodayMission = {
   actionLabel: string;
   category: string | null;
   description: string | null;
+  habitId: string;
+  habitLogId: string | null;
   habitType: Tables<"habits">["habit_type"];
   icon: string | null;
   id: string;
+  note: string | null;
   points: number;
   required: boolean;
   state: TodayMissionState;
   statusLabel: string;
   targetLabel: string;
   title: string;
+  valueJson: Json;
 };
 
 type HabitForMission = Pick<
@@ -61,9 +66,17 @@ type HabitForMission = Pick<
 export type MemberContext = {
   activeEnrollment: ActiveEnrollment | null;
   availableChallenge: Tables<"challenges"> | null;
+  journeyError: string | null;
+  journeyState:
+    | "cycle_ended"
+    | "cycle_not_started"
+    | "day_available"
+    | "day_finalized"
+    | "error"
+    | "no_active_cycle";
   journalEntry: Pick<
     Tables<"journal_entries">,
-    "content" | "gratitude" | "mood" | "tomorrow_focus" | "victory"
+    "content" | "difficulty" | "gratitude" | "mood" | "tomorrow_focus" | "victory"
   > | null;
   preferences: Tables<"user_preferences"> | null;
   profile: MemberProfile;
@@ -74,15 +87,18 @@ export type MemberContext = {
   > | null;
   todayLabel: string;
   todayMissions: TodayMission[];
+  todayProgress: {
+    applicableHabits: number;
+    completedHabits: number;
+    completionPercent: number;
+    pointsEarned: number;
+    pointsPotential: number;
+    state: "complete" | "finalized" | "in_progress" | "not_started" | "partial";
+  };
 };
 
 function getLocalDate(timezone: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: timezone,
-    year: "numeric",
-  }).format(new Date());
+  return getDateOnlyInTimeZone(new Date(), timezone);
 }
 
 function getTodayLabel(timezone: string) {
@@ -96,6 +112,21 @@ function getTodayLabel(timezone: string) {
 
 function isJsonRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function getRuleInt(rulesConfig: Json, key: string, fallback: number) {
+  const rules = isJsonRecord(rulesConfig) ? rulesConfig : {};
+  const value = rules[key];
+
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
+  }
+
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  return fallback;
 }
 
 function getFallbackProfile(user: Awaited<ReturnType<typeof requireAuthUser>>) {
@@ -158,7 +189,9 @@ function getMissionTargetLabel(habit: HabitForMission, points: number) {
   const unit = config?.unit ?? config?.label ?? config?.metric;
 
   if (typeof target === "string" || typeof target === "number") {
-    return [target, typeof unit === "string" ? unit : undefined].filter(Boolean).join(" ");
+    return [target, typeof unit === "string" ? unit : undefined]
+      .filter(Boolean)
+      .join(" ");
   }
 
   const fallbackByType: Record<Tables<"habits">["habit_type"], string> = {
@@ -202,32 +235,27 @@ async function getTodayMissionData({
     };
   }
 
-  const [
-    { data: dayHabitRows },
-    { data: habitLogRows },
-    { data: journalEntry },
-  ] = await Promise.all([
-    supabase
-      .from("challenge_day_habits")
-      .select(
-        "id,habit_id,override_description,override_points,required,sort_order",
-      )
-      .eq("challenge_day_id", challengeDay.id)
-      .order("sort_order", { ascending: true }),
-    todayLog
-      ? supabase
-          .from("habit_logs")
-          .select("habit_id,status,value_json")
-          .eq("daily_log_id", todayLog.id)
-      : Promise.resolve({ data: null }),
-    todayLog
-      ? supabase
-          .from("journal_entries")
-          .select("content,gratitude,mood,tomorrow_focus,victory")
-          .eq("daily_log_id", todayLog.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
+  const [{ data: dayHabitRows }, { data: habitLogRows }, { data: journalEntry }] =
+    await Promise.all([
+      supabase
+        .from("challenge_day_habits")
+        .select("id,habit_id,override_description,override_points,required,sort_order")
+        .eq("challenge_day_id", challengeDay.id)
+        .order("sort_order", { ascending: true }),
+      todayLog
+        ? supabase
+            .from("habit_logs")
+            .select("id,habit_id,status,value_json,note,completed_at")
+            .eq("daily_log_id", todayLog.id)
+        : Promise.resolve({ data: null }),
+      todayLog
+        ? supabase
+            .from("journal_entries")
+            .select("content,difficulty,gratitude,mood,tomorrow_focus,victory")
+            .eq("daily_log_id", todayLog.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
   const habitIds = (dayHabitRows ?? []).map((item) => item.habit_id);
 
@@ -248,9 +276,7 @@ async function getTodayMissionData({
     .in("id", habitIds);
 
   const habitsById = new Map((habits ?? []).map((habit) => [habit.id, habit]));
-  const logsByHabitId = new Map(
-    (habitLogRows ?? []).map((log) => [log.habit_id, log]),
-  );
+  const logsByHabitId = new Map((habitLogRows ?? []).map((log) => [log.habit_id, log]));
 
   const todayMissions = (dayHabitRows ?? []).flatMap<TodayMission>((item) => {
     const habit = habitsById.get(item.habit_id);
@@ -267,15 +293,19 @@ async function getTodayMissionData({
         actionLabel: getMissionActionLabel(state),
         category: habit.category,
         description: item.override_description ?? habit.description,
+        habitId: habit.id,
+        habitLogId: logsByHabitId.get(item.habit_id)?.id ?? null,
         habitType: habit.habit_type,
         icon: habit.icon,
         id: item.id,
+        note: logsByHabitId.get(item.habit_id)?.note ?? null,
         points,
         required: item.required,
         state,
         statusLabel: getMissionStatusLabel(state),
         targetLabel: getMissionTargetLabel(habit, points),
         title: habit.title,
+        valueJson: logsByHabitId.get(item.habit_id)?.value_json ?? {},
       },
     ];
   });
@@ -287,7 +317,49 @@ async function getTodayMissionData({
   };
 }
 
-export async function getMemberContext(): Promise<MemberContext> {
+type GetMemberContextOptions = {
+  ensureTodayLog?: boolean;
+};
+
+function getEmptyProgress(): MemberContext["todayProgress"] {
+  return {
+    applicableHabits: 0,
+    completedHabits: 0,
+    completionPercent: 0,
+    pointsEarned: 0,
+    pointsPotential: 0,
+    state: "not_started",
+  };
+}
+
+async function ensureTodayLog({
+  enrollmentId,
+  supabase,
+}: {
+  enrollmentId: string;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+}) {
+  const rpc = getJourneyRpcClient(supabase);
+  const { data, error } = await rpc.rpc<string>("ensure_today_daily_log", {
+    target_enrollment_id: enrollmentId,
+  });
+
+  if (error) {
+    return {
+      error: getSafeJourneyErrorMessage(error),
+      id: null,
+    };
+  }
+
+  return {
+    error: null,
+    id: data,
+  };
+}
+
+export async function getMemberContext(
+  options: GetMemberContextOptions = {},
+): Promise<MemberContext> {
   const user = await requireAuthUser("/app");
   const supabase = await createSupabaseServerClient();
 
@@ -323,34 +395,77 @@ export async function getMemberContext(): Promise<MemberContext> {
     ]);
 
   let activeEnrollment: ActiveEnrollment | null = null;
+  let journeyError: string | null = null;
+  let journeyState: MemberContext["journeyState"] = "no_active_cycle";
   let journalEntry: MemberContext["journalEntry"] = null;
   let todayChallengeDay: MemberContext["todayChallengeDay"] = null;
   let todayMissions: TodayMission[] = [];
+  let todayProgress = getEmptyProgress();
 
   if (enrollment) {
-    const [{ data: challenge }, { data: todayLog }] = await Promise.all([
-      supabase
-        .from("challenges")
-        .select("*")
-        .eq("id", enrollment.challenge_id)
-        .maybeSingle(),
-      supabase
-        .from("daily_logs")
-        .select("*")
-        .eq("enrollment_id", enrollment.id)
-        .eq("log_date", today)
-        .maybeSingle(),
-    ]);
+    const { data: challenge } = await supabase
+      .from("challenges")
+      .select("*")
+      .eq("id", enrollment.challenge_id)
+      .maybeSingle();
+
+    const dayResult = challenge
+      ? calculateChallengeDay({
+          durationDays: challenge.duration_days,
+          personalStartDate: enrollment.personal_start_date,
+          targetDate: today,
+        })
+      : null;
+
+    let ensuredDailyLogId: string | null = null;
+
+    if (!challenge) {
+      journeyState = "error";
+      journeyError = "O ciclo desta inscricao nao foi encontrado.";
+    } else if (dayResult?.status === "not_started") {
+      journeyState = "cycle_not_started";
+    } else if (dayResult?.status === "completed") {
+      journeyState = "cycle_ended";
+    } else if (options.ensureTodayLog) {
+      const ensured = await ensureTodayLog({
+        enrollmentId: enrollment.id,
+        supabase,
+      });
+
+      ensuredDailyLogId = ensured.id;
+      journeyError = ensured.error;
+      journeyState = ensured.error ? "error" : "day_available";
+    } else {
+      journeyState = "day_available";
+    }
+
+    const { data: todayLog } = ensuredDailyLogId
+      ? await supabase
+          .from("daily_logs")
+          .select("*")
+          .eq("id", ensuredDailyLogId)
+          .maybeSingle()
+      : await supabase
+          .from("daily_logs")
+          .select("*")
+          .eq("enrollment_id", enrollment.id)
+          .eq("log_date", today)
+          .maybeSingle();
+
+    if (todayLog?.status === "finalized") {
+      journeyState = "day_finalized";
+    }
 
     activeEnrollment = {
       ...enrollment,
+      current_day: dayResult?.dayNumber || enrollment.current_day,
       challenge,
       todayLog,
     };
 
     const todayData = await getTodayMissionData({
       challengeId: enrollment.challenge_id,
-      currentDay: enrollment.current_day,
+      currentDay: activeEnrollment.current_day,
       supabase,
       todayLog,
     });
@@ -358,11 +473,37 @@ export async function getMemberContext(): Promise<MemberContext> {
     journalEntry = todayData.journalEntry;
     todayChallengeDay = todayData.todayChallengeDay;
     todayMissions = todayData.todayMissions;
+
+    const progress = calculateDailyProgress({
+      finalized: todayLog?.status === "finalized",
+      habits: todayMissions.map((mission) => ({
+        habitId: mission.habitId,
+        status: mission.state === "in_progress" ? "pending" : mission.state,
+        touched:
+          mission.state === "in_progress" ||
+          Boolean(mission.note) ||
+          (isJsonRecord(mission.valueJson) && Object.keys(mission.valueJson).length > 0),
+      })),
+    });
+    const rulesConfig = challenge?.rules_config ?? {};
+    const pointsPotential =
+      todayMissions.reduce((total, mission) => total + mission.points, 0) +
+      getRuleInt(rulesConfig, "reflection_points", 10) +
+      getRuleInt(rulesConfig, "finalize_day_points", 10) +
+      getRuleInt(rulesConfig, "all_habits_bonus_points", 30);
+
+    todayProgress = {
+      ...progress,
+      pointsEarned: todayLog?.points_earned ?? 0,
+      pointsPotential,
+    };
   }
 
   return {
     activeEnrollment,
     availableChallenge,
+    journeyError,
+    journeyState,
     journalEntry,
     preferences,
     profile,
@@ -370,6 +511,7 @@ export async function getMemberContext(): Promise<MemberContext> {
     todayChallengeDay,
     todayLabel,
     todayMissions,
+    todayProgress,
   };
 }
 
@@ -386,51 +528,4 @@ export async function requireOnboardedMember() {
 export async function redirectToMemberStart() {
   const context = await getMemberContext();
   redirect(context.profile.onboarding_completed ? "/app/hoje" : "/app/onboarding");
-}
-
-export async function joinFirstAvailableChallenge() {
-  const user = await requireAuthUser("/app/hoje");
-  const admin = createSupabaseAdminClient();
-
-  const { data: existingEnrollment } = await admin
-    .from("challenge_enrollments")
-    .select("id")
-    .eq("user_id", user.id)
-    .in("status", ["active", "paused"])
-    .limit(1)
-    .maybeSingle();
-
-  if (existingEnrollment) {
-    redirect("/app/hoje");
-  }
-
-  const { data: profile } = await admin
-    .from("users")
-    .select("timezone")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const timezone = profile?.timezone || "America/Sao_Paulo";
-  const today = getLocalDate(timezone);
-
-  const { data: challenge } = await admin
-    .from("challenges")
-    .select("id")
-    .eq("status", "active")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!challenge) {
-    redirect("/app/hoje?state=no-cycle");
-  }
-
-  await admin.from("challenge_enrollments").insert({
-    challenge_id: challenge.id,
-    personal_start_date: today,
-    user_id: user.id,
-  });
-
-  redirect("/app/hoje");
 }

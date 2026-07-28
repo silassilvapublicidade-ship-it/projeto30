@@ -1148,7 +1148,38 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      ensure_today_daily_log: {
+        Args: { target_enrollment_id?: string }
+        Returns: string
+      }
+      finalize_daily_log: {
+        Args: { target_daily_log_id: string }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
+      join_available_challenge: { Args: never; Returns: string }
+      journey_calculate_day: {
+        Args: { target_local_date: string; target_start_date: string }
+        Returns: number
+      }
+      journey_get_local_date: {
+        Args: { target_timezone: string }
+        Returns: string
+      }
+      journey_has_journal_content: {
+        Args: {
+          target_journal: Database["public"]["Tables"]["journal_entries"]["Row"]
+        }
+        Returns: boolean
+      }
+      journey_recalculate_daily_log: {
+        Args: { target_daily_log_id: string }
+        Returns: Json
+      }
+      journey_rule_int: {
+        Args: { fallback_value: number; target_key: string; target_rules: Json }
+        Returns: number
+      }
       owns_daily_log: {
         Args: { target_daily_log_id: string }
         Returns: boolean
@@ -1156,6 +1187,28 @@ export type Database = {
       owns_enrollment: {
         Args: { target_enrollment_id: string }
         Returns: boolean
+      }
+      save_journal_entry: {
+        Args: {
+          target_content?: string
+          target_daily_log_id: string
+          target_difficulty?: string
+          target_gratitude?: string
+          target_mood?: string
+          target_tomorrow_focus?: string
+          target_victory?: string
+        }
+        Returns: string
+      }
+      update_habit_log: {
+        Args: {
+          target_daily_log_id: string
+          target_habit_id: string
+          target_note?: string
+          target_status: Database["public"]["Enums"]["habit_log_status"]
+          target_value_json?: Json
+        }
+        Returns: Json
       }
     }
     Enums: {
