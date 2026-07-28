@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Flame } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -38,12 +39,16 @@ const footerGroups = [
   },
 ];
 
-export function BrandMark({ className }: { className?: string }) {
+export function BrandMark({
+  className,
+  preload = false,
+}: {
+  className?: string;
+  preload?: boolean;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-action text-background shadow-[0_14px_42px_rgba(255,106,0,0.24)]">
-        <Flame aria-hidden="true" size={20} strokeWidth={2.4} />
-      </span>
+      <BrandLogo decorative preload={preload} size={40} />
       <span className="leading-none">
         <span className="block text-sm font-semibold text-foreground">Projeto 30</span>
         <span className="mt-1 block font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-2">
@@ -63,7 +68,7 @@ export function PublicHeader() {
           className="min-w-0 rounded-[var(--radius-pill)] focus-visible:outline-action-soft"
           href="/"
         >
-          <BrandMark className="min-w-0" />
+          <BrandMark className="min-w-0" preload />
         </Link>
 
         <nav

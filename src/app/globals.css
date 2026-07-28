@@ -23,21 +23,92 @@
   --p30-warning: #ffd166;
   --p30-warning-wash: #2a210c;
 
+  /* Fase 1 - extensao cromatica inspirada no logo oficial (dourado/ambar e
+     prateado), mais o tom "info" que ainda nao existia. Selecao controlada,
+     nao extraida automaticamente de pixels do arquivo. */
+  --p30-amber: #f2a93b;
+  --p30-amber-soft: #ffcb73;
+  --p30-amber-wash: #2a1f0c;
+  --p30-info: #6bb8e0;
+  --p30-info-wash: #0e2430;
+  --p30-silver: #c9cdd3;
+
   --background: var(--p30-black);
   --foreground: var(--p30-white);
 
   --radius-card: 8px;
   --radius-control: 16px;
   --radius-pill: 999px;
+  /* Novo nivel para paineis e sheets grandes (fundacao para fases futuras;
+     nenhuma tela existente usa este token ainda). */
+  --radius-panel: 28px;
 
   --shadow-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   --shadow-soft: 0 20px 80px rgba(0, 0, 0, 0.34);
   --shadow-lift: 0 24px 90px rgba(0, 0, 0, 0.42);
+  /* Glow reservado para hero, progresso, estados ativos, conquistas e CTAs
+     principais - nao deve ser aplicado de forma ampla. */
+  --shadow-glow-accent: 0 0 60px rgba(242, 169, 59, 0.3);
 
   --motion-fast: 140ms;
   --motion-base: 220ms;
   --motion-slow: 420ms;
   --ease-premium: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Aliases semanticos de motion (mesmos valores acima, nomeados pela
+     intencao de uso) + duas duracoes novas para revelacao/celebracao. */
+  --motion-hover: var(--motion-base);
+  --motion-press: var(--motion-fast);
+  --motion-entrance: var(--motion-slow);
+  --motion-exit: var(--motion-fast);
+  --motion-reveal: 560ms;
+  --motion-progress: var(--motion-slow);
+  --motion-celebration: 900ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Camadas semanticas de superficie e texto (aliases sobre os tons acima,
+     para nomear por intencao de uso em vez de por valor). */
+  --surface-base: var(--p30-black);
+  --surface-elevated: var(--p30-graphite);
+  --surface-subtle: rgba(255, 255, 255, 0.04);
+  --surface-translucent: rgba(255, 255, 255, 0.055);
+  --text-primary: var(--p30-white);
+  --text-secondary: var(--p30-muted);
+  --text-tertiary: var(--p30-muted-2);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(255, 255, 255, 0.18);
+  --focus-ring: var(--p30-orange-soft);
+  --overlay-scrim: rgba(5, 5, 5, 0.64);
+  --overlay-scrim-strong: rgba(5, 5, 5, 0.82);
+
+  /* Gradientes e glow reutilizaveis. */
+  --gradient-accent: linear-gradient(90deg, var(--p30-orange), var(--p30-amber));
+  --gradient-accent-soft: linear-gradient(
+    135deg,
+    rgba(255, 106, 0, 0.16),
+    rgba(242, 169, 59, 0.1)
+  );
+  --glow-amber: radial-gradient(circle, rgba(242, 169, 59, 0.35), transparent 70%);
+
+  /* Layout e containers. */
+  --container-content: 72rem;
+  --container-narrow: 48rem;
+  --container-reading: 42rem;
+  --space-mobile-margin: 1rem;
+  --space-desktop-margin: 2rem;
+  --nav-bottom-height: 4.75rem;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --z-header: 40;
+  --z-nav: 40;
+  --z-dropdown: 20;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+
+  /* Tracking usado nos rotulos mono (uppercase, tracking largo) espalhados
+     hoje como valores arbitrarios repetidos; consolidado aqui. */
+  --tracking-label-tight: 0.14em;
+  --tracking-label: 0.18em;
+  --tracking-label-wide: 0.22em;
 }
 
 @theme inline {
@@ -64,6 +135,41 @@
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
+
+  /* Fase 1 - novas cores semanticas (accent secundario/dourado, info, prata,
+     e "error" como alias de "danger" para vocabulario semantico). */
+  --color-accent-secondary: var(--p30-amber);
+  --color-accent-secondary-soft: var(--p30-amber-soft);
+  --color-accent-secondary-wash: var(--p30-amber-wash);
+  --color-info: var(--p30-info);
+  --color-info-wash: var(--p30-info-wash);
+  --color-silver: var(--p30-silver);
+  --color-error: var(--p30-danger);
+  --color-error-wash: var(--p30-danger-wash);
+
+  /* Escala tipografica semantica (tamanho + altura de linha pareados). */
+  --text-display-hero: 4.5rem;
+  --text-display-hero--line-height: 1.02;
+  --text-display-day: 3.5rem;
+  --text-display-day--line-height: 1.05;
+  --text-headline: 2.25rem;
+  --text-headline--line-height: 1.15;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.3;
+  --text-subtitle: 1.125rem;
+  --text-subtitle--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.7;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.6;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+  --text-label: 0.68rem;
+  --text-label--line-height: 1.4;
+  --text-numeric-display: 3rem;
+  --text-numeric-display--line-height: 1;
+  --text-mono-data: 0.875rem;
+  --text-mono-data--line-height: 1.4;
 }
 
 * {

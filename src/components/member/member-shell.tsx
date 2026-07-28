@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Flame, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import {
   MemberDesktopNavigation,
   MemberMobileNavigation,
@@ -39,9 +40,7 @@ export function MemberShell({
         <aside className="sticky top-0 hidden h-screen px-4 py-5 md:block">
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3 shadow-[var(--shadow-hairline)]">
-              <span className="flex size-10 items-center justify-center rounded-full bg-white/[0.07] text-action-soft">
-                <Flame aria-hidden="true" size={20} strokeWidth={2.4} />
-              </span>
+              <BrandLogo decorative preload size={40} />
               <span>
                 <span className="block text-sm font-semibold">Projeto 30</span>
                 <span className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-2">

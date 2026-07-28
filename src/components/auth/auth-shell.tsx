@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { RhythmRail } from "@/components/brand/rhythm-rail";
 import { Card } from "@/components/ui/card";
 
@@ -19,7 +20,8 @@ export function AuthShell({
     <main className="overflow-x-hidden px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
       <div className="mx-auto grid w-full max-w-6xl min-w-0 gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div className="w-full min-w-0 max-w-xl">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-action-soft">
+          <BrandLogo label="Projeto 30" preload size={44} />
+          <p className="mt-6 font-mono text-xs uppercase tracking-[0.18em] text-action-soft">
             {eyebrow}
           </p>
           <h1 className="mt-5 font-display text-5xl leading-[1.02] text-foreground sm:text-6xl">
