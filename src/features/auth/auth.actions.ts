@@ -53,6 +53,13 @@ export async function signInWithPasswordAction(
   };
 }
 
+export async function signInWithPasswordFormAction(
+  _previousState: AuthActionResult,
+  formData: FormData,
+): Promise<AuthActionResult> {
+  return signInWithPasswordAction(formData);
+}
+
 export async function signUpWithPasswordAction(
   formData: FormData,
 ): Promise<AuthActionResult> {
@@ -90,6 +97,13 @@ export async function signUpWithPasswordAction(
   };
 }
 
+export async function signUpWithPasswordFormAction(
+  _previousState: AuthActionResult,
+  formData: FormData,
+): Promise<AuthActionResult> {
+  return signUpWithPasswordAction(formData);
+}
+
 export async function sendMagicLinkAction(formData: FormData): Promise<AuthActionResult> {
   const parsed = magicLinkSchema.safeParse({
     email: getString(formData, "email"),
@@ -123,6 +137,13 @@ export async function sendMagicLinkAction(formData: FormData): Promise<AuthActio
     ok: true,
     message: "Link enviado. Abra o e-mail neste dispositivo para continuar.",
   };
+}
+
+export async function sendMagicLinkFormAction(
+  _previousState: AuthActionResult,
+  formData: FormData,
+): Promise<AuthActionResult> {
+  return sendMagicLinkAction(formData);
 }
 
 export async function signOutAction(): Promise<AuthActionResult> {

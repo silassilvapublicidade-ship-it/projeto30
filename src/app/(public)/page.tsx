@@ -1,524 +1,339 @@
-import {
-  Bell,
-  CalendarDays,
-  CheckCircle2,
-  Flame,
-  Heart,
-  Home as HomeIcon,
-  LockKeyhole,
-  Moon,
-  Play,
-  ShieldCheck,
-  Sparkles,
-  Sun,
-} from "lucide-react";
+import type { Metadata } from "next";
+import { ArrowRight, CalendarDays, CheckCircle2, Heart, Sparkles } from "lucide-react";
 
+import {
+  BenefitList,
+  defaultPillars,
+  Eyebrow,
+  FaqList,
+  PlatformPreview,
+  PillarGrid,
+  publicFaqItems,
+  PublicSection,
+  StepList,
+} from "@/components/public/public-sections";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox, Field, Input, Radio, Switch, Textarea } from "@/components/ui/field";
-import { EmptyState, Skeleton, Spinner, StatusCard } from "@/components/ui/feedback";
-import { Navigation } from "@/components/ui/navigation";
-import {
-  ConfirmActions,
-  DialogPreview,
-  Dropdown,
-  SheetPreview,
-} from "@/components/ui/overlays";
-import { Progress } from "@/components/ui/progress";
-import {
-  colorTokens,
-  elevationTokens,
-  motionTokens,
-  radiusTokens,
-  spacingTokens,
-} from "@/design-system/tokens";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/feedback";
 
-const navItems = [
+export const metadata: Metadata = {
+  title: "30 dias para evoluir",
+  description:
+    "Conheça o Projeto 30: uma jornada gratuita para construir disciplina, saúde, fé, organização e constância em ciclos de 30 dias.",
+  openGraph: {
+    title: "Projeto 30 - 30 dias para evoluir",
+    description:
+      "Disciplina hoje. Liberdade amanhã. Uma experiência digital premium para começar e continuar.",
+  },
+};
+
+const homeSteps = [
   {
-    label: "Hoje",
-    href: "#hero",
-    active: true,
-    icon: <HomeIcon aria-hidden="true" size={14} />,
+    title: "Crie sua conta",
+    description:
+      "Entre com e-mail, senha ou link de acesso e prepare seu primeiro ciclo.",
   },
   {
-    label: "Ritmo",
-    href: "#rhythm",
-    icon: <CalendarDays aria-hidden="true" size={14} />,
-  },
-  { label: "UI", href: "#components", icon: <Sparkles aria-hidden="true" size={14} /> },
-];
-
-const dayStates = Array.from({ length: 30 }, (_, index) => {
-  const day = index + 1;
-
-  return {
-    day,
-    state: day < 13 ? "done" : day === 13 ? "today" : day % 7 === 0 ? "rest" : "next",
-  };
-});
-
-const typeSamples = [
-  {
-    label: "Display",
-    value: "Ritmo que da vontade de voltar.",
-    className: "font-display text-4xl leading-10",
+    title: "Comece o Dia 1",
+    description:
+      "O ciclo não depende do calendário do mês. Ele começa quando você decide.",
   },
   {
-    label: "Body",
-    value: "Cada componente prioriza calma, contraste e decisao clara.",
-    className: "text-base leading-7",
+    title: "Acompanhe seus hábitos",
+    description:
+      "Registre práticas simples de saúde, leitura, fé, movimento e autocuidado.",
   },
   {
-    label: "Data",
-    value: "DIA 13 / 30  42%  07:30",
-    className: "font-mono text-sm text-action-soft",
+    title: "Marque o progresso",
+    description: "Veja o caminho ganhar forma sem transformar disciplina em cobrança.",
+  },
+  {
+    title: "Volte no dia seguinte",
+    description:
+      "A constância nasce do retorno. Alguns dias serão incompletos, e tudo bem.",
+  },
+  {
+    title: "Conclua e recomece",
+    description:
+      "Ao final dos 30 dias, preserve o histórico e abra espaço para o próximo ciclo.",
   },
 ];
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mb-5 flex items-center gap-3">
-      <span className="h-px w-8 bg-action/70" />
-      <p className="font-mono text-xs font-medium text-muted">{children}</p>
-    </div>
-  );
-}
-
-function RhythmRail() {
-  return (
-    <div className="w-full max-w-full rounded-[var(--radius-card)] border border-white/[0.10] bg-white/[0.055] p-4 shadow-[var(--shadow-soft)] backdrop-blur-xl">
-      <div className="grid grid-cols-5 gap-2" aria-label="Trinta dias do ciclo">
-        {dayStates.map((item) => (
-          <span
-            aria-label={`Dia ${item.day}`}
-            className={[
-              "flex aspect-square items-center justify-center rounded-full border text-xs font-semibold tabular-nums transition-transform duration-[var(--motion-base)] ease-[var(--ease-premium)] hover:scale-105",
-              item.state === "done"
-                ? "border-white/12 bg-white/[0.10] text-foreground"
-                : item.state === "today"
-                  ? "border-action bg-action text-background shadow-[0_0_0_5px_rgba(255,106,0,0.14)]"
-                  : item.state === "rest"
-                    ? "border-action/22 bg-action/10 text-action-soft"
-                    : "border-white/[0.08] bg-black/20 text-muted-2",
-            ].join(" ")}
-            key={item.day}
-          >
-            {item.day}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TokenTable({
-  items,
-}: {
-  items: Array<{ name: string; value: string; role: string }>;
-}) {
-  return (
-    <div className="divide-y divide-white/[0.07] overflow-hidden rounded-[var(--radius-card)] border border-white/[0.08]">
-      {items.map((item) => (
-        <div className="grid grid-cols-[1fr_auto] gap-4 p-4" key={item.name}>
-          <div>
-            <p className="text-sm font-semibold text-foreground">{item.name}</p>
-            <p className="mt-1 text-xs leading-5 text-muted">{item.role}</p>
-          </div>
-          <p className="font-mono text-xs text-muted-2">{item.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
+const benefits = [
+  "Construir uma rotina possível para o seu momento de vida.",
+  "Reduzir distrações com um ritual diário curto e claro.",
+  "Melhorar a organização sem depender de motivação o tempo todo.",
+  "Criar hábitos saudáveis com menos culpa e mais presença.",
+  "Fortalecer disciplina sem transformar o processo em punição.",
+  "Acompanhar a própria evolução com histórico e contexto.",
+];
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-x-hidden px-4 py-5 text-foreground sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-6xl min-w-0">
-        <header className="sticky top-3 z-30 flex min-w-0 items-center justify-between gap-3 rounded-[var(--radius-pill)] border border-white/[0.08] bg-background/78 px-3 py-2 shadow-[var(--shadow-hairline)] backdrop-blur-xl">
-          <a
-            aria-label="Projeto 30"
-            className="flex min-w-0 items-center gap-3 rounded-[var(--radius-pill)] focus-visible:outline-action-soft"
-            href="#hero"
-          >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-action text-background">
-              <Flame aria-hidden="true" size={20} strokeWidth={2.4} />
-            </span>
-            <span className="hidden text-sm font-semibold text-foreground sm:block">
+    <main className="overflow-x-hidden">
+      <section className="px-4 pb-12 pt-16 sm:px-6 sm:pb-20 sm:pt-24 lg:px-8">
+        <div className="mx-auto grid min-h-[calc(100vh-7rem)] max-w-6xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+          <div className="min-w-0">
+            <Badge>Projeto 30</Badge>
+            <h1 className="mt-6 font-display text-6xl leading-[0.95] text-foreground sm:text-7xl lg:text-8xl">
               Projeto 30
-            </span>
-          </a>
-          <Navigation className="hidden sm:flex" items={navItems} />
-          <Button size="sm" variant="secondary">
-            Preview
-          </Button>
-        </header>
-
-        <section
-          className="grid min-h-[calc(100vh-5.5rem)] min-w-0 gap-10 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center"
-          id="hero"
-        >
-          <div className="min-w-0 max-w-2xl">
-            <Badge>Design System 2A</Badge>
-            <h1 className="mt-6 font-display text-5xl leading-[1.02] text-foreground sm:text-6xl lg:text-7xl">
-              Uma rotina que parece preciosa antes mesmo de comecar.
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-8 text-muted sm:text-lg">
-              O Projeto 30 agora tem uma linguagem visual propria: escura, silenciosa,
-              precisa e desenhada para uso diario no celular.
+            <p className="mt-6 max-w-xl font-display text-3xl leading-tight text-foreground sm:text-4xl">
+              30 dias para evoluir.
+            </p>
+            <p className="mt-5 max-w-xl text-lg leading-8 text-muted">
+              Disciplina hoje. Liberdade amanhã. Uma jornada simples para cuidar do corpo,
+              da mente, da fé e da rotina sem precisar mudar tudo de uma vez.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button leadingIcon={<Play aria-hidden="true" size={16} />}>
-                Ver sistema
+              <Button
+                as="a"
+                href="/cadastro"
+                size="lg"
+                trailingIcon={<ArrowRight aria-hidden="true" size={17} />}
+              >
+                Começar gratuitamente
               </Button>
-              <Button variant="ghost">Explorar componentes</Button>
+              <Button as="a" href="/manifesto" size="lg" variant="ghost">
+                Conhecer o projeto
+              </Button>
+            </div>
+            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+              {[
+                ["30", "dias de ciclo"],
+                ["1", "decisão por vez"],
+                ["0", "culpa como método"],
+              ].map(([value, label]) => (
+                <div
+                  className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4"
+                  key={label}
+                >
+                  <p className="font-mono text-xl text-action-soft">{value}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="min-w-0 space-y-4" id="rhythm">
-            <Card tone="glass" className="p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-5">
-                <div>
-                  <p className="font-mono text-xs text-action-soft">DIA 13</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-foreground">
-                    Manha alinhada
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Um check-in curto, silencioso e facil de repetir.
-                  </p>
-                </div>
-                <Badge tone="neutral">42%</Badge>
-              </div>
-              <div className="mt-6">
-                <Progress label="Ciclo atual" value={42} />
-              </div>
-              <div className="mt-6 grid gap-2">
-                {["Leitura", "Agua", "Gratidao"].map((habit, index) => (
-                  <div
-                    className="flex min-h-12 items-center justify-between rounded-[var(--radius-card)] border border-white/[0.08] bg-black/20 px-4"
-                    key={habit}
-                  >
-                    <span className="text-sm font-semibold text-foreground">{habit}</span>
-                    {index < 2 ? (
-                      <CheckCircle2
-                        aria-hidden="true"
-                        className="text-success"
-                        size={18}
-                      />
-                    ) : (
-                      <span className="size-2 rounded-full bg-action" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
-            <RhythmRail />
-          </div>
-        </section>
-
-        <section className="py-12" id="tokens">
-          <SectionLabel>Tokens</SectionLabel>
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <Card tone="soft">
-              <CardHeader>
-                <CardTitle>Sistema de cores</CardTitle>
-                <CardDescription>
-                  Preto e grafite sustentam a interface; laranja aparece so quando existe
-                  acao, progresso ou foco.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {colorTokens.map((token) => (
-                  <div key={token.name}>
+          <div className="relative min-w-0">
+            <div
+              aria-hidden="true"
+              className="absolute -inset-8 rounded-full bg-action/10 blur-3xl"
+            />
+            <div className="relative grid gap-4 lg:grid-cols-[0.28fr_1fr] lg:items-stretch">
+              <div className="hidden rounded-[var(--radius-pill)] border border-action/20 bg-action/10 p-3 lg:block">
+                <div className="flex h-full flex-col items-center justify-between py-4">
+                  {["Saúde", "Fé", "Leitura", "Rotina", "Voltar"].map((item) => (
                     <span
-                      className="block aspect-square rounded-[var(--radius-card)] border border-white/[0.08] shadow-[var(--shadow-hairline)]"
-                      style={{ backgroundColor: token.value }}
-                    />
-                    <p className="mt-2 text-xs font-semibold text-foreground">
-                      {token.name}
-                    </p>
-                    <p className="mt-1 font-mono text-[0.68rem] text-muted-2">
-                      {token.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-            <Card tone="base">
-              <CardHeader>
-                <CardTitle>Tipografia</CardTitle>
-                <CardDescription>
-                  Display com personalidade usado em momentos raros; corpo limpo para
-                  leitura diaria.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 space-y-5">
-                {typeSamples.map((sample) => (
-                  <div key={sample.label}>
-                    <p className="mb-2 font-mono text-xs text-muted-2">{sample.label}</p>
-                    <p className={sample.className}>{sample.value}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardTitle>Espacamento</CardTitle>
-              <div className="mt-5">
-                <TokenTable items={spacingTokens} />
-              </div>
-            </Card>
-            <Card>
-              <CardTitle>Radius</CardTitle>
-              <div className="mt-5">
-                <TokenTable items={radiusTokens} />
-              </div>
-            </Card>
-            <Card>
-              <CardTitle>Elevacao e motion</CardTitle>
-              <div className="mt-5 space-y-3">
-                <TokenTable items={elevationTokens} />
-                <TokenTable items={motionTokens} />
-              </div>
-            </Card>
-          </div>
-        </section>
-
-        <section className="py-12" id="components">
-          <SectionLabel>Componentes</SectionLabel>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card tone="glass">
-              <CardHeader>
-                <CardTitle>Botoes e badges</CardTitle>
-                <CardDescription>
-                  Acoes claras, toque confortavel e feedback discreto.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button>Primario</Button>
-                <Button variant="secondary">Secundario</Button>
-                <Button variant="ghost">Ghost</Button>
-                <Button variant="danger">Perigo</Button>
-                <Button loading>Salvando</Button>
-                <Button disabled variant="secondary">
-                  Inativo
-                </Button>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <Badge>Hoje</Badge>
-                <Badge tone="neutral">Neutro</Badge>
-                <Badge tone="success">Sucesso</Badge>
-                <Badge tone="warning">Atencao</Badge>
-                <Badge tone="danger">Erro</Badge>
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Campos</CardTitle>
-                <CardDescription>
-                  Entradas altas, legiveis e desenhadas para polegar.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 grid gap-4">
-                <Field hint="Aparece apenas para voce." label="Intencao do dia">
-                  <Input placeholder="Ex.: Caminhar com calma" />
-                </Field>
-                <Field label="Diario breve">
-                  <Textarea placeholder="O que precisa ficar registrado hoje?" />
-                </Field>
-              </div>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Selecao</CardTitle>
-                <CardDescription>
-                  Estados nativos preservados, visual consistente por cima.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 grid gap-4">
-                <Switch
-                  defaultChecked
-                  description="Reduz transicoes e efeitos visuais."
-                  label="Modo calmo"
-                />
-                <Checkbox
-                  defaultChecked
-                  description="Marca a tarefa sem expor dados privados."
-                  label="Registrar habito"
-                />
-                <Radio
-                  defaultChecked
-                  description="Melhor para check-ins curtos."
-                  label="Ritmo leve"
-                  name="rhythm"
-                />
-                <Radio
-                  description="Para dias de foco estendido."
-                  label="Ritmo profundo"
-                  name="rhythm"
-                />
-              </div>
-            </Card>
-
-            <Card tone="accent">
-              <CardHeader>
-                <CardTitle>Progresso e carregamento</CardTitle>
-                <CardDescription>
-                  Movimento baixo, legivel e respeitando reduced motion.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 space-y-5">
-                <Progress label="Semana" value={64} />
-                <Spinner />
-                <div className="grid gap-3">
-                  <Skeleton className="h-12" />
-                  <Skeleton className="h-24" />
+                      className="[writing-mode:vertical-rl] rotate-180 font-mono text-[0.68rem] uppercase tracking-[0.22em] text-action-soft"
+                      key={item}
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Estados</CardTitle>
-                <CardDescription>
-                  Vazio, erro e sucesso orientam sem dramatizar.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 grid gap-3">
-                <StatusCard
-                  description="Seu diario foi salvo no ciclo correto."
-                  title="Registro salvo"
-                  tone="success"
-                />
-                <StatusCard
-                  description="Revise o campo destacado antes de continuar."
-                  title="Algo precisa de atencao"
-                  tone="error"
-                />
-                <EmptyState
-                  action={
-                    <Button size="sm" variant="secondary">
-                      Criar primeiro registro
-                    </Button>
-                  }
-                  description="Quando o ciclo comecar, seus registros aparecem aqui."
-                  title="Nada registrado ainda"
-                />
-              </div>
-            </Card>
-
-            <Card tone="soft">
-              <CardHeader>
-                <CardTitle>Overlays</CardTitle>
-                <CardDescription>
-                  Dialog, sheet e dropdown usam camadas escuras e foco claro.
-                </CardDescription>
-              </CardHeader>
-              <div className="mt-6 space-y-4">
-                <Dropdown
-                  items={["Editar lembrete", "Duplicar rotina", "Arquivar ciclo"]}
-                  label="Mais opcoes"
-                  open
-                />
-                <DialogPreview
-                  description="Confirme pequenas mudancas sem tirar o usuario do fluxo."
-                  title="Salvar novo ritmo?"
-                >
-                  <ConfirmActions />
-                </DialogPreview>
-                <SheetPreview
-                  description="No mobile, a sheet entra como uma camada baixa e direta."
-                  title="Resumo do dia"
-                >
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    {[
-                      ["3", "habitos"],
-                      ["42", "pontos"],
-                      ["13", "dia"],
-                    ].map(([value, label]) => (
-                      <div
-                        className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.055] p-3"
-                        key={label}
-                      >
-                        <p className="font-mono text-lg text-foreground">{value}</p>
-                        <p className="mt-1 text-xs text-muted">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </SheetPreview>
-              </div>
-            </Card>
-          </div>
-        </section>
-
-        <section className="py-12">
-          <SectionLabel>Ritmo visual</SectionLabel>
-          <Card tone="glass" className="overflow-hidden p-0">
-            <div className="grid gap-0 lg:grid-cols-[0.85fr_1.15fr]">
-              <div className="border-b border-white/[0.08] p-6 lg:border-b-0 lg:border-r">
-                <Moon aria-hidden="true" className="text-action-soft" size={24} />
-                <h2 className="mt-5 font-display text-4xl leading-10 text-foreground">
-                  Motion system silencioso.
-                </h2>
-                <p className="mt-4 text-sm leading-7 text-muted">
-                  A interface se move como respiracao: curta no toque, suave em progresso,
-                  quase invisivel em surfaces.
-                </p>
-              </div>
-              <div className="grid gap-3 p-6">
-                {[
-                  {
-                    icon: Sun,
-                    title: "Hover",
-                    text: "Leve elevacao e contraste, sem distrair.",
-                  },
-                  {
-                    icon: Heart,
-                    title: "Active",
-                    text: "Resposta curta para toque mobile.",
-                  },
-                  {
-                    icon: Bell,
-                    title: "Focus",
-                    text: "Anel laranja claro e sempre visivel.",
-                  },
-                  {
-                    icon: ShieldCheck,
-                    title: "Disabled",
-                    text: "Baixa opacidade, sem remover contexto.",
-                  },
-                  {
-                    icon: LockKeyhole,
-                    title: "Loading",
-                    text: "Pulso pequeno, sem spinner dominante.",
-                  },
-                ].map((item) => (
-                  <div
-                    className="grid grid-cols-[2.75rem_1fr] gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.045] p-3"
-                    key={item.title}
-                  >
-                    <span className="flex size-11 items-center justify-center rounded-full bg-action/10 text-action-soft">
-                      <item.icon aria-hidden="true" size={18} />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-semibold text-foreground">
-                        {item.title}
-                      </span>
-                      <span className="mt-1 block text-xs leading-5 text-muted">
-                        {item.text}
-                      </span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <PlatformPreview />
             </div>
+          </div>
+        </div>
+      </section>
+
+      <PublicSection id="manifesto">
+        <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+          <div>
+            <Eyebrow>Manifesto</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Não é sobre vencer todos os dias. É sobre voltar.
+            </h2>
+          </div>
+          <div className="space-y-5 text-base leading-8 text-muted">
+            <p>
+              O Projeto 30 não foi criado para transformar vida real em cobrança. Ele
+              existe para dar forma a uma decisão simples: continuar mesmo quando o dia
+              não sai perfeito.
+            </p>
+            <p>
+              Disciplina, saúde, fé e organização entram como práticas possíveis. A
+              evolução aparece no acúmulo das escolhas pequenas, não em promessas
+              grandiosas.
+            </p>
+            <Button
+              as="a"
+              href="/manifesto"
+              trailingIcon={<ArrowRight aria-hidden="true" size={16} />}
+              variant="secondary"
+            >
+              Ler manifesto
+            </Button>
+          </div>
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card tone="soft" className="p-6 sm:p-8">
+            <CalendarDays aria-hidden="true" className="text-action-soft" size={24} />
+            <h2 className="mt-5 text-2xl font-semibold text-foreground">
+              Por que o Projeto 30 existe
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-muted sm:text-base sm:leading-8">
+              Porque muita gente sabe o que precisa mudar, mas se perde entre excesso de
+              ferramentas, metas grandes demais e a sensação de ter que recomeçar do zero
+              toda segunda-feira.
+            </p>
+            <Button as="a" className="mt-6" href="/sobre" variant="ghost">
+              Ver a história
+            </Button>
           </Card>
-        </section>
-      </div>
+
+          <Card tone="glass" className="p-6 sm:p-8">
+            <Heart aria-hidden="true" className="text-action-soft" size={24} />
+            <h2 className="mt-5 text-2xl font-semibold text-foreground">
+              Silas está dentro do processo
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-muted sm:text-base sm:leading-8">
+              Silas idealizou o Projeto 30 como alguém que também está buscando mudança de
+              estilo de vida: mais saúde, mais constância e uma rotina que sustente a
+              evolução física, mental, espiritual e profissional.
+            </p>
+            <Button as="a" className="mt-6" href="/sobre#silas" variant="ghost">
+              Conhecer o idealizador
+            </Button>
+          </Card>
+        </div>
+      </PublicSection>
+
+      <PublicSection id="como-funciona">
+        <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
+          <div>
+            <Eyebrow>Como funciona</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Um ciclo claro para atravessar dias reais.
+            </h2>
+            <p className="mt-5 text-base leading-8 text-muted">
+              A mecânica é simples de entender porque o desafio já é grande o bastante:
+              aparecer para a própria rotina.
+            </p>
+            <Button as="a" className="mt-7" href="/como-funciona" variant="secondary">
+              Entender o ciclo
+            </Button>
+          </div>
+          <StepList items={homeSteps} />
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="mb-8 max-w-2xl">
+          <Eyebrow>Pilares</Eyebrow>
+          <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+            O desafio é digital, mas a mudança acontece fora da tela.
+          </h2>
+        </div>
+        <PillarGrid items={defaultPillars} />
+      </PublicSection>
+
+      <PublicSection id="preview">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div>
+            <Eyebrow>Veja por dentro</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Uma prévia da área de membros, sem linguagem de venda.
+            </h2>
+            <p className="mt-5 text-base leading-8 text-muted">
+              A experiência autenticada será construída para executar: acompanhar hábitos,
+              registrar jornada e mostrar progresso. A landing apenas revela a direção
+              visual, sem simular uma área pronta.
+            </p>
+          </div>
+          <PlatformPreview />
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="grid gap-8 lg:grid-cols-[0.78fr_1.22fr]">
+          <div>
+            <Eyebrow>Benefícios possíveis</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Menos promessa. Mais direção.
+            </h2>
+            <p className="mt-5 text-base leading-8 text-muted">
+              O Projeto 30 não promete uma vida perfeita em um mês. Ele organiza um começo
+              possível.
+            </p>
+          </div>
+          <BenefitList items={benefits} />
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <Eyebrow>Depoimentos</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Espaço reservado para histórias reais.
+            </h2>
+            <p className="mt-5 text-base leading-8 text-muted">
+              Nenhum depoimento será inventado. Esta área receberá relatos quando houver
+              participantes reais e autorização explícita de uso.
+            </p>
+          </div>
+          <EmptyState
+            action={
+              <Button as="a" href="/cadastro" size="sm" variant="secondary">
+                Entrar na primeira jornada
+              </Button>
+            }
+            description="A comunidade ainda está nascendo. Os relatos entram aqui quando existirem histórias verificáveis."
+            title="Depoimentos em preparação"
+          />
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="grid gap-8 lg:grid-cols-[0.75fr_1.25fr]">
+          <div>
+            <Eyebrow>FAQ</Eyebrow>
+            <h2 className="font-display text-4xl leading-tight text-foreground sm:text-5xl">
+              Perguntas antes do Dia 1.
+            </h2>
+            <Button as="a" className="mt-7" href="/faq" variant="secondary">
+              Ver todas as respostas
+            </Button>
+          </div>
+          <FaqList items={publicFaqItems.slice(0, 5)} />
+        </div>
+      </PublicSection>
+
+      <PublicSection className="pt-0">
+        <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-action/20 bg-[linear-gradient(135deg,rgba(255,106,0,0.18),rgba(255,255,255,0.055)_42%,rgba(255,255,255,0.03))] p-6 shadow-[var(--shadow-soft)] sm:p-10">
+          <div
+            aria-hidden="true"
+            className="absolute right-0 top-0 size-48 rounded-full bg-action/20 blur-3xl"
+          />
+          <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <Sparkles aria-hidden="true" className="text-action-soft" size={24} />
+              <h2 className="mt-5 max-w-3xl font-display text-4xl leading-tight text-foreground sm:text-5xl">
+                Você não precisa mudar sua vida inteira hoje.
+              </h2>
+              <p className="mt-5 max-w-2xl text-base leading-8 text-muted">
+                Só precisa começar o Dia 1 com honestidade, presença e uma direção que
+                caiba no seu dia.
+              </p>
+            </div>
+            <Button
+              as="a"
+              href="/cadastro"
+              size="lg"
+              trailingIcon={<CheckCircle2 aria-hidden="true" size={17} />}
+            >
+              Começar gratuitamente
+            </Button>
+          </div>
+        </div>
+      </PublicSection>
     </main>
   );
 }

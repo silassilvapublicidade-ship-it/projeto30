@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 type FieldProps = ComponentPropsWithoutRef<"label"> & {
   label: string;
-  hint?: string;
-  error?: string;
+  hint?: string | undefined;
+  error?: string | undefined;
   children: ReactNode;
 };
 

@@ -30,7 +30,28 @@ export const metadata: Metadata = {
     template: "%s | Projeto 30",
   },
   description:
-    "Produto premium mobile first para ciclos de evolucao pessoal com habitos, diario e ritmo diario.",
+    "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+  applicationName: "Projeto 30",
+  authors: [{ name: "Silas Silva" }],
+  creator: "Silas Silva",
+  openGraph: {
+    title: "Projeto 30",
+    description:
+      "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+    siteName: "Projeto 30",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Projeto 30",
+    description:
+      "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport: Viewport = {
