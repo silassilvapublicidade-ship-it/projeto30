@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Projeto 30
 
-## Getting Started
+Fundação técnica da plataforma de desafios de 30 dias para evolução integral:
+corpo, mente, espírito, hábitos e propósito.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- React
+- TypeScript estrito
+- Tailwind CSS
+- Supabase Auth, PostgreSQL, RLS e Storage preparado
+- Zod para validação
+- Vitest para regras de negócio
+- Prettier e ESLint
+
+## Executar localmente
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+A aplicação abre em `http://localhost:3000`.
+
+Sem Supabase conectado, a tela de fundação carrega normalmente. Recursos de auth e
+banco exigem preencher as variáveis em `.env.local`.
+
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run typecheck
+npm run lint
+npm run format:check
+npm run test
+npm run build
+npm run verify
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+A estrutura inicial está em:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `supabase/migrations/0001_initial_schema.sql`
+- `supabase/seed.sql`
 
-## Learn More
+Quando o projeto Supabase existir, aplique a migration e depois rode o seed apenas em
+ambiente de desenvolvimento.
 
-To learn more about Next.js, take a look at the following resources:
+## Documentação
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `docs/architecture.md`
+- `docs/database.md`
+- `docs/decisions.md`
+- `docs/phase-1-acceptance.md`
