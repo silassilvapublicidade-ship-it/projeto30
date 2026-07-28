@@ -7,6 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
+      disallow: ["/app", "/nova-senha"],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   };

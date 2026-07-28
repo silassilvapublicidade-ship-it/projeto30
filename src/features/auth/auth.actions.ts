@@ -1,14 +1,22 @@
 "use server";
 
+import { redirect } from "next/navigation";
+
+import { getSafeNextPath, withNextParam } from "@/lib/auth/redirects";
 import { getServerEnv } from "@/lib/env/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { magicLinkSchema, passwordAuthSchema } from "./auth.schemas";
+import {
+  magicLinkSchema,
+  passwordAuthSchema,
+  updatePasswordSchema,
+} from "./auth.schemas";
 
 export type AuthActionResult =
   | {
       ok: true;
       message: string;
+      redirectTo?: string;
     }
   | {
       ok: false;
@@ -24,6 +32,7 @@ function getString(formData: FormData, key: string) {
 export async function signInWithPasswordAction(
   formData: FormData,
 ): Promise<AuthActionResult> {
+  const redirectTo = getSafeNextPath(formData.get("next"));
   const parsed = passwordAuthSchema.safeParse({
     email: getString(formData, "email"),
     password: getString(formData, "password"),
@@ -43,13 +52,14 @@ export async function signInWithPasswordAction(
   if (error) {
     return {
       ok: false,
-      message: "Não foi possível entrar com esses dados.",
+      message: "Nao foi possivel entrar com esses dados.",
     };
   }
 
   return {
     ok: true,
     message: "Entrada confirmada.",
+    redirectTo,
   };
 }
 
@@ -57,12 +67,19 @@ export async function signInWithPasswordFormAction(
   _previousState: AuthActionResult,
   formData: FormData,
 ): Promise<AuthActionResult> {
-  return signInWithPasswordAction(formData);
+  const result = await signInWithPasswordAction(formData);
+
+  if (result.ok && result.redirectTo) {
+    redirect(result.redirectTo);
+  }
+
+  return result;
 }
 
 export async function signUpWithPasswordAction(
   formData: FormData,
 ): Promise<AuthActionResult> {
+  const redirectTo = getSafeNextPath(formData.get("next"));
   const parsed = passwordAuthSchema.safeParse({
     email: getString(formData, "email"),
     password: getString(formData, "password"),
@@ -77,17 +94,25 @@ export async function signUpWithPasswordAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     ...parsed.data,
     options: {
-      emailRedirectTo: getServerEnv().AUTH_REDIRECT_URL,
+      emailRedirectTo: withNextParam(getServerEnv().AUTH_REDIRECT_URL, redirectTo),
     },
   });
 
   if (error) {
     return {
       ok: false,
-      message: "Não foi possível criar a conta agora.",
+      message: "Nao foi possivel criar a conta agora.",
+    };
+  }
+
+  if (data.session) {
+    return {
+      ok: true,
+      message: "Conta criada. Preparando sua area de membros.",
+      redirectTo,
     };
   }
 
@@ -101,10 +126,17 @@ export async function signUpWithPasswordFormAction(
   _previousState: AuthActionResult,
   formData: FormData,
 ): Promise<AuthActionResult> {
-  return signUpWithPasswordAction(formData);
+  const result = await signUpWithPasswordAction(formData);
+
+  if (result.ok && result.redirectTo) {
+    redirect(result.redirectTo);
+  }
+
+  return result;
 }
 
 export async function sendMagicLinkAction(formData: FormData): Promise<AuthActionResult> {
+  const redirectTo = getSafeNextPath(formData.get("next"));
   const parsed = magicLinkSchema.safeParse({
     email: getString(formData, "email"),
   });
@@ -112,7 +144,7 @@ export async function sendMagicLinkAction(formData: FormData): Promise<AuthActio
   if (!parsed.success) {
     return {
       ok: false,
-      message: "Informe um e-mail válido.",
+      message: "Informe um e-mail valido.",
       fieldErrors: parsed.error.flatten().fieldErrors,
     };
   }
@@ -121,7 +153,7 @@ export async function sendMagicLinkAction(formData: FormData): Promise<AuthActio
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
     options: {
-      emailRedirectTo: getServerEnv().AUTH_REDIRECT_URL,
+      emailRedirectTo: withNextParam(getServerEnv().AUTH_REDIRECT_URL, redirectTo),
       shouldCreateUser: true,
     },
   });
@@ -129,7 +161,7 @@ export async function sendMagicLinkAction(formData: FormData): Promise<AuthActio
   if (error) {
     return {
       ok: false,
-      message: "Não foi possível enviar o link agora.",
+      message: "Nao foi possivel enviar o link agora.",
     };
   }
 
@@ -146,6 +178,78 @@ export async function sendMagicLinkFormAction(
   return sendMagicLinkAction(formData);
 }
 
+export async function sendPasswordRecoveryAction(
+  formData: FormData,
+): Promise<AuthActionResult> {
+  const parsed = magicLinkSchema.safeParse({
+    email: getString(formData, "email"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Informe um e-mail valido.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: withNextParam(getServerEnv().AUTH_REDIRECT_URL, "/nova-senha"),
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: "Nao foi possivel enviar o link agora.",
+    };
+  }
+
+  return {
+    ok: true,
+    message:
+      "Se o e-mail estiver cadastrado, enviaremos um link para definir uma nova senha.",
+  };
+}
+
+export async function sendPasswordRecoveryFormAction(
+  _previousState: AuthActionResult,
+  formData: FormData,
+): Promise<AuthActionResult> {
+  return sendPasswordRecoveryAction(formData);
+}
+
+export async function updatePasswordAction(
+  _previousState: AuthActionResult,
+  formData: FormData,
+): Promise<AuthActionResult> {
+  const parsed = updatePasswordSchema.safeParse({
+    password: getString(formData, "password"),
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Revise a nova senha.",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      message: "Nao foi possivel atualizar sua senha agora.",
+    };
+  }
+
+  redirect("/app");
+}
+
 export async function signOutAction(): Promise<AuthActionResult> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signOut();
@@ -153,12 +257,17 @@ export async function signOutAction(): Promise<AuthActionResult> {
   if (error) {
     return {
       ok: false,
-      message: "Não foi possível encerrar a sessão agora.",
+      message: "Nao foi possivel encerrar a sessao agora.",
     };
   }
 
   return {
     ok: true,
-    message: "Sessão encerrada.",
+    message: "Sessao encerrada.",
   };
+}
+
+export async function signOutAndRedirectAction() {
+  await signOutAction();
+  redirect("/login?logout=1");
 }

@@ -10,8 +10,10 @@ import { StatusCard } from "@/components/ui/feedback";
 import {
   type AuthActionResult,
   sendMagicLinkFormAction,
+  sendPasswordRecoveryFormAction,
   signInWithPasswordFormAction,
   signUpWithPasswordFormAction,
+  updatePasswordAction,
 } from "@/features/auth/auth.actions";
 
 const initialState: AuthActionResult = {
@@ -63,7 +65,7 @@ function SubmitButton({
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ nextPath = "/app" }: { nextPath?: string }) {
   const [passwordState, passwordAction] = useActionState(
     signInWithPasswordFormAction,
     initialState,
@@ -73,6 +75,7 @@ export function LoginForm() {
   return (
     <div className="space-y-5">
       <form action={passwordAction} className="space-y-4">
+        <input name="next" type="hidden" value={nextPath} />
         <Field error={getFieldError(passwordState, "email")} label="E-mail">
           <Input
             autoComplete="email"
@@ -104,6 +107,7 @@ export function LoginForm() {
       </div>
 
       <form action={magicAction} className="space-y-4">
+        <input name="next" type="hidden" value={nextPath} />
         <Field
           error={getFieldError(magicState, "email")}
           hint="Enviaremos um link de acesso para o seu e-mail."
@@ -124,7 +128,7 @@ export function LoginForm() {
   );
 }
 
-export function SignupForm() {
+export function SignupForm({ nextPath = "/app" }: { nextPath?: string }) {
   const [signupState, signupAction] = useActionState(
     signUpWithPasswordFormAction,
     initialState,
@@ -134,6 +138,7 @@ export function SignupForm() {
   return (
     <div className="space-y-5">
       <form action={signupAction} className="space-y-4">
+        <input name="next" type="hidden" value={nextPath} />
         <Field error={getFieldError(signupState, "email")} label="E-mail">
           <Input
             autoComplete="email"
@@ -162,6 +167,7 @@ export function SignupForm() {
 
       <div className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4">
         <form action={magicAction} className="space-y-4">
+          <input name="next" type="hidden" value={nextPath} />
           <Field
             error={getFieldError(magicState, "email")}
             hint="Prefere começar sem senha agora? Use o link por e-mail."
@@ -184,7 +190,10 @@ export function SignupForm() {
 }
 
 export function PasswordRecoveryForm() {
-  const [state, formAction] = useActionState(sendMagicLinkFormAction, initialState);
+  const [state, formAction] = useActionState(
+    sendPasswordRecoveryFormAction,
+    initialState,
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -202,6 +211,30 @@ export function PasswordRecoveryForm() {
         />
       </Field>
       <SubmitButton variant="secondary">Enviar link seguro</SubmitButton>
+      <FormStatus state={state} />
+    </form>
+  );
+}
+
+export function NewPasswordForm() {
+  const [state, formAction] = useActionState(updatePasswordAction, initialState);
+
+  return (
+    <form action={formAction} className="space-y-4">
+      <Field
+        error={getFieldError(state, "password")}
+        hint="Use pelo menos 8 caracteres."
+        label="Nova senha"
+      >
+        <Input
+          autoComplete="new-password"
+          name="password"
+          placeholder="Crie uma nova senha"
+          required
+          type="password"
+        />
+      </Field>
+      <SubmitButton>Salvar nova senha</SubmitButton>
       <FormStatus state={state} />
     </form>
   );

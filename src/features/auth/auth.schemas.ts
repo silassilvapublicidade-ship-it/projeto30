@@ -20,3 +20,7 @@ export const passwordAuthSchema = z.object({
 export const magicLinkSchema = z.object({
   email: emailSchema,
 });
+
+export const updatePasswordSchema = z.object({
+  password: passwordSchema,
+});
