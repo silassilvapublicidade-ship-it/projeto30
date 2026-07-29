@@ -12,31 +12,12 @@ const primaryNav = [
   { label: "FAQ", href: "/faq" },
 ];
 
-const footerGroups = [
-  {
-    title: "Projeto",
-    links: [
-      { label: "Manifesto", href: "/manifesto" },
-      { label: "Sobre", href: "/sobre" },
-      { label: "Como funciona", href: "/como-funciona" },
-      { label: "FAQ", href: "/faq" },
-    ],
-  },
-  {
-    title: "Acesso",
-    links: [
-      { label: "Entrar", href: "/login" },
-      { label: "Criar conta", href: "/cadastro" },
-      { label: "Recuperar senha", href: "/recuperar-senha" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacidade", href: "/privacidade" },
-      { label: "Termos", href: "/termos" },
-    ],
-  },
+const footerLinks = [
+  { label: "Entrar", href: "/login" },
+  { label: "Cadastro", href: "/cadastro" },
+  { label: "Manifesto", href: "/manifesto" },
+  { label: "Termos", href: "/termos" },
+  { label: "Privacidade", href: "/privacidade" },
 ];
 
 export function BrandMark({
@@ -106,48 +87,37 @@ export function PublicHeader() {
 }
 
 export function PublicFooter() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="px-4 pb-8 pt-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-6 shadow-[var(--shadow-hairline)] sm:p-8">
-        <div className="grid gap-10 lg:grid-cols-[1.2fr_1fr]">
+    <footer className="px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl border-t border-white/[0.08] pt-8">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <BrandMark />
-            <p className="mt-5 max-w-md text-sm leading-7 text-muted">
-              O Projeto 30 é uma experiência digital para transformar intenção em
-              constância, um dia de cada vez.
-            </p>
-            <p className="mt-5 font-mono text-xs text-muted-2">
-              Idealizado por Silas Silva. Conteúdo e direção em evolução.
+            <p className="mt-4 max-w-sm text-sm leading-6 text-muted">
+              Uma jornada diária para transformar intenção em constância, um dia de cada
+              vez.
             </p>
           </div>
 
-          <div className="grid gap-8 sm:grid-cols-3">
-            {footerGroups.map((group) => (
-              <div key={group.title}>
-                <h2 className="font-mono text-xs uppercase tracking-[0.18em] text-muted-2">
-                  {group.title}
-                </h2>
-                <ul className="mt-4 space-y-3">
-                  {group.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        className="text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-action-soft"
-                        href={link.href}
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <nav
+            aria-label="Links do rodapé"
+            className="flex flex-wrap gap-x-6 gap-y-2.5 text-sm font-medium text-muted sm:justify-end"
+          >
+            {footerLinks.map((link) => (
+              <Link
+                className="transition-colors hover:text-foreground focus-visible:outline-action-soft"
+                href={link.href}
+                key={link.href}
+              >
+                {link.label}
+              </Link>
             ))}
-          </div>
+          </nav>
         </div>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-white/[0.08] pt-5 text-xs text-muted-2 sm:flex-row sm:items-center sm:justify-between">
-          <span>© 2026 Projeto 30.</span>
-          <span>Produto em construção responsável. Sem promessas milagrosas.</span>
-        </div>
+        <p className="mt-8 font-mono text-xs text-muted-2">© {year} Projeto 30.</p>
       </div>
     </footer>
   );
