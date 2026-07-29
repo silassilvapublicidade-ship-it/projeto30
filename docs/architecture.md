@@ -36,7 +36,11 @@ flowchart TD
 - `streaks`: cálculo puro de sequência.
 - `journal`: privado por RLS e sem compartilhamento automático.
 - `sharing`: templates e cards preparados para geração 1080 x 1920.
-- `admin`: tabelas e políticas para gestão futura.
+- `admin`: tabelas e políticas para gestão administrativa. A partir da Fase 2, o
+  dashboard, o analytics por desafio e a gestão de participantes ficam em
+  `src/app/admin/**`, servidos por `src/server/services/admin-analytics.service.ts`
+  e pelas funções SQL de `supabase/migrations/0006_admin_analytics.sql`. Detalhes
+  em `docs/admin-analytics.md`.
 
 ## Fronteiras
 

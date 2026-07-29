@@ -1144,6 +1144,75 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_challenge_detail: {
+        Args: { p_challenge_id: string }
+        Returns: Json
+      }
+      admin_dashboard_overview: {
+        Args: never
+        Returns: Json
+      }
+      admin_list_challenges: {
+        Args: {
+          p_limit?: number | undefined
+          p_offset?: number | undefined
+          p_search?: string | undefined
+          p_sort_by?: string | undefined
+          p_sort_dir?: string | undefined
+          p_status?: Database["public"]["Enums"]["challenge_status"] | undefined
+        }
+        Returns: {
+          average_progress: number
+          created_at: string
+          duration_days: number
+          end_date: string | null
+          id: string
+          name: string
+          participant_count: number
+          slug: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["challenge_status"]
+          total_count: number
+        }[]
+      }
+      admin_list_participants: {
+        Args: {
+          p_activity?: string | undefined
+          p_challenge_id: string
+          p_limit?: number | undefined
+          p_max_progress?: number | undefined
+          p_min_progress?: number | undefined
+          p_offset?: number | undefined
+          p_search?: string | undefined
+          p_sort_by?: string | undefined
+          p_sort_dir?: string | undefined
+          p_status?: Database["public"]["Enums"]["enrollment_status"] | undefined
+        }
+        Returns: {
+          activity: string
+          completion_percent: number
+          email: string
+          enrollment_id: string
+          finalized_days: number
+          joined_at: string
+          last_activity_at: string | null
+          name: string | null
+          points_total: number
+          status: Database["public"]["Enums"]["enrollment_status"]
+          streak_best: number
+          streak_current: number
+          total_count: number
+          user_id: string
+        }[]
+      }
+      admin_participant_detail: {
+        Args: { p_enrollment_id: string }
+        Returns: Json
+      }
+      admin_require_admin: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]

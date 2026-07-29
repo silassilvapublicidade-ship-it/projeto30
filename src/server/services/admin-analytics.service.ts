@@ -1,0 +1,262 @@
+import "server-only";
+
+import type {
+  ChallengeListParams,
+  ParticipantListParams,
+} from "@/features/admin/admin-analytics.schemas";
+import { ADMIN_PAGE_SIZE, getOffset } from "@/features/admin/admin-analytics.schemas";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database";
+
+type ChallengeStatus = Database["public"]["Enums"]["challenge_status"];
+type EnrollmentStatus = Database["public"]["Enums"]["enrollment_status"];
+type UserRole = Database["public"]["Enums"]["user_role"];
+
+export type AdminServiceResult<T> =
+  | { data: T; error: null }
+  | { data: null; error: string };
+
+export type AdminDashboardOverview = {
+  active_participants: number;
+  active_window_days: number;
+  average_progress_percent: number;
+  challenges_active: number;
+  challenges_draft: number;
+  challenges_ended_or_archived: number;
+  challenges_total: number;
+  participants_completed_challenge: number;
+  participants_completed_one_day: number;
+  total_enrollments: number;
+  total_finalized_days: number;
+};
+
+export type AdminChallengeListRow = {
+  average_progress: number;
+  created_at: string;
+  duration_days: number;
+  end_date: string | null;
+  id: string;
+  name: string;
+  participant_count: number;
+  slug: string;
+  start_date: string | null;
+  status: ChallengeStatus;
+  total_count: number;
+};
+
+export type AdminChallengeDetail = {
+  active_participants: number;
+  active_window_days: number;
+  average_points: number;
+  average_progress_percent: number;
+  average_streak: number;
+  best_streak: number;
+  challenge: {
+    created_at: string;
+    duration_days: number;
+    end_date: string | null;
+    id: string;
+    name: string;
+    slug: string;
+    start_date: string | null;
+    status: ChallengeStatus;
+  };
+  completed_participants: number;
+  completion_rate_percent: number;
+  daily_completion: Array<{
+    day_number: number;
+    finalized_count: number;
+    opened_count: number;
+  }>;
+  enrollment_evolution: Array<{ enrollment_day: string; enrollments: number }>;
+  finalized_days: number;
+  habit_adherence: Array<{
+    adherence_percent: number;
+    completed_count: number;
+    habit_id: string;
+    opportunity_count: number;
+    title: string;
+  }>;
+  inactive_participants: number;
+  progress_distribution: Array<{
+    bucket_label: string;
+    bucket_order: number;
+    participant_count: number;
+  }>;
+  total_enrolled: number;
+};
+
+export type AdminParticipantListRow = {
+  activity: "active" | "completed" | "inactive";
+  completion_percent: number;
+  email: string;
+  enrollment_id: string;
+  finalized_days: number;
+  joined_at: string;
+  last_activity_at: string | null;
+  name: string | null;
+  points_total: number;
+  status: EnrollmentStatus;
+  streak_best: number;
+  streak_current: number;
+  total_count: number;
+  user_id: string;
+};
+
+export type AdminParticipantDetail = {
+  achievements: Array<{ icon: string | null; name: string; slug: string; unlocked_at: string }>;
+  activity: "active" | "completed" | "inactive";
+  challenge_id: string;
+  challenge_name: string;
+  completed_at: string | null;
+  completion_percent: number;
+  daily_history: Array<{
+    completion_percent: number;
+    daily_log_id: string | null;
+    day_number: number;
+    finalized_at: string | null;
+    log_date: string | null;
+    points_earned: number | null;
+    status: Database["public"]["Enums"]["daily_log_status"] | null;
+  }>;
+  duration_days: number;
+  email: string;
+  enrollment_id: string;
+  joined_at: string;
+  last_activity_at: string | null;
+  name: string | null;
+  personal_start_date: string;
+  points_total: number;
+  reflections:
+    | Array<{
+        content: string | null;
+        difficulty: string | null;
+        gratitude: string | null;
+        log_date: string;
+        mood: string | null;
+        tomorrow_focus: string | null;
+        victory: string | null;
+      }>
+    | null;
+  reflections_visible: boolean;
+  status: EnrollmentStatus;
+  streak_best: number;
+  streak_current: number;
+  user_id: string;
+};
+
+function toErrorMessage(error: { code?: string; message: string } | null): string {
+  if (!error) {
+    return "Não foi possível carregar estes dados agora.";
+  }
+
+  if (error.code === "42501") {
+    return "Acesso administrativo necessário para consultar estes dados.";
+  }
+
+  if (error.code === "P0002") {
+    return "Registro não encontrado.";
+  }
+
+  return "Não foi possível carregar estes dados agora. Tente novamente em instantes.";
+}
+
+export async function getAdminDashboardOverview(): Promise<
+  AdminServiceResult<AdminDashboardOverview>
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_dashboard_overview");
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminDashboardOverview, error: null };
+}
+
+export async function listAdminChallenges(
+  params: ChallengeListParams,
+): Promise<AdminServiceResult<{ rows: AdminChallengeListRow[]; totalCount: number }>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_list_challenges", {
+    p_limit: ADMIN_PAGE_SIZE,
+    p_offset: getOffset(params.page),
+    p_search: params.search,
+    p_sort_by: params.sortBy,
+    p_sort_dir: params.sortDir,
+    p_status: params.status,
+  });
+
+  if (error) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  const rows = (data ?? []) as AdminChallengeListRow[];
+
+  return {
+    data: { rows, totalCount: rows[0]?.total_count ?? 0 },
+    error: null,
+  };
+}
+
+export async function getAdminChallengeDetail(
+  challengeId: string,
+): Promise<AdminServiceResult<AdminChallengeDetail>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_challenge_detail", {
+    p_challenge_id: challengeId,
+  });
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminChallengeDetail, error: null };
+}
+
+export async function listAdminParticipants(
+  challengeId: string,
+  params: ParticipantListParams,
+): Promise<AdminServiceResult<{ rows: AdminParticipantListRow[]; totalCount: number }>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_list_participants", {
+    p_activity: params.activity,
+    p_challenge_id: challengeId,
+    p_limit: ADMIN_PAGE_SIZE,
+    p_max_progress: params.maxProgress,
+    p_min_progress: params.minProgress,
+    p_offset: getOffset(params.page),
+    p_search: params.search,
+    p_sort_by: params.sortBy,
+    p_sort_dir: params.sortDir,
+    p_status: params.status,
+  });
+
+  if (error) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  const rows = (data ?? []) as AdminParticipantListRow[];
+
+  return {
+    data: { rows, totalCount: rows[0]?.total_count ?? 0 },
+    error: null,
+  };
+}
+
+export async function getAdminParticipantDetail(
+  enrollmentId: string,
+): Promise<AdminServiceResult<AdminParticipantDetail>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_participant_detail", {
+    p_enrollment_id: enrollmentId,
+  });
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminParticipantDetail, error: null };
+}
+
+export type { ChallengeStatus, EnrollmentStatus, UserRole };

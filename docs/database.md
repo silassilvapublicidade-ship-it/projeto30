@@ -138,3 +138,12 @@ where id = (
 ```
 
 O usuário nunca deve conseguir alterar o próprio `role` pela aplicação.
+
+## Analytics Administrativo (Fase 2)
+
+A migration `0006_admin_analytics.sql` adiciona funções somente-leitura
+`security definer` para o painel administrativo (`admin_dashboard_overview`,
+`admin_list_challenges`, `admin_challenge_detail`, `admin_list_participants`,
+`admin_participant_detail`), todas gated por `public.is_admin()` internamente.
+Fórmulas de métricas, contrato de cada função e limitações conhecidas estão em
+`docs/admin-analytics.md`.

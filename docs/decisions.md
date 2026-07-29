@@ -51,3 +51,22 @@ fase apenas e-mail/senha e magic link.
 
 Motivo: segue a prioridade aprovada e evita configuração externa antes de existir
 projeto Supabase.
+
+## ADR-008: Analytics administrativo via funções SQL security definer
+
+Decisão: implementar toda a agregação do painel administrativo (Fase 2) como funções
+`security definer` em `supabase/migrations/0006_admin_analytics.sql`
+(`admin_dashboard_overview`, `admin_list_challenges`, `admin_challenge_detail`,
+`admin_list_participants`, `admin_participant_detail`), cada uma validando
+`public.is_admin()` explicitamente no corpo da função antes de devolver qualquer
+dado, e não como views ou queries agregadas montadas no cliente.
+
+Motivo: as RLS existentes ("Admins can manage X") já liberam leitura ampla para
+`admin`/`super_admin`, mas uma `view` com `security_invoker` herdaria a RLS de cada
+tabela isoladamente — um usuário comum que consultasse a view receberia agregados
+calculados só sobre as linhas que ele mesmo pode ver (ex.: a própria inscrição),
+não um erro de acesso negado. Isso vazaria números incorretos em vez de bloquear.
+Funções `security definer` com checagem explícita de `is_admin()` seguem o mesmo
+padrão já usado pelas RPCs de jornada (`0002_daily_journey_core.sql`) e garantem que
+sem o papel correto a função sempre lança `42501`, nunca devolve dado parcial.
+Ver `docs/admin-analytics.md` para as fórmulas e o contrato de cada função.
