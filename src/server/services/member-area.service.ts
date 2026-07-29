@@ -16,11 +16,13 @@ import { getJourneyRpcClient, getSafeJourneyErrorMessage } from "./journey-rpc.s
 export type MemberProfile = Pick<
   Tables<"users">,
   | "avatar_url"
+  | "city"
   | "display_name"
   | "email"
   | "id"
   | "name"
   | "onboarding_completed"
+  | "role"
   | "timezone"
 >;
 
@@ -132,11 +134,13 @@ function getRuleInt(rulesConfig: Json, key: string, fallback: number) {
 function getFallbackProfile(user: Awaited<ReturnType<typeof requireAuthUser>>) {
   return {
     avatar_url: null,
+    city: null,
     display_name: user.user_metadata.display_name ?? user.user_metadata.name ?? null,
     email: user.email ?? "",
     id: user.id,
     name: user.user_metadata.name ?? null,
     onboarding_completed: false,
+    role: "user",
     timezone: "America/Sao_Paulo",
   } satisfies MemberProfile;
 }
@@ -365,7 +369,7 @@ export async function getMemberContext(
 
   const { data: profileData } = await supabase
     .from("users")
-    .select("id,email,name,display_name,avatar_url,timezone,onboarding_completed")
+    .select("id,email,name,display_name,avatar_url,timezone,onboarding_completed,city,role")
     .eq("id", user.id)
     .maybeSingle();
 

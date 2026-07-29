@@ -70,3 +70,29 @@ Funções `security definer` com checagem explícita de `is_admin()` seguem o me
 padrão já usado pelas RPCs de jornada (`0002_daily_journey_core.sql`) e garantem que
 sem o papel correto a função sempre lança `42501`, nunca devolve dado parcial.
 Ver `docs/admin-analytics.md` para as fórmulas e o contrato de cada função.
+
+## ADR-009: Bucket de avatars público para leitura
+
+Decisão: em `supabase/migrations/0007_profile_avatars.sql`, o bucket `avatars`
+é criado com `public = true` (leitura). Escrita, atualização e remoção
+continuam restritas ao próprio dono via RLS em `storage.objects`.
+
+Motivo: não havia bucket nem política anterior para reutilizar (auditado antes
+de criar). Fotos de perfil não são dado sensível como o diário — exibir um
+avatar não deveria depender de gerar e renovar URLs assinadas só para um
+`<img>`. A escrita continua real e estritamente restrita por RLS
+(`(storage.foldername(name))[1] = auth.uid()::text`), então tornar a leitura
+pública não abre brecha para um usuário alterar ou remover o avatar de outro.
+
+## ADR-010: Troca de senha com reautenticação real, não checagem simulada
+
+Decisão: a "senha atual" no formulário de segurança do perfil é validada
+chamando `supabase.auth.signInWithPassword({ email, password })` antes de
+`updateUser({ password })`, em vez de qualquer verificação client-side ou
+simulada.
+
+Motivo: o Supabase Auth (GoTrue) não expõe um endpoint dedicado para só
+verificar a senha atual sem afetar sessão/rate limit. Reautenticar com
+`signInWithPassword` é a única forma real de confirmar a senha atual contra o
+GoTrue antes de trocá-la — uma falha nessa chamada significa senha incorreta,
+nunca um "sim" fabricado no código da aplicação.

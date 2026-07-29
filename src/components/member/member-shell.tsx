@@ -1,23 +1,17 @@
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, ShieldCheck } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { MemberAvatar } from "@/components/member/member-avatar";
 import {
   MemberDesktopNavigation,
   MemberMobileNavigation,
 } from "@/components/member/member-navigation";
 import { Button } from "@/components/ui/button";
+import { isAdminRole } from "@/features/admin/admin-access.core";
 import { signOutAndRedirectAction } from "@/features/auth/auth.actions";
 import type { MemberContext } from "@/server/services/member-area.service";
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 export function MemberShell({
   children,
@@ -28,10 +22,10 @@ export function MemberShell({
 }) {
   const displayName =
     context.profile.display_name || context.profile.name || context.profile.email;
-  const initials = getInitials(displayName) || "P30";
   const cycleLabel = context.activeEnrollment?.challenge
     ? `Dia ${context.activeEnrollment.current_day}`
     : "Sem ciclo ativo";
+  const showAdminAccess = isAdminRole(context.profile.role);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -65,10 +59,11 @@ export function MemberShell({
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/[0.08] font-mono text-xs text-foreground shadow-[var(--shadow-hairline)]">
-                  {initials}
-                </span>
+              <Link
+                className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
+                href="/app/perfil"
+              >
+                <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-foreground">
                     {displayName}
@@ -77,7 +72,19 @@ export function MemberShell({
                     {context.profile.email}
                   </span>
                 </span>
-              </div>
+              </Link>
+
+              {showAdminAccess ? (
+                <Button
+                  as="a"
+                  className="w-full"
+                  href="/admin"
+                  leadingIcon={<ShieldCheck aria-hidden="true" size={15} />}
+                  variant="secondary"
+                >
+                  Acessar administração
+                </Button>
+              ) : null}
 
               <form action={signOutAndRedirectAction}>
                 <Button
@@ -96,25 +103,41 @@ export function MemberShell({
         <div className="min-w-0 pb-24 md:pb-0">
           <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-background/82 px-4 py-3 backdrop-blur-2xl md:hidden">
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-action-soft">
-                  {cycleLabel}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {displayName}
-                </p>
+              <Link className="flex min-w-0 items-center gap-2.5 focus-visible:outline-action-soft" href="/app/perfil">
+                <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
+                <span className="min-w-0">
+                  <span className="block font-mono text-[0.62rem] uppercase tracking-[0.18em] text-action-soft">
+                    {cycleLabel}
+                  </span>
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {displayName}
+                  </span>
+                </span>
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                {showAdminAccess ? (
+                  <Button
+                    aria-label="Acessar administração"
+                    as="a"
+                    href="/admin"
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <ShieldCheck aria-hidden="true" size={15} />
+                  </Button>
+                ) : null}
+                <form action={signOutAndRedirectAction}>
+                  <Button
+                    aria-label="Sair"
+                    leadingIcon={<LogOut aria-hidden="true" size={15} />}
+                    size="sm"
+                    type="submit"
+                    variant="secondary"
+                  >
+                    Sair
+                  </Button>
+                </form>
               </div>
-              <form action={signOutAndRedirectAction}>
-                <Button
-                  aria-label="Sair"
-                  leadingIcon={<LogOut aria-hidden="true" size={15} />}
-                  size="sm"
-                  type="submit"
-                  variant="secondary"
-                >
-                  Sair
-                </Button>
-              </form>
             </div>
           </header>
 

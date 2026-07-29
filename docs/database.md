@@ -147,3 +147,38 @@ A migration `0006_admin_analytics.sql` adiciona funções somente-leitura
 `admin_participant_detail`), todas gated por `public.is_admin()` internamente.
 Fórmulas de métricas, contrato de cada função e limitações conhecidas estão em
 `docs/admin-analytics.md`.
+
+## Foto de perfil e Storage (Fase 3)
+
+Auditoria prévia (`select * from storage.buckets`) não encontrou nenhum bucket
+configurado — não havia padrão existente para reutilizar. A migration
+`0007_profile_avatars.sql` cria o primeiro:
+
+- bucket `avatars`, **público para leitura** (fotos de perfil não são dado
+  sensível, diferente do diário); escrita/atualização/remoção restritas ao
+  próprio dono via RLS em `storage.objects`, checando
+  `(storage.foldername(name))[1] = auth.uid()::text`;
+- caminho fixo `avatars/{userId}/profile.<ext>` — o `{userId}` vem sempre de
+  `auth.uid()` no servidor (nunca do nome de arquivo enviado pelo cliente ou
+  de outro campo controlável pelo usuário), então a extensão é derivada do
+  MIME type validado, nunca do nome original do arquivo;
+- formatos aceitos: JPEG, PNG, WebP (SVG é rejeitado de propósito, para evitar
+  XSS armazenado via `<script>` embutido em SVG); limite de 5 MB.
+
+`public.users.avatar_url` e `public.users.city` já existiam desde
+`0001_initial_schema.sql` — nenhuma coluna nova foi necessária para o perfil.
+
+Como não existe uma política "usuário atualiza o próprio perfil" em
+`public.users` (só existe leitura própria e escrita por admin), a atualização
+de `name`/`display_name`/`city`/`avatar_url` usa `createSupabaseAdminClient()`
+no server action, no mesmo padrão já usado por `completeOnboardingAction` no
+onboarding — nunca no browser.
+
+### Troca de senha
+
+O Supabase Auth não expõe uma checagem isolada de "senha atual" sem afetar a
+sessão. A confirmação real (não simulada) é reautenticar com
+`supabase.auth.signInWithPassword({ email, password: senhaAtual })` antes de
+chamar `supabase.auth.updateUser({ password: novaSenha })`. Se a
+reautenticação falhar, a senha atual está incorreta — não há verificação
+falsa.
