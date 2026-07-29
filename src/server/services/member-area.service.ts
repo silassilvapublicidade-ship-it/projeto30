@@ -6,6 +6,7 @@ import {
   calculateChallengeDay,
   getDateOnlyInTimeZone,
 } from "@/features/challenges/date.core";
+import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
 import { calculateDailyProgress } from "@/features/journey/progress.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json, Tables } from "@/types/database";
@@ -34,16 +35,25 @@ export type ActiveEnrollment = Tables<"challenge_enrollments"> & {
 export type TodayMissionState =
   "completed" | "in_progress" | "not_applicable" | "pending" | "skipped";
 
+export type MissionPeriodProgress = {
+  completed: number;
+  periodEnd: string;
+  periodStart: string;
+  target: number | null;
+};
+
 export type TodayMission = {
   actionLabel: string;
   category: string | null;
   description: string | null;
+  frequencyType: Tables<"habits">["frequency_type"];
   habitId: string;
   habitLogId: string | null;
   habitType: Tables<"habits">["habit_type"];
   icon: string | null;
   id: string;
   note: string | null;
+  periodProgress: MissionPeriodProgress | null;
   points: number;
   required: boolean;
   state: TodayMissionState;
@@ -57,6 +67,7 @@ type HabitForMission = Pick<
   Tables<"habits">,
   | "category"
   | "description"
+  | "frequency_type"
   | "habit_type"
   | "icon"
   | "id"
@@ -185,6 +196,12 @@ function getMissionActionLabel(state: TodayMissionState) {
   return labels[state];
 }
 
+const frequencyPeriodSuffix: Record<Tables<"habits">["frequency_type"], string> = {
+  daily: "",
+  monthly: " no mês",
+  weekly: " na semana",
+};
+
 function getMissionTargetLabel(habit: HabitForMission, points: number) {
   const config = isJsonRecord(habit.validation_config)
     ? habit.validation_config
@@ -193,9 +210,10 @@ function getMissionTargetLabel(habit: HabitForMission, points: number) {
   const unit = config?.unit ?? config?.label ?? config?.metric;
 
   if (typeof target === "string" || typeof target === "number") {
-    return [target, typeof unit === "string" ? unit : undefined]
-      .filter(Boolean)
-      .join(" ");
+    return (
+      [target, typeof unit === "string" ? unit : undefined].filter(Boolean).join(" ") +
+      frequencyPeriodSuffix[habit.frequency_type]
+    );
   }
 
   const fallbackByType: Record<Tables<"habits">["habit_type"], string> = {
@@ -213,14 +231,81 @@ function getMissionTargetLabel(habit: HabitForMission, points: number) {
     : fallbackByType[habit.habit_type];
 }
 
+async function getPeriodProgressByHabitId({
+  enrollmentId,
+  habits,
+  localDate,
+  supabase,
+}: {
+  enrollmentId: string;
+  habits: HabitForMission[];
+  localDate: string;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+}) {
+  const progressByHabitId = new Map<string, MissionPeriodProgress>();
+  const nonDailyHabits = habits.filter((habit) => habit.frequency_type !== "daily");
+
+  if (nonDailyHabits.length === 0) {
+    return progressByHabitId;
+  }
+
+  const habitsByFrequency = new Map<"monthly" | "weekly", HabitForMission[]>();
+  for (const habit of nonDailyHabits) {
+    const frequency = habit.frequency_type as "monthly" | "weekly";
+    habitsByFrequency.set(frequency, [...(habitsByFrequency.get(frequency) ?? []), habit]);
+  }
+
+  await Promise.all(
+    Array.from(habitsByFrequency.entries()).map(async ([frequency, group]) => {
+      const { start, end } = getHabitPeriodRange(localDate, frequency);
+      const habitIds = group.map((habit) => habit.id);
+
+      const { data: completions } = await supabase
+        .from("habit_logs")
+        .select("habit_id, daily_logs!inner(log_date, enrollment_id)")
+        .in("habit_id", habitIds)
+        .eq("status", "completed")
+        .eq("daily_logs.enrollment_id", enrollmentId)
+        .gte("daily_logs.log_date", start)
+        .lte("daily_logs.log_date", end);
+
+      const completedCountByHabitId = new Map<string, number>();
+      for (const row of completions ?? []) {
+        completedCountByHabitId.set(
+          row.habit_id,
+          (completedCountByHabitId.get(row.habit_id) ?? 0) + 1,
+        );
+      }
+
+      for (const habit of group) {
+        const config = isJsonRecord(habit.validation_config) ? habit.validation_config : undefined;
+        const target = config?.target;
+
+        progressByHabitId.set(habit.id, {
+          completed: completedCountByHabitId.get(habit.id) ?? 0,
+          periodEnd: end,
+          periodStart: start,
+          target: typeof target === "number" ? target : null,
+        });
+      }
+    }),
+  );
+
+  return progressByHabitId;
+}
+
 async function getTodayMissionData({
   challengeId,
   currentDay,
+  enrollmentId,
+  localDate,
   supabase,
   todayLog,
 }: {
   challengeId: string;
   currentDay: number;
+  enrollmentId: string;
+  localDate: string;
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
   todayLog: Tables<"daily_logs"> | null;
 }) {
@@ -274,13 +359,19 @@ async function getTodayMissionData({
   const { data: habits } = await supabase
     .from("habits")
     .select(
-      "id,title,description,category,habit_type,icon,points,validation_config,sort_order",
+      "id,title,description,category,habit_type,icon,points,validation_config,sort_order,frequency_type",
     )
     .eq("challenge_id", challengeId)
     .in("id", habitIds);
 
   const habitsById = new Map((habits ?? []).map((habit) => [habit.id, habit]));
   const logsByHabitId = new Map((habitLogRows ?? []).map((log) => [log.habit_id, log]));
+  const periodProgressByHabitId = await getPeriodProgressByHabitId({
+    enrollmentId,
+    habits: habits ?? [],
+    localDate,
+    supabase,
+  });
 
   const todayMissions = (dayHabitRows ?? []).flatMap<TodayMission>((item) => {
     const habit = habitsById.get(item.habit_id);
@@ -297,10 +388,12 @@ async function getTodayMissionData({
         actionLabel: getMissionActionLabel(state),
         category: habit.category,
         description: item.override_description ?? habit.description,
+        frequencyType: habit.frequency_type,
         habitId: habit.id,
         habitLogId: logsByHabitId.get(item.habit_id)?.id ?? null,
         habitType: habit.habit_type,
         icon: habit.icon,
+        periodProgress: periodProgressByHabitId.get(habit.id) ?? null,
         id: item.id,
         note: logsByHabitId.get(item.habit_id)?.note ?? null,
         points,
@@ -470,6 +563,8 @@ export async function getMemberContext(
     const todayData = await getTodayMissionData({
       challengeId: enrollment.challenge_id,
       currentDay: activeEnrollment.current_day,
+      enrollmentId: enrollment.id,
+      localDate: today,
       supabase,
       todayLog,
     });
@@ -481,6 +576,7 @@ export async function getMemberContext(
     const progress = calculateDailyProgress({
       finalized: todayLog?.status === "finalized",
       habits: todayMissions.map((mission) => ({
+        frequencyType: mission.frequencyType,
         habitId: mission.habitId,
         status: mission.state === "in_progress" ? "pending" : mission.state,
         touched:

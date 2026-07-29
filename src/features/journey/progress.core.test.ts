@@ -61,4 +61,48 @@ describe("calculateDailyProgress", () => {
       state: "complete",
     });
   });
+
+  it("excludes weekly/monthly habits from the day's applicable count, even when pending", () => {
+    expect(
+      calculateDailyProgress({
+        finalized: false,
+        habits: [
+          { habitId: "water", frequencyType: "daily", status: "completed" },
+          { habitId: "musculacao", frequencyType: "weekly", status: "pending" },
+          { habitId: "livro", frequencyType: "monthly", status: "pending" },
+        ],
+      }),
+    ).toEqual({
+      applicableHabits: 1,
+      completedHabits: 1,
+      completionPercent: 100,
+      state: "complete",
+    });
+  });
+
+  it("treats a habit with no frequencyType as daily (backwards compatible default)", () => {
+    expect(
+      calculateDailyProgress({
+        finalized: false,
+        habits: [{ habitId: "water", status: "pending" }],
+      }).applicableHabits,
+    ).toBe(1);
+  });
+
+  it("does not let a completed weekly/monthly habit inflate the day's completion either", () => {
+    expect(
+      calculateDailyProgress({
+        finalized: false,
+        habits: [
+          { habitId: "water", frequencyType: "daily", status: "pending" },
+          { habitId: "musculacao", frequencyType: "weekly", status: "completed" },
+        ],
+      }),
+    ).toEqual({
+      applicableHabits: 1,
+      completedHabits: 0,
+      completionPercent: 0,
+      state: "not_started",
+    });
+  });
 });

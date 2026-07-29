@@ -1,9 +1,9 @@
--- Projeto 30 - Fase 2G - Desafio de Agosto - Irreconhecivel
+-- Projeto 30 - Fase 2G/Catalogo - Desafio de Agosto - Irreconhecivel
 --
 -- FINALIDADE
--- Cria o primeiro desafio oficial do Projeto 30 (slug: desafio-agosto-irreconhecivel)
--- para uso em testes funcionais reais, validacao de UX, pontuacao, jornada e
--- conquistas, e futura divulgacao publica.
+-- Cria/atualiza de forma idempotente o desafio oficial de agosto (slug:
+-- desafio-agosto-irreconhecivel) com os dados canonicos aprovados: 13
+-- habitos, capa, textos de identidade e regras de adesao.
 --
 -- ESTE SCRIPT E ADMINISTRATIVO.
 -- - NAO e uma migration (nao pertence a supabase/migrations e nao deve ser
@@ -16,6 +16,10 @@
 -- - NAO contem credenciais, chaves ou segredos.
 -- - Qualquer alteracao destrutiva (delete/drop) exige aprovacao explicita e
 --   fica isolada em bloco comentado ao final do arquivo.
+-- - Depende das colunas/enum criados em
+--   supabase/migrations/0009_habit_frequency_and_challenge_media.sql
+--   (habits.frequency_type, challenges.cover_image_url). Rode a migration
+--   0009 antes deste script.
 --
 -- O QUE ESTE SCRIPT NUNCA FAZ
 -- - Nao cria usuarios (auth.users / public.users).
@@ -23,12 +27,12 @@
 --   point_events ou user_achievements.
 -- - Nao altera o desafio interno "Projeto 30 - Validacao Interna"
 --   (slug projeto-30-validacao-interna, id a2300000-0000-4000-8000-000000000001).
--- - Nao publica o desafio (status inicial e 'draft' - ver secao STATUS abaixo).
 --
 -- IDEMPOTENCIA
 -- IDs fixos (UUIDs deterministicos) + ON CONFLICT DO UPDATE somente nos
 -- registros deste desafio. Pode ser executado quantas vezes forem necessarias
--- sem duplicar linhas.
+-- sem duplicar linhas. Os UUIDs de habito (seq 1-13) sao os MESMOS ja usados
+-- desde a primeira versao deste script - so o conteudo das colunas muda.
 --
 -- FAIXA DE UUIDS (exclusiva, distinta da faixa a2300000-... usada pelo desafio
 -- de validacao interna):
@@ -41,50 +45,58 @@
 --                         (31 dias x 13 habitos = 403 vinculos)
 --   Achievements (10):    a3080000-0000-4000-8003-000000000001 .. 000000000010
 --
--- STATUS
--- O desafio e criado com status = 'draft' (variavel target_status abaixo).
--- Motivo: RLS ("Anyone can read active challenges") e join_available_challenge()
--- so consideram desafios com status = 'active'. Com 'draft' o desafio fica
--- invisivel em listagens publicas e impossivel de "entrar" via
--- join_available_challenge() - nao ha risco de inscricao real acidental.
--- Para testes funcionais ponta a ponta (que exigem status ativo), troque
--- manualmente o valor de target_status abaixo para 'active' e rode de novo;
--- isso NAO e feito automaticamente por este script.
+-- SLUG
+-- Preservado como "desafio-agosto-irreconhecivel" (nao trocado para o novo
+-- sugerido "irreconhecivel-em-agosto-2026"). Motivo: e o slug ja versionado
+-- neste script desde a primeira execucao, coberto por teste de regressao
+-- (august-challenge-script.test.ts) e usado nas rotas /app/desafios/[slug]
+-- do catalogo ja implementado. Trocar o slug nao quebraria nenhuma FK (slug
+-- nao e referenciado por nenhuma outra tabela), mas quebraria o link direto
+-- e exigiria atualizar o teste sem nenhum ganho funcional. Titulo curto,
+-- subtitulo e demais textos de identidade foram atualizados normalmente.
 --
--- LIMITACOES CONHECIDAS DO MOTOR ATUAL (documentadas, nao corrigidas aqui):
--- 1) journey_recalculate_daily_log / finalize_daily_log calculam
---    completion_percent e o bonus de 100% sobre TODOS os habitos vinculados
---    ao dia, exceto os marcados 'not_applicable'. O campo
---    challenge_day_habits.required NAO filtra esse calculo. Os habitos
---    opcionais (Musculacao, Autocuidado) so ficam fora da conta se o usuario
---    tocar em "Nao se aplica" (botao ja disponivel na UI para missoes com
---    required = false). Se ficarem "pendentes", eles reduzem o
---    completion_percent e bloqueiam o bonus de +30, mesmo com os 11
---    obrigatorios 100% concluidos. Evolucao futura (nao aplicada aqui):
---    migration para os calculos considerarem apenas habitos required = true.
--- 2) O icone 'dumbbell' (pedido para Musculacao) esta na lista de icones que
---    finalize_daily_log usa para contar "atividade fisica" na conquista
---    sete-atividades-fisicas, junto com a categoria canonica. Mesmo usando a
---    categoria 'treino' (nao canonica, como instruido), o icone 'dumbbell'
---    ainda faz a Musculacao contar junto com o Cardio nessa conquista. Nao
---    alterado por conta propria: o icone foi pedido explicitamente. Troque
---    para outro icone (ex.: 'flame') se quiser eliminar essa duplicidade.
--- 3) Habits nao possuem coluna de slug no schema atual. Os slugs sugeridos no
---    briefing existem apenas como comentario/documentacao neste script; a
---    identificacao real e feita pelo UUID determinístico e pelo titulo.
--- 4) achievements sao escopados por challenge_id (unique(challenge_id, slug)).
---    A migration 0002 populou os 10 achievements canonicos apenas nos
---    desafios que ja existiam quando ela rodou; nao ha trigger que repita
---    isso para desafios novos. Por isso este script insere os mesmos 10
---    achievements canonicos (mesmos slugs/definicoes da migration e do
---    script de validacao interna) escopados a este novo challenge_id - sem
---    isso, nenhuma conquista jamais desbloquearia neste ciclo.
+-- STATUS
+-- Mantido como 'active' (target_status abaixo). O desafio ja esta ativo no
+-- ambiente usado para validacao (Fase de catalogo) e ja tem uma inscricao de
+-- teste real (conta QA) em andamento; voltar para 'draft' o esconderia do
+-- catalogo e quebraria essa validacao em curso. Decisao documentada aqui
+-- conforme pedido, em vez de alterar silenciosamente.
+--
+-- LIMITACOES CONHECIDAS DO MOTOR ATUAL (documentadas, nao "resolvidas
+-- silenciosamente"):
+-- 1) Sono (habito 8): a meta oficial e uma faixa (7 a 8 horas), mas
+--    habits.validation_config so tem um "target" numerico unico (sem campo
+--    de teto). Registrado target = 7 (o minimo, compativel com o mecanismo
+--    atual) e a faixa completa (7 a 8h) fica expressa apenas na descricao do
+--    habito. Nao foi criada nenhuma coluna nova so para isso.
+-- 2) Habits nao possuem coluna de slug no schema atual. A identificacao real
+--    e feita pelo UUID deterministico e pelo titulo.
+-- 3) achievements sao escopados por challenge_id (unique(challenge_id, slug)).
+--    Este script insere os mesmos 10 achievements canonicos ja usados pela
+--    migration 0002 e pelo desafio de validacao interna, escopados a este
+--    challenge_id.
+--
+-- FREQUENCIA (corrigido nesta rodada via migration 0009)
+-- Musculacao (semanal, meta 4 sessoes) e Livro/Autocuidado (mensal, metas 1
+-- e 2) agora tem habits.frequency_type <> 'daily'. journey_recalculate_daily_log
+-- (redefinida em 0009) passou a considerar SOMENTE habitos frequency_type =
+-- 'daily' no completion_percent do dia e no bonus de "todos os habitos
+-- concluidos" - portanto essas 3 metas nunca reduzem a conclusao diaria nem
+-- bloqueiam o bonus, mesmo pendentes. Elas continuam registraveis em
+-- qualquer dia do ciclo (update_habit_log nao muda) e continuam gerando
+-- pontos por conclusao (finalize_daily_log nao muda nisso), mas o PROGRESSO
+-- acumulado da semana/mes e calculado e exibido pela camada de aplicacao
+-- (nao no banco), lendo os habit_logos ja existentes.
 --
 -- PONTUACAO ESPERADA (ver validacao no final do arquivo):
---   11 habitos obrigatorios x 10 pts = 110
---   reflexao = 10 | finalizacao = 10 | bonus 100% = 30
---   total diario obrigatorio esperado = 160
---   + 2 habitos opcionais x 10 pts (se concluidos) = 180 (maximo possivel)
+--   13 habitos obrigatorios x 10 pts = 130 (nenhum habito opcional nesta
+--   versao - Musculacao e Autocuidado passaram a ser obrigatorios tambem,
+--   apenas com frequencia diferente de diaria)
+--   10 habitos diarios x 10 pts = 100 | reflexao = 10 | finalizacao = 10 |
+--   bonus 100% (calculado so sobre os 10 diarios) = 30
+--   total diario obrigatorio esperado = 150
+--   + 3 habitos nao-diarios (Musculacao, Livro, Autocuidado) x 10 pts,
+--   conforme completados ao longo da semana/mes = 30 (fora do calculo diario)
 
 begin;
 
@@ -103,8 +115,6 @@ end;
 $$;
 
 -- CHALLENGE ------------------------------------------------------------------
--- Troque apenas este valor (draft -> active) quando decidir publicar o ciclo.
--- Nao alterado automaticamente por este script.
 
 insert into public.challenges (
   id,
@@ -117,21 +127,35 @@ insert into public.challenges (
   enrollment_start,
   enrollment_end,
   status,
+  cover_image_url,
   theme_config,
   rules_config
 )
 values (
   'a3080000-0000-4000-8000-000000000001',
-  'Desafio de Agosto - Irreconhecivel',
+  'Desafio para se tornar irreconhecivel em agosto',
   'desafio-agosto-irreconhecivel',
-  'Um desafio de transformacao pessoal baseado em disciplina, constancia e pequenas decisoes diarias. Durante o mes de agosto, o participante sera incentivado a cuidar do corpo, da mente, da fe, da alimentacao, do sono e da propria rotina.',
+  'Agosto sera o mes da disciplina. Durante 31 dias, voce assumira um compromisso consigo mesmo por meio de habitos simples, mas consistentes. O objetivo nao e buscar perfeicao, mas criar constancia. Cada habito concluido representa mais um passo para uma versao mais saudavel, disciplinada e consciente de voce mesmo. Pequenas escolhas diarias podem gerar grandes resultados para sempre.',
   31,
   date '2026-08-01',
   date '2026-08-31',
   date '2026-07-28',
   date '2026-08-05',
-  'draft', -- target_status: troque para 'active' manualmente quando for publicar
+  'active', -- target_status: ja ativo (ver secao STATUS no cabecalho)
+  null, -- cover_image_url: imagem oficial fornecida no chat, mas o arquivo
+        -- local (/mnt/data/...) nao esta acessivel neste ambiente de
+        -- execucao. Atualize manualmente apos subir o arquivo ao bucket
+        -- challenge-covers (ver docs/challenge-content-model.md).
   jsonb_build_object(
+    -- chaves canonicas novas (padrao obrigatorio para qualquer desafio)
+    'short_title', 'Irreconhecivel em Agosto',
+    'subtitle', 'Pequenas escolhas diarias, grandes resultados para sempre.',
+    'short_description', 'Um desafio de transformacao pessoal baseado em disciplina, saude, treino, alimentacao, sono, desenvolvimento pessoal, autocuidado, mentalidade e espiritualidade.',
+    'motivational_phrase', 'Disciplina hoje, liberdade amanha!',
+    'cta_label', 'Vem comigo!',
+    'cta_subtext', 'O melhor mes do ano comeca agora.',
+    -- chaves ja existentes desde a primeira versao (mantidas por
+    -- compatibilidade; nao lidas pelo codigo novo, apenas preservadas)
     'scope', 'public',
     'visibility', 'public',
     'category', 'transformacao-pessoal',
@@ -142,11 +166,6 @@ values (
     'mood', 'intense',
     'accent', 'orange',
     'timezone', 'America/Sao_Paulo',
-    'headline', 'Desafio para se tornar irreconhecivel em agosto.',
-    'subheadline', 'Pequenas escolhas diarias. Grandes resultados para sempre.',
-    'hero_message', 'Disciplina hoje. Liberdade amanha.',
-    'tagline', 'Disciplina hoje. Liberdade amanha.',
-    'entry_message', 'O melhor mes do ano comeca agora. Voce nao precisa mudar tudo de uma vez. Precisa apenas cumprir o compromisso de hoje.',
     'closing_message', 'Voce nao terminou apenas um desafio. Voce provou que consegue sustentar novas escolhas.'
   ),
   jsonb_build_object(
@@ -154,7 +173,13 @@ values (
     'finalize_day_points', 10,
     'all_habits_bonus_points', 30,
     'streak_minimum_completion', 70,
-    'journal_edit_minutes_after_finalize', 0
+    'journal_edit_minutes_after_finalize', 0,
+    -- chaves canonicas novas (regras de adesao - padrao obrigatorio)
+    'admission_type', 'open',
+    'allow_late_entry', true,
+    'allow_abandonment', true,
+    'max_participants', null,
+    'completion_criteria', 'finalize_all_days'
   )
 )
 on conflict (slug) do update set
@@ -166,13 +191,13 @@ on conflict (slug) do update set
   enrollment_start = excluded.enrollment_start,
   enrollment_end = excluded.enrollment_end,
   status = excluded.status,
+  cover_image_url = coalesce(public.challenges.cover_image_url, excluded.cover_image_url),
   theme_config = excluded.theme_config,
   rules_config = excluded.rules_config,
   updated_at = now();
 
 -- DIAS (31) -------------------------------------------------------------------
--- Titulo e mensagem motivacional curta e original por dia. unlock_rule segue o
--- mesmo padrao sequencial do script de validacao interna.
+-- Inalterado desde a primeira versao (titulo e mensagem motivacional por dia).
 
 with day_catalog as (
   select
@@ -272,43 +297,56 @@ on conflict (challenge_id, day_number) do update set
   updated_at = now();
 
 -- HABITOS (13) ------------------------------------------------------------------
--- seq 1-13 define o UUID do habito e do vinculo dia-habito (HH abaixo).
--- required = obrigatorio para os 11 primeiros; opcional (false) para
--- Musculacao (seq 2) e Autocuidado (seq 11).
--- validation_config carrega meta/unidade; para Musculacao e Autocuidado carrega
--- tambem a meta conceitual original (4x/semana e 2x/mes) apenas como metadado
--- informativo, sem qualquer enforcement semanal/mensal no motor atual.
+-- Todos os 13 sao obrigatorios (is_required = true). O que antes era
+-- resolvido com is_required = false (Musculacao, Autocuidado) agora e
+-- resolvido com frequency_type <> 'daily' (weekly/monthly) - ver migration
+-- 0009. seq 1-13 preserva o UUID deterministico ja usado desde a primeira
+-- versao deste script.
 
 with habit_catalog(
-  seq, title, description, category, habit_type, icon, points, is_required, validation_config, sort_order
+  seq, title, description, category, habit_type, icon, points,
+  frequency_type, validation_config, sort_order
 ) as (
   values
-    (1, 'Agua', 'Beba no minimo 3 litros de agua ao longo do dia.', 'hidratacao', 'quantity'::public.habit_type, 'droplets', 10, true,
-      '{"target": 3000, "unit": "ml", "metric": "agua"}'::jsonb, 10),
-    (2, 'Musculacao', 'Registre se realizou treino de musculacao no dia.', 'treino', 'boolean'::public.habit_type, 'dumbbell', 10, false,
-      '{"label": "Confirmar com honestidade", "conceptual_weekly_target": 4, "note": "Meta conceitual: 4 sessoes por semana. Registrado como check-in diario opcional; dias de descanso nao sao penalizados. Sem regra semanal no motor atual."}'::jsonb, 20),
-    (3, 'Cardio', 'Faca pelo menos 30 minutos de cardio.', 'atividade fisica', 'duration'::public.habit_type, 'activity', 10, true,
-      '{"target": 30, "unit": "min", "metric": "cardio"}'::jsonb, 30),
-    (4, 'Sol', 'Tenha pelo menos 15 minutos de exposicao consciente ao sol.', 'bem-estar', 'duration'::public.habit_type, 'sun', 10, true,
-      '{"target": 15, "unit": "min", "metric": "sol"}'::jsonb, 40),
-    (5, 'Sem cafeina apos 16h', 'Evite consumir cafe, energetico, pre-treino ou outras fontes relevantes de cafeina apos as 16h.', 'sono', 'boolean'::public.habit_type, 'coffee', 10, true,
-      '{"label": "Confirmar com honestidade"}'::jsonb, 50),
-    (6, 'Proteina nas refeicoes', 'Inclua uma fonte de proteina nas principais refeicoes do dia.', 'alimentacao', 'boolean'::public.habit_type, 'beef', 10, true,
-      '{"label": "Confirmar com honestidade"}'::jsonb, 60),
-    (7, 'Fruta do dia', 'Coma pelo menos uma fruta no dia.', 'alimentacao', 'quantity'::public.habit_type, 'apple', 10, true,
-      '{"target": 1, "unit": "fruta", "metric": "fruta"}'::jsonb, 70),
-    (8, 'Sono', 'Durma pelo menos 7 horas durante a noite.', 'sono', 'quantity'::public.habit_type, 'bed', 10, true,
-      '{"target": 7, "unit": "horas", "metric": "sono"}'::jsonb, 80),
-    (9, 'Leitura', 'Leia pelo menos 10 paginas de um livro.', 'leitura', 'reading'::public.habit_type, 'book-open', 10, true,
-      '{"target": 10, "unit": "paginas", "metric": "leitura"}'::jsonb, 90),
-    (10, 'Leitura da Biblia', 'Leia pelo menos um capitulo da Biblia.', 'fe', 'quantity'::public.habit_type, 'book-heart', 10, true,
-      '{"target": 1, "unit": "capitulo", "metric": "biblia"}'::jsonb, 100),
-    (11, 'Autocuidado', 'Realize uma acao de autocuidado consciente.', 'autocuidado', 'boolean'::public.habit_type, 'sparkles', 10, false,
-      '{"label": "Confirmar com honestidade", "conceptual_monthly_target": 2, "note": "Meta conceitual: 2 acoes de autocuidado no mes. Check-in opcional; ausencia nao impede 100% do dia quando marcado como nao aplicavel. Sem regra mensal no motor atual."}'::jsonb, 110),
-    (12, 'Sem reclamacao e vitimismo', 'Observe sua postura durante o dia e evite permanecer em reclamacao, culpa ou vitimismo.', 'mentalidade', 'boolean'::public.habit_type, 'brain', 10, true,
-      '{"label": "Confirmar com honestidade"}'::jsonb, 120),
-    (13, 'Oracao e gratidao', 'Ore e agradeca antes de dormir e antes de comecar o dia.', 'fe', 'boolean'::public.habit_type, 'hand-heart', 10, true,
-      '{"label": "Confirmar com honestidade"}'::jsonb, 130)
+    (1, 'Beber no minimo 3 litros de agua', 'Consumir no minimo 3 litros de agua durante o dia.', 'Saude', 'quantity'::public.habit_type, '💧', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 3, "unit": "Litros", "short_title": "3 litros de agua"}'::jsonb, 10),
+    (2, 'Fazer musculacao 4 vezes por semana', 'Realizar pelo menos quatro sessoes de musculacao durante a semana.', 'Treino', 'boolean'::public.habit_type, '🏋️', 10,
+      'weekly'::public.habit_frequency_type,
+      '{"target": 4, "unit": "Sessoes", "short_title": "Musculacao", "label": "Confirmar sessao de musculacao"}'::jsonb, 20),
+    (3, 'Fazer 30 minutos de cardio', 'Realizar pelo menos 30 minutos de atividade cardiovascular durante o dia.', 'Treino', 'duration'::public.habit_type, '🏃', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 30, "unit": "Minutos", "short_title": "30 minutos de cardio"}'::jsonb, 30),
+    (4, 'Tomar 15 minutos de sol', 'Ter pelo menos 15 minutos de exposicao ao sol durante o dia.', 'Saude', 'duration'::public.habit_type, '☀️', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 15, "unit": "Minutos", "short_title": "15 minutos de sol"}'::jsonb, 40),
+    (5, 'Nao consumir cafeina apos as 16h', 'Evitar cafe, energeticos, pre-treinos e outras fontes de cafeina depois das 16 horas.', 'Nutricao', 'boolean'::public.habit_type, '☕', 10,
+      'daily'::public.habit_frequency_type,
+      '{"short_title": "Sem cafeina apos as 16h", "label": "Confirmar com honestidade"}'::jsonb, 50),
+    (6, 'Consumir proteina em todas as refeicoes', 'Incluir alguma fonte de proteina em todas as refeicoes realizadas durante o dia.', 'Nutricao', 'boolean'::public.habit_type, '🥩', 10,
+      'daily'::public.habit_frequency_type,
+      '{"short_title": "Proteina em todas as refeicoes", "label": "Confirmar com honestidade"}'::jsonb, 60),
+    (7, 'Comer ao menos uma fruta por dia', 'Consumir pelo menos uma fruta durante o dia.', 'Nutricao', 'quantity'::public.habit_type, '🍎', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 1, "unit": "Fruta", "short_title": "Comer uma fruta"}'::jsonb, 70),
+    (8, 'Dormir entre 7 e 8 horas', 'Dormir entre sete e oito horas por noite. A meta registrada no sistema usa o minimo (7h); o teto de 8h e apenas orientativo nesta fase, sem suporte de meta-maxima no schema atual.', 'Sono', 'quantity'::public.habit_type, '🛏️', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 7, "unit": "Horas", "short_title": "Dormir de 7 a 8 horas", "target_max_informational": 8}'::jsonb, 80),
+    (9, 'Ler pelo menos um livro', 'Concluir a leitura de pelo menos um livro durante o mes de agosto.', 'Desenvolvimento pessoal', 'boolean'::public.habit_type, '📚', 10,
+      'monthly'::public.habit_frequency_type,
+      '{"target": 1, "unit": "Livro", "short_title": "Ler um livro", "label": "Confirmar quando concluir o livro"}'::jsonb, 90),
+    (10, 'Ler um capitulo da Biblia todos os dias', 'Ler pelo menos um capitulo da Biblia durante o dia.', 'Espiritualidade', 'quantity'::public.habit_type, '📖', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 1, "unit": "Capitulo", "short_title": "Ler a Biblia"}'::jsonb, 100),
+    (11, 'Realizar duas acoes de autocuidado', 'Realizar pelo menos duas acoes de autocuidado durante o mes.', 'Bem-estar', 'boolean'::public.habit_type, '🧖‍♀️', 10,
+      'monthly'::public.habit_frequency_type,
+      '{"target": 2, "unit": "Acoes", "short_title": "Autocuidado", "label": "Confirmar acao de autocuidado"}'::jsonb, 110),
+    (12, 'Evitar reclamar e assumir postura de vitima', 'Manter uma postura consciente durante o dia, evitando reclamacoes desnecessarias e comportamentos de vitimizacao.', 'Mentalidade', 'boolean'::public.habit_type, '😡', 10,
+      'daily'::public.habit_frequency_type,
+      '{"short_title": "Sem reclamacao e vitimismo", "label": "Confirmar com honestidade"}'::jsonb, 120),
+    (13, 'Agradecer e orar todos os dias', 'Agradecer e orar antes de dormir e antes de sair da cama.', 'Espiritualidade', 'quantity'::public.habit_type, '🙏', 10,
+      'daily'::public.habit_frequency_type,
+      '{"target": 2, "unit": "Momentos", "short_title": "Agradecer e orar"}'::jsonb, 130)
 )
 insert into public.habits (
   id,
@@ -320,6 +358,7 @@ insert into public.habits (
   icon,
   points,
   is_required,
+  frequency_type,
   frequency_config,
   validation_config,
   sort_order,
@@ -334,8 +373,9 @@ select
   habit_type,
   icon,
   points,
-  is_required,
-  '{"type": "daily"}'::jsonb,
+  true,
+  frequency_type,
+  jsonb_build_object('type', frequency_type::text),
   validation_config,
   sort_order,
   true
@@ -348,6 +388,7 @@ on conflict (id) do update set
   icon = excluded.icon,
   points = excluded.points,
   is_required = excluded.is_required,
+  frequency_type = excluded.frequency_type,
   frequency_config = excluded.frequency_config,
   validation_config = excluded.validation_config,
   sort_order = excluded.sort_order,
@@ -355,24 +396,19 @@ on conflict (id) do update set
   updated_at = now();
 
 -- VINCULOS DIA x HABITO (31 x 13 = 403) ------------------------------------------
--- Todos os 13 habitos sao vinculados a todos os 31 dias. required replica o
--- is_required do habito (11 obrigatorios, 2 opcionais: Musculacao e Autocuidado).
+-- Todos os 13 habitos sao vinculados a todos os 31 dias, todos required=true
+-- (o "opcional" de antes agora e resolvido por frequencia, nao por required).
 
-with habit_required(seq, required) as (
-  values
-    (1, true), (2, false), (3, true), (4, true), (5, true), (6, true), (7, true),
-    (8, true), (9, true), (10, true), (11, false), (12, true), (13, true)
-),
-day_numbers as (
+with day_numbers as (
   select generate_series(1, 31) as day_number
 ),
+habit_seqs as (
+  select generate_series(1, 13) as habit_seq
+),
 link_catalog as (
-  select
-    d.day_number,
-    h.seq as habit_seq,
-    h.required
+  select d.day_number, h.habit_seq
   from day_numbers d
-  cross join habit_required h
+  cross join habit_seqs h
 )
 insert into public.challenge_day_habits (
   id,
@@ -392,7 +428,7 @@ select
   null,
   null,
   habit_seq * 10,
-  required
+  true
 from link_catalog
 on conflict (challenge_day_id, habit_id) do update set
   override_points = excluded.override_points,
@@ -402,10 +438,7 @@ on conflict (challenge_day_id, habit_id) do update set
   updated_at = now();
 
 -- ACHIEVEMENTS CANONICOS (10) -----------------------------------------------------
--- Mesmos slugs/definicoes ja usados pela migration 0002 e pelo desafio de
--- validacao interna, escopados a este novo challenge_id. Nenhum slug novo e
--- criado nesta execucao (agosto-irreconhecivel, hidratacao-em-dia, etc. ficam
--- documentados como viabilidade futura, nao implementados agora).
+-- Inalterado desde a primeira versao.
 
 insert into public.achievements (
   id,
@@ -461,10 +494,6 @@ on conflict (challenge_id, slug) do update set
   updated_at = now();
 
 -- VALIDACOES (dentro da transacao) --------------------------------------------
--- Bloco de asserts com mensagens objetivas. Roda ANTES do commit, na mesma
--- transacao das inserções acima. Se qualquer verificacao falhar, a excecao
--- propaga, a transacao fica abortada e o COMMIT abaixo se torna, na pratica,
--- um ROLLBACK integral (nenhuma insercao desta execucao e persistida).
 
 do $$
 declare
@@ -473,7 +502,6 @@ declare
   v_count integer;
   v_sum integer;
 begin
-  -- exatamente 1 challenge com o slug esperado
   select count(*) into v_count
   from public.challenges
   where slug = 'desafio-agosto-irreconhecivel';
@@ -481,7 +509,6 @@ begin
     raise exception 'Esperado 1 challenge com slug desafio-agosto-irreconhecivel, encontrado %', v_count;
   end if;
 
-  -- id determinístico correto
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id and slug = 'desafio-agosto-irreconhecivel';
@@ -489,7 +516,6 @@ begin
     raise exception 'Challenge com slug esperado nao esta no UUID determinístico esperado.';
   end if;
 
-  -- exatamente 31 dias, sem duplicidade de day_number
   select count(*) into v_count
   from public.challenge_days
   where challenge_id = target_challenge_id;
@@ -509,7 +535,8 @@ begin
     raise exception 'Encontrados % day_number duplicados.', v_count;
   end if;
 
-  -- exatamente 13 habitos (11 obrigatorios + 2 opcionais, opcionalidade suportada via required)
+  -- exatamente 13 habitos, todos obrigatorios (opcionalidade agora vem da
+  -- frequencia, nao de is_required)
   select count(*) into v_count
   from public.habits
   where challenge_id = target_challenge_id;
@@ -521,11 +548,10 @@ begin
   from public.habits
   where challenge_id = target_challenge_id
     and is_required = false;
-  if v_count <> 2 then
-    raise exception 'Esperado 2 habitos opcionais (Musculacao, Autocuidado), encontrado %', v_count;
+  if v_count <> 0 then
+    raise exception 'Esperado 0 habitos opcionais (todos sao obrigatorios nesta versao), encontrado %', v_count;
   end if;
 
-  -- habitos sem duplicidade de titulo (nao ha coluna slug em habits)
   select count(*) into v_count
   from (
     select title
@@ -538,7 +564,6 @@ begin
     raise exception 'Encontrados % titulos de habito duplicados.', v_count;
   end if;
 
-  -- tipos de habito validos (enum garante isso, mas confirmamos os 4 tipos usados)
   select count(*) into v_count
   from public.habits
   where challenge_id = target_challenge_id
@@ -547,7 +572,28 @@ begin
     raise exception 'Encontrados % habitos com tipo fora do esperado para este desafio.', v_count;
   end if;
 
-  -- quantidade esperada de vinculos dia-habito: 31 x 13 = 403
+  -- frequencias: 10 diarios, 1 semanal (Musculacao), 2 mensais (Livro, Autocuidado)
+  select count(*) into v_count
+  from public.habits
+  where challenge_id = target_challenge_id and frequency_type = 'daily';
+  if v_count <> 10 then
+    raise exception 'Esperado 10 habitos diarios, encontrado %', v_count;
+  end if;
+
+  select count(*) into v_count
+  from public.habits
+  where challenge_id = target_challenge_id and frequency_type = 'weekly';
+  if v_count <> 1 then
+    raise exception 'Esperado 1 habito semanal (Musculacao), encontrado %', v_count;
+  end if;
+
+  select count(*) into v_count
+  from public.habits
+  where challenge_id = target_challenge_id and frequency_type = 'monthly';
+  if v_count <> 2 then
+    raise exception 'Esperado 2 habitos mensais (Livro, Autocuidado), encontrado %', v_count;
+  end if;
+
   select count(*) into v_count
   from public.challenge_day_habits
   where challenge_id = target_challenge_id;
@@ -555,7 +601,6 @@ begin
     raise exception 'Esperado 403 vinculos challenge_day_habits (31x13), encontrado %', v_count;
   end if;
 
-  -- ausencia de vinculos orfaos (dia ou habito fora deste challenge)
   select count(*) into v_count
   from public.challenge_day_habits cdh
   left join public.challenge_days cd
@@ -568,66 +613,60 @@ begin
     raise exception 'Encontrados % vinculos orfaos em challenge_day_habits.', v_count;
   end if;
 
-  -- vinculos obrigatorios batem com is_required do habito (nenhuma inconsistencia)
-  select count(*) into v_count
-  from public.challenge_day_habits cdh
-  join public.habits h on h.id = cdh.habit_id and h.challenge_id = cdh.challenge_id
-  where cdh.challenge_id = target_challenge_id
-    and cdh.required <> h.is_required;
-  if v_count <> 0 then
-    raise exception 'Encontrados % vinculos com required diferente do is_required do habito.', v_count;
-  end if;
-
-  -- pontuacao: soma dos pontos dos 11 habitos obrigatorios = 110
+  -- pontuacao total dos 13 habitos obrigatorios = 130
   select coalesce(sum(points), 0) into v_sum
   from public.habits
   where challenge_id = target_challenge_id
     and is_required = true;
-  if v_sum <> 110 then
-    raise exception 'Esperado 110 pontos somados nos habitos obrigatorios, encontrado %', v_sum;
+  if v_sum <> 130 then
+    raise exception 'Esperado 130 pontos somados nos habitos obrigatorios, encontrado %', v_sum;
   end if;
 
-  -- pontuacao: soma dos pontos dos 2 habitos opcionais = 20
+  -- pontuacao dos habitos diarios (base do calculo diario) = 100
   select coalesce(sum(points), 0) into v_sum
   from public.habits
   where challenge_id = target_challenge_id
-    and is_required = false;
-  if v_sum <> 20 then
-    raise exception 'Esperado 20 pontos somados nos habitos opcionais, encontrado %', v_sum;
+    and frequency_type = 'daily';
+  if v_sum <> 100 then
+    raise exception 'Esperado 100 pontos somados nos habitos diarios, encontrado %', v_sum;
   end if;
 
-  -- rules_config correto
+  -- pontuacao dos habitos nao-diarios (fora do calculo diario) = 30
+  select coalesce(sum(points), 0) into v_sum
+  from public.habits
+  where challenge_id = target_challenge_id
+    and frequency_type <> 'daily';
+  if v_sum <> 30 then
+    raise exception 'Esperado 30 pontos somados nos habitos nao-diarios, encontrado %', v_sum;
+  end if;
+
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id
     and (rules_config ->> 'reflection_points')::int = 10
     and (rules_config ->> 'finalize_day_points')::int = 10
     and (rules_config ->> 'all_habits_bonus_points')::int = 30
-    and (rules_config ->> 'streak_minimum_completion')::int = 70;
+    and (rules_config ->> 'streak_minimum_completion')::int = 70
+    and rules_config ->> 'admission_type' = 'open'
+    and (rules_config ->> 'allow_late_entry')::boolean = true
+    and (rules_config ->> 'allow_abandonment')::boolean = true;
   if v_count <> 1 then
     raise exception 'rules_config do desafio nao confere com o esperado.';
   end if;
 
-  -- theme_config correto (chaves essenciais presentes)
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id
-    and theme_config ? 'visibility'
-    and theme_config ? 'category'
-    and theme_config ? 'difficulty'
-    and theme_config ? 'audience'
-    and theme_config ? 'campaign'
-    and theme_config ? 'visual_style'
-    and theme_config ? 'mood'
-    and theme_config ? 'accent'
-    and theme_config ? 'hero_message'
-    and theme_config ->> 'visibility' = 'public';
+    and theme_config ? 'short_title'
+    and theme_config ? 'subtitle'
+    and theme_config ? 'short_description'
+    and theme_config ? 'motivational_phrase'
+    and theme_config ? 'cta_label'
+    and theme_config ->> 'short_title' = 'Irreconhecivel em Agosto';
   if v_count <> 1 then
-    raise exception 'theme_config do desafio nao confere com o esperado.';
+    raise exception 'theme_config do desafio nao confere com o padrao canonico esperado.';
   end if;
 
-  -- compatibilidade estrutural com join_available_challenge(): enrollment_start <= enrollment_end,
-  -- e ambos dentro ou ao redor de start_date/end_date
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id
@@ -641,7 +680,6 @@ begin
     raise exception 'Datas do ciclo nao conferem com o esperado.';
   end if;
 
-  -- compatibilidade estrutural com ensure_today_daily_log(): duration_days bate com a contagem de dias
   select c.duration_days into v_count
   from public.challenges c
   where c.id = target_challenge_id;
@@ -651,8 +689,6 @@ begin
     raise exception 'duration_days do challenge nao bate com a quantidade de challenge_days.';
   end if;
 
-  -- compatibilidade estrutural com finalize_daily_log(): existem os 10 achievements
-  -- canonicos esperados, ativos, escopados a este challenge
   select count(*) into v_count
   from public.achievements
   where challenge_id = target_challenge_id
@@ -666,7 +702,6 @@ begin
     raise exception 'Esperado 10 achievements canonicos ativos, encontrado %', v_count;
   end if;
 
-  -- nenhum slug de achievement duplicado dentro deste challenge
   select count(*) into v_count
   from (
     select slug
@@ -679,7 +714,6 @@ begin
     raise exception 'Encontrados % slugs de achievement duplicados neste challenge.', v_count;
   end if;
 
-  -- nenhuma alteracao no desafio interno
   select count(*) into v_count
   from public.challenges
   where id = internal_challenge_id
@@ -688,28 +722,7 @@ begin
     raise exception 'Desafio interno de validacao nao foi encontrado intacto (id/slug esperados).';
   end if;
 
-  -- nenhum usuario, enrollment, daily_log, point_event, user_achievement criado para este challenge
-  select count(*) into v_count from public.challenge_enrollments where challenge_id = target_challenge_id;
-  if v_count <> 0 then
-    raise exception 'Encontrados % enrollments para o desafio de agosto (esperado 0 nesta fase).', v_count;
-  end if;
-
-  select count(*) into v_count from public.daily_logs where challenge_id = target_challenge_id;
-  if v_count <> 0 then
-    raise exception 'Encontrados % daily_logs para o desafio de agosto (esperado 0 nesta fase).', v_count;
-  end if;
-
-  select count(*) into v_count from public.point_events where challenge_id = target_challenge_id;
-  if v_count <> 0 then
-    raise exception 'Encontrados % point_events para o desafio de agosto (esperado 0 nesta fase).', v_count;
-  end if;
-
-  select count(*) into v_count from public.user_achievements where challenge_id = target_challenge_id;
-  if v_count <> 0 then
-    raise exception 'Encontrados % user_achievements para o desafio de agosto (esperado 0 nesta fase).', v_count;
-  end if;
-
-  raise notice 'OK: desafio-agosto-irreconhecivel validado (1 challenge, 31 dias, 13 habitos, 403 vinculos, 10 achievements, 0 dados de usuario).';
+  raise notice 'OK: desafio-agosto-irreconhecivel validado (1 challenge, 31 dias, 13 habitos [10 diarios + 1 semanal + 2 mensais], 403 vinculos, 10 achievements).';
 end;
 $$;
 
@@ -722,6 +735,7 @@ select
   c.id,
   c.slug,
   c.status,
+  c.cover_image_url,
   c.duration_days,
   c.start_date,
   c.end_date,
@@ -731,14 +745,10 @@ from public.challenges c
 where c.slug = 'desafio-agosto-irreconhecivel';
 
 -- Consultas adicionais para operadores (somente leitura):
--- select count(*) from public.challenge_days where challenge_id = 'a3080000-0000-4000-8000-000000000001';
--- select count(*) from public.habits where challenge_id = 'a3080000-0000-4000-8000-000000000001';
--- select count(*) from public.challenge_day_habits where challenge_id = 'a3080000-0000-4000-8000-000000000001';
--- select count(*) from public.achievements where challenge_id = 'a3080000-0000-4000-8000-000000000001';
--- select id, title, is_required, points from public.habits where challenge_id = 'a3080000-0000-4000-8000-000000000001' order by sort_order;
+-- select id, title, frequency_type, is_required, points from public.habits where challenge_id = 'a3080000-0000-4000-8000-000000000001' order by sort_order;
 --
--- Publicacao (NAO executar nesta fase - requer aprovacao explicita):
--- update public.challenges set status = 'active', updated_at = now()
+-- Atualizar a capa depois de subir o arquivo ao bucket challenge-covers:
+-- update public.challenges set cover_image_url = 'https://<project>.supabase.co/storage/v1/object/public/challenge-covers/challenges/a3080000-0000-4000-8000-000000000001/cover.webp', updated_at = now()
 -- where id = 'a3080000-0000-4000-8000-000000000001';
 --
 -- Cleanup nao destrutivo (arquivar sem apagar):

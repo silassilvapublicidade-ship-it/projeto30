@@ -21,7 +21,6 @@ import {
   saveJournalEntryAction,
   updateHabitLogAction,
 } from "@/features/member/journey.actions";
-import { joinAvailableChallengeAction } from "@/features/member/member.actions";
 import { cn } from "@/lib/utils";
 import type {
   MemberContext,
@@ -216,6 +215,13 @@ function MissionRow({
   const supportsValue =
     mission.habitType === "quantity" || mission.habitType === "duration";
   const disabled = !dailyLogId || !editable;
+  const isPeriodHabit = mission.frequencyType !== "daily";
+  const frequencyBadgeLabel =
+    mission.frequencyType === "weekly"
+      ? "Meta semanal"
+      : mission.frequencyType === "monthly"
+        ? "Meta mensal"
+        : null;
 
   return (
     <li>
@@ -242,6 +248,11 @@ function MissionRow({
               <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5 font-mono text-[0.56rem] uppercase tracking-[0.1em] text-muted-2">
                 {mission.required ? "Essencial" : "Opcional"}
               </span>
+              {frequencyBadgeLabel ? (
+                <span className="rounded-full border border-action/28 bg-action/10 px-1.5 py-0.5 font-mono text-[0.56rem] uppercase tracking-[0.1em] text-action-soft">
+                  {frequencyBadgeLabel}
+                </span>
+              ) : null}
             </div>
             <p className="text-xs leading-4 text-muted-2">
               <span
@@ -258,6 +269,16 @@ function MissionRow({
               </span>{" "}
               · {mission.targetLabel}
             </p>
+            {isPeriodHabit && mission.periodProgress ? (
+              <p className="mt-0.5 text-xs leading-4 text-muted-2">
+                {mission.periodProgress.completed}
+                {mission.periodProgress.target !== null
+                  ? ` de ${mission.periodProgress.target}`
+                  : ""}{" "}
+                {mission.frequencyType === "weekly" ? "concluídos esta semana" : "concluídos este mês"}
+                {" "}· não conta como obrigação de hoje
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -580,7 +601,7 @@ function NoCycleToday({ context }: { context: MemberContext }) {
           Olá, {firstName(displayName)}.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-8 text-muted sm:text-lg">
-          Sua área está pronta. O próximo passo é entrar em um ciclo disponível e começar
+          Sua área está pronta. O próximo passo é escolher um desafio no catálogo e começar
           sem transformar o dia em cobrança.
         </p>
       </div>
@@ -588,7 +609,7 @@ function NoCycleToday({ context }: { context: MemberContext }) {
       {context.availableChallenge ? (
         <div className="mt-8 rounded-[1.5rem] border border-white/[0.08] bg-black/24 p-5">
           <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-action-soft">
-            Ciclo disponível
+            Um desafio disponível agora
           </p>
           <h2 className="mt-3 text-2xl font-semibold text-foreground">
             {context.availableChallenge.name}
@@ -610,15 +631,9 @@ function NoCycleToday({ context }: { context: MemberContext }) {
       ) : null}
 
       <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-        {context.availableChallenge ? (
-          <form action={joinAvailableChallengeAction}>
-            <Button type="submit">Participar do ciclo disponível</Button>
-          </form>
-        ) : (
-          <Button disabled variant="secondary">
-            Nenhum ciclo disponível
-          </Button>
-        )}
+        <Button as="a" href="/app/desafios">
+          {context.availableChallenge ? "Ver desafios disponíveis" : "Explorar desafios"}
+        </Button>
         <Button as="a" href="/app/jornada" variant="secondary">
           Ver jornada
         </Button>

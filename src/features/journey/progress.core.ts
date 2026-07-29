@@ -3,8 +3,19 @@ export type JourneyHabitStatus = "pending" | "completed" | "not_applicable" | "s
 export type DailyProgressState =
   "not_started" | "in_progress" | "partial" | "complete" | "finalized";
 
+export type JourneyHabitFrequency = "daily" | "weekly" | "monthly";
+
 export type JourneyHabitProgressInput = {
   habitId: string;
+  /**
+   * Defaults to "daily" when omitted, matching habits.frequency_type's
+   * database default. Only daily habits count toward the day's
+   * completion_percent - mirrors journey_recalculate_daily_log (migration
+   * 0009), which excludes weekly/monthly habits from the day's
+   * applicable/completed counts so an unfinished weekly or monthly goal
+   * never blocks a "complete" day or the all-habits-done bonus.
+   */
+  frequencyType?: JourneyHabitFrequency;
   status: JourneyHabitStatus;
   touched?: boolean;
 };
@@ -43,8 +54,10 @@ function dedupeHabits(habits: JourneyHabitProgressInput[]) {
 }
 
 export function calculateDailyProgress(input: DailyProgressInput): DailyProgressSummary {
-  const habits = dedupeHabits(input.habits);
-  const applicableHabits = habits.filter((habit) => habit.status !== "not_applicable");
+  const dailyHabits = dedupeHabits(input.habits).filter(
+    (habit) => (habit.frequencyType ?? "daily") === "daily",
+  );
+  const applicableHabits = dailyHabits.filter((habit) => habit.status !== "not_applicable");
   const completedHabits = applicableHabits.filter(
     (habit) => habit.status === "completed",
   );

@@ -325,6 +325,7 @@ export type Database = {
       }
       challenges: {
         Row: {
+          cover_image_url: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -343,6 +344,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -361,6 +363,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cover_image_url?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -576,6 +579,7 @@ export type Database = {
           created_at: string
           description: string | null
           frequency_config: Json
+          frequency_type: Database["public"]["Enums"]["habit_frequency_type"]
           habit_type: Database["public"]["Enums"]["habit_type"]
           icon: string | null
           id: string
@@ -593,6 +597,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           frequency_config?: Json
+          frequency_type?: Database["public"]["Enums"]["habit_frequency_type"]
           habit_type?: Database["public"]["Enums"]["habit_type"]
           icon?: string | null
           id?: string
@@ -610,6 +615,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           frequency_config?: Json
+          frequency_type?: Database["public"]["Enums"]["habit_frequency_type"]
           habit_type?: Database["public"]["Enums"]["habit_type"]
           icon?: string | null
           id?: string
@@ -1227,6 +1233,10 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       join_available_challenge: { Args: never; Returns: string }
+      join_specific_challenge: {
+        Args: { target_challenge_id: string }
+        Returns: string
+      }
       journey_calculate_day: {
         Args: { target_local_date: string; target_start_date: string }
         Returns: number
@@ -1290,6 +1300,7 @@ export type Database = {
         | "completed"
         | "abandoned"
         | "restarted"
+      habit_frequency_type: "daily" | "weekly" | "monthly"
       habit_log_status: "pending" | "completed" | "not_applicable" | "skipped"
       habit_type:
         | "boolean"
@@ -1447,6 +1458,7 @@ export const Constants = {
         "abandoned",
         "restarted",
       ],
+      habit_frequency_type: ["daily", "weekly", "monthly"],
       habit_log_status: ["pending", "completed", "not_applicable", "skipped"],
       habit_type: [
         "boolean",

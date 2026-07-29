@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BookOpen,
+  Flag,
   Home,
   Medal,
   NotebookPen,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const mainItems = [
   { href: "/app/hoje", icon: Home, label: "Hoje" },
+  { href: "/app/desafios", icon: Flag, label: "Desafios" },
   { href: "/app/jornada", icon: Route, label: "Jornada" },
   { href: "/app/leitura", icon: BookOpen, label: "Leitura" },
   { href: "/app/conquistas", icon: Medal, label: "Conquistas", mobileLabel: "Marcos" },

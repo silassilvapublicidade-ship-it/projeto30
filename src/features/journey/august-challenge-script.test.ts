@@ -107,18 +107,33 @@ describe("august challenge administrative script", () => {
     }
   });
 
-  it("declares exactly 13 habits with 2 optional (non-required) entries", () => {
+  it("declares exactly 13 habits, all required, with a frequency_type per habit", () => {
     const habitRowMatches = activeSql.match(
       /\(\d{1,2}, '[^']+', '[^']+', '[^']+', '(boolean|quantity|duration|reading)'::public\.habit_type/g,
     );
 
     expect(habitRowMatches).toHaveLength(13);
 
+    // Optionality used to be encoded as is_required = false (Musculacao,
+    // Autocuidado). It is now encoded as frequency_type <> 'daily' instead,
+    // so all 13 habits are required.
     const optionalHabitMatches = activeSql.match(
       /'::public\.habit_type, '[^']+', 10, false,/g,
     );
+    expect(optionalHabitMatches).toBeNull();
 
-    expect(optionalHabitMatches).toHaveLength(2);
+    const requiredHabitMatches = activeSql.match(
+      /'::public\.habit_type, '[^']+', 10,\s*\n\s*'(daily|weekly|monthly)'::public\.habit_frequency_type/g,
+    );
+    expect(requiredHabitMatches).toHaveLength(13);
+
+    const dailyMatches = activeSql.match(/'daily'::public\.habit_frequency_type/g);
+    const weeklyMatches = activeSql.match(/'weekly'::public\.habit_frequency_type/g);
+    const monthlyMatches = activeSql.match(/'monthly'::public\.habit_frequency_type/g);
+
+    expect(dailyMatches).toHaveLength(10);
+    expect(weeklyMatches).toHaveLength(1);
+    expect(monthlyMatches).toHaveLength(2);
   });
 
   it("declares exactly 31 day titles and 31 day messages", () => {
@@ -146,14 +161,26 @@ describe("august challenge administrative script", () => {
     }
   });
 
-  it("keeps the default status as draft with an explicit manual switch instruction", () => {
-    expect(sql).toMatch(/'draft',\s*-- target_status/);
-    expect(sql).toMatch(/troque para 'active' manualmente/i);
+  it("keeps status active with an explicit documented decision, not a silent change", () => {
+    expect(sql).toMatch(/'active',\s*-- target_status/);
+    expect(sql).toMatch(/-- STATUS\b/);
+    expect(sql).toContain("Mantido como 'active'");
   });
 
-  it("expects the documented daily point totals in its header", () => {
-    expect(sql).toContain("110");
-    expect(sql).toContain("total diario obrigatorio esperado = 160");
-    expect(sql).toContain("180 (maximo possivel)");
+  it("expects the documented point totals in its header", () => {
+    expect(sql).toContain("x 10 pts = 130");
+    expect(sql).toContain("total diario obrigatorio esperado = 150");
+    expect(sql).toContain("= 30 (fora do calculo diario)");
+  });
+
+  it("documents the sleep min/max limitation instead of improvising a workaround", () => {
+    expect(activeSql).toContain("target_max_informational");
+    expect(activeSql).toContain("meta-maxima");
+  });
+
+  it("marks the cover image as pending with an explicit note instead of storing base64", () => {
+    expect(activeSql).not.toContain("data:image");
+    expect(activeSql).not.toContain("base64");
+    expect(sql).toContain("cover_image_url: imagem oficial fornecida no chat");
   });
 });
