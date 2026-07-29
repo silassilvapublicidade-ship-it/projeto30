@@ -5,18 +5,32 @@ type EnrollmentStatus = Database["public"]["Enums"]["enrollment_status"];
 export type HabitFrequencyType = Database["public"]["Enums"]["habit_frequency_type"];
 
 /**
- * Canonical shape for challenges.theme_config's identity-related keys. The
- * column stays untyped JSONB (many challenges already store older ad-hoc
- * keys there too); this is the subset every challenge card/detail page
- * should be able to rely on going forward.
+ * Official shape for challenges.theme_config - the JSONB column formalized
+ * as a real content standard instead of a narrow set of new relational
+ * columns. Any challenge may set a subset of these keys; unset keys fall
+ * back to the relational columns (name, description) or to a generic
+ * visual fallback (gradient cover). The column keeps whatever other ad-hoc
+ * keys a given challenge already stores - this type only documents the
+ * subset every catalog card/detail page can rely on.
  */
 export type ChallengeThemeConfig = {
+  /** Public cover image URL. Absent = catalog/detail use the gradient fallback. */
+  cover_image_url?: string | undefined;
+  /** Main CTA button label, e.g. "Vem comigo!". Purely presentational - the
+   * actual enabled/disabled/label-by-status logic stays in getChallengeCta. */
   cta_label?: string | undefined;
-  cta_subtext?: string | undefined;
-  motivational_phrase?: string | undefined;
+  /** Small supporting text shown under/near the CTA. */
+  cta_supporting_text?: string | undefined;
+  /** Short marketing headline, distinct from the relational `name` column. */
+  headline?: string | undefined;
+  /** Complementary message shown near the hero (e.g. under the tagline). */
+  hero_message?: string | undefined;
+  /** One-liner used on catalog cards, distinct from the full `description` column. */
   short_description?: string | undefined;
-  short_title?: string | undefined;
-  subtitle?: string | undefined;
+  /** Secondary headline / subtitle. */
+  subheadline?: string | undefined;
+  /** Motivational one-liner. */
+  tagline?: string | undefined;
 };
 
 function readOptionalString(source: Record<string, unknown>, key: string): string | undefined {
@@ -31,12 +45,14 @@ export function parseChallengeThemeConfig(themeConfig: unknown): ChallengeThemeC
 
   const source = themeConfig as Record<string, unknown>;
   return {
+    cover_image_url: readOptionalString(source, "cover_image_url"),
     cta_label: readOptionalString(source, "cta_label"),
-    cta_subtext: readOptionalString(source, "cta_subtext"),
-    motivational_phrase: readOptionalString(source, "motivational_phrase"),
+    cta_supporting_text: readOptionalString(source, "cta_supporting_text"),
+    headline: readOptionalString(source, "headline"),
+    hero_message: readOptionalString(source, "hero_message"),
     short_description: readOptionalString(source, "short_description"),
-    short_title: readOptionalString(source, "short_title"),
-    subtitle: readOptionalString(source, "subtitle"),
+    subheadline: readOptionalString(source, "subheadline"),
+    tagline: readOptionalString(source, "tagline"),
   };
 }
 

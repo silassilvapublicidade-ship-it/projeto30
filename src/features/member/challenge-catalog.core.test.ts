@@ -166,20 +166,36 @@ describe("parseChallengeThemeConfig", () => {
       parseChallengeThemeConfig({
         campaign: "agosto_2026",
         cta_label: "Vem comigo!",
-        short_title: "Irreconhecível em Agosto",
-        subtitle: "Pequenas escolhas diárias, grandes resultados para sempre.",
+        headline: "Desafio para se tornar irreconhecível em agosto",
+        subheadline: "Pequenas escolhas diárias, grandes resultados para sempre.",
       }),
     ).toEqual({
       cta_label: "Vem comigo!",
-      short_title: "Irreconhecível em Agosto",
-      subtitle: "Pequenas escolhas diárias, grandes resultados para sempre.",
+      headline: "Desafio para se tornar irreconhecível em agosto",
+      subheadline: "Pequenas escolhas diárias, grandes resultados para sempre.",
+    });
+  });
+
+  it("reads cover_image_url, tagline, hero_message and cta_supporting_text", () => {
+    expect(
+      parseChallengeThemeConfig({
+        cover_image_url: "https://example.supabase.co/storage/v1/object/public/challenge-covers/x.webp",
+        cta_supporting_text: "O melhor mês do ano começa agora.",
+        hero_message: "O melhor mês do ano começa agora.",
+        tagline: "Disciplina hoje, liberdade amanhã!",
+      }),
+    ).toEqual({
+      cover_image_url: "https://example.supabase.co/storage/v1/object/public/challenge-covers/x.webp",
+      cta_supporting_text: "O melhor mês do ano começa agora.",
+      hero_message: "O melhor mês do ano começa agora.",
+      tagline: "Disciplina hoje, liberdade amanhã!",
     });
   });
 
   it("returns an empty object for null, non-object or empty-string values", () => {
     expect(parseChallengeThemeConfig(null)).toEqual({});
     expect(parseChallengeThemeConfig("not-json")).toEqual({});
-    expect(parseChallengeThemeConfig({ short_title: "" })).toEqual({});
+    expect(parseChallengeThemeConfig({ headline: "" })).toEqual({});
   });
 });
 

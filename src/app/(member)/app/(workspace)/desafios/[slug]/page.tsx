@@ -64,6 +64,9 @@ export default async function DesafioDetailPage({
   const cta = getChallengeCta(displayStatus, hasActiveEnrollmentElsewhere);
   const theme = parseChallengeThemeConfig(challenge.theme_config);
   const joinLabel = cta.kind === "join" ? (theme.cta_label ?? cta.label) : cta.label;
+  // headline is a presentational hero heading distinct from the relational
+  // `name` column (source of truth); falls back to it when unset.
+  const heroHeadline = theme.headline ?? challenge.name;
 
   return (
     <div className="space-y-8">
@@ -88,15 +91,22 @@ export default async function DesafioDetailPage({
       ) : null}
 
       <section className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] p-6 shadow-[var(--shadow-soft)] sm:p-10">
-        {challenge.cover_image_url ? (
-          <Image
-            alt=""
-            className="absolute inset-0 -z-20 object-cover"
-            fill
-            priority
-            sizes="100vw"
-            src={challenge.cover_image_url}
-          />
+        {theme.cover_image_url ? (
+          // object-contain: this cover may be a poster with baked-in text
+          // (headline, habit list, CTA) - cropping to fill would cut
+          // important content. The black backdrop blends with the poster's
+          // own dark background.
+          <>
+            <div aria-hidden="true" className="absolute inset-0 -z-30 bg-black" />
+            <Image
+              alt=""
+              className="absolute inset-0 -z-20 object-contain"
+              fill
+              priority
+              sizes="100vw"
+              src={theme.cover_image_url}
+            />
+          </>
         ) : (
           <div
             aria-hidden="true"
@@ -115,11 +125,11 @@ export default async function DesafioDetailPage({
           {describeChallengeDisplayStatus(displayStatus)}
         </span>
         <h1 className="relative mt-4 font-display text-4xl leading-[1.05] text-foreground sm:text-5xl">
-          {challenge.name}
+          {heroHeadline}
         </h1>
-        {theme.subtitle ? (
+        {theme.subheadline ? (
           <p className="relative mt-2 max-w-2xl text-lg font-medium leading-7 text-action-soft">
-            {theme.subtitle}
+            {theme.subheadline}
           </p>
         ) : null}
         {challenge.description ? (
@@ -127,9 +137,14 @@ export default async function DesafioDetailPage({
             {challenge.description}
           </p>
         ) : null}
-        {theme.motivational_phrase ? (
+        {theme.tagline ? (
           <p className="relative mt-4 max-w-2xl font-display text-xl italic leading-8 text-foreground">
-            &ldquo;{theme.motivational_phrase}&rdquo;
+            &ldquo;{theme.tagline}&rdquo;
+          </p>
+        ) : null}
+        {theme.hero_message ? (
+          <p className="relative mt-2 max-w-2xl text-sm leading-6 text-white/70">
+            {theme.hero_message}
           </p>
         ) : null}
 
@@ -160,8 +175,8 @@ export default async function DesafioDetailPage({
                   {joinLabel}
                 </Button>
               </form>
-              {theme.cta_subtext ? (
-                <p className="font-mono text-xs text-muted-2">{theme.cta_subtext}</p>
+              {theme.cta_supporting_text ? (
+                <p className="font-mono text-xs text-muted-2">{theme.cta_supporting_text}</p>
               ) : null}
             </div>
           ) : cta.kind === "continue" ? (
@@ -199,6 +214,13 @@ export default async function DesafioDetailPage({
                 unit: goalConfig.unit,
               });
 
+              const frequencyBadgeLabel =
+                habit.frequency_type === "weekly"
+                  ? "Meta semanal"
+                  : habit.frequency_type === "monthly"
+                    ? "Meta mensal"
+                    : null;
+
               return (
                 <li
                   className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4"
@@ -206,9 +228,16 @@ export default async function DesafioDetailPage({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold text-foreground">{habit.title}</p>
-                    <span className="shrink-0 rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted-2">
-                      {habit.is_required ? "Essencial" : "Opcional"}
-                    </span>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                      <span className="rounded-full border border-white/[0.08] px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted-2">
+                        {habit.is_required ? "Essencial" : "Opcional"}
+                      </span>
+                      {frequencyBadgeLabel ? (
+                        <span className="rounded-full border border-action/28 bg-action/10 px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.08em] text-action-soft">
+                          {frequencyBadgeLabel}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
                   {habit.description ? (
                     <p className="mt-1.5 text-xs leading-5 text-muted">{habit.description}</p>

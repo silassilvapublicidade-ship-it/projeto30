@@ -167,10 +167,10 @@ describe("august challenge administrative script", () => {
     expect(sql).toContain("Mantido como 'active'");
   });
 
-  it("expects the documented point totals in its header", () => {
-    expect(sql).toContain("x 10 pts = 130");
-    expect(sql).toContain("total diario obrigatorio esperado = 150");
-    expect(sql).toContain("= 30 (fora do calculo diario)");
+  it("asserts the documented point totals in its own validation block", () => {
+    expect(activeSql).toContain("esperado 130 pontos somados nos habitos obrigatorios");
+    expect(activeSql).toContain("esperado 100 pontos somados nos habitos diarios");
+    expect(activeSql).toContain("esperado 30 pontos somados nos habitos nao-diarios");
   });
 
   it("documents the sleep min/max limitation instead of improvising a workaround", () => {
@@ -178,9 +178,97 @@ describe("august challenge administrative script", () => {
     expect(activeSql).toContain("meta-maxima");
   });
 
-  it("marks the cover image as pending with an explicit note instead of storing base64", () => {
+  it("never stores the cover as base64 and never creates a new column just for it", () => {
     expect(activeSql).not.toContain("data:image");
     expect(activeSql).not.toContain("base64");
-    expect(sql).toContain("cover_image_url: imagem oficial fornecida no chat");
+    expect(sql).toMatch(/Nenhuma coluna nova foi criada s[oó] para a capa\.?/);
+  });
+
+  describe("this round: presentation/content-only scope (frequency engine deferred)", () => {
+    it("does not redefine journey_recalculate_daily_log, finalize_daily_log or challenge_day_habits' shape", () => {
+      expect(activeSql).not.toContain("create or replace function public.journey_recalculate_daily_log");
+      expect(activeSql).not.toContain("create or replace function public.finalize_daily_log");
+      expect(activeSql).not.toContain("alter table public.challenge_day_habits");
+      expect(activeSql).not.toContain("create table");
+      expect(activeSql).not.toContain("public.challenge_habits");
+    });
+
+    it("documents why supabase/seed.sql does not contain this challenge", () => {
+      expect(sql).toMatch(/POR QUE supabase\/seed\.sql NAO CONTEM ESTE DESAFIO/);
+    });
+
+    it("fails explicitly instead of silently inserting a new challenge when the canonical id is missing", () => {
+      expect(activeSql).toContain("nao encontrado neste banco");
+      expect(activeSql).toContain("nao cria um novo desafio");
+      expect(activeSql).toMatch(/if not exists\s*\(\s*select 1 from public\.challenges where id = 'a3080000-0000-4000-8000-000000000001'/);
+    });
+  });
+
+  describe("official theme_config/rules_config shape for this round", () => {
+    it("keeps name and description on the relational columns as the primary source", () => {
+      expect(sql).toContain("'Desafio de Agosto - Irreconhecível'");
+      expect(sql).toContain("Agosto será o mês da disciplina.");
+    });
+
+    it("merges theme_config instead of overwriting it, dropping only the superseded keys", () => {
+      expect(activeSql).toMatch(
+        /theme_config = \(\s*coalesce\(public\.challenges\.theme_config, '\{\}'::jsonb\)\s*- 'short_title' - 'subtitle' - 'motivational_phrase' - 'cta_subtext'\s*\) \|\| excluded\.theme_config/,
+      );
+    });
+
+    it("writes the new canonical theme_config keys", () => {
+      for (const key of [
+        "headline",
+        "subheadline",
+        "tagline",
+        "hero_message",
+        "short_description",
+        "cta_label",
+        "cta_supporting_text",
+      ]) {
+        expect(activeSql).toContain(`'${key}',`);
+      }
+    });
+
+    it("sets theme_config.cover_image_url to a public Supabase Storage URL, never a local path or base64", () => {
+      const insertValuesSection = activeSql.split("on conflict (slug) do update set")[0] ?? "";
+      expect(insertValuesSection).toContain("'cover_image_url'");
+      expect(activeSql).toMatch(
+        /'cover_image_url', 'https:\/\/[^']+\/storage\/v1\/object\/public\/challenge-covers\/challenges\/a3080000-0000-4000-8000-000000000001\/cover\.webp'/,
+      );
+      expect(activeSql).not.toContain("/mnt/data");
+      expect(activeSql).not.toContain("c:/users");
+      expect(activeSql).not.toContain("data:image");
+    });
+
+    it("merges rules_config instead of overwriting it, preserving functional point/streak keys untouched", () => {
+      expect(activeSql).toMatch(
+        /rules_config = \(\s*coalesce\(public\.challenges\.rules_config, '\{\}'::jsonb\)\s*- 'admission_type' - 'allow_late_entry' - 'max_participants' - 'completion_criteria'\s*\) \|\| excluded\.rules_config/,
+      );
+      // reflection_points / finalize_day_points / all_habits_bonus_points /
+      // streak_minimum_completion must not appear in the new delta payload -
+      // they stay untouched via the merge, not reasserted here.
+      const rulesConfigValuesMatch = activeSql.match(
+        /jsonb_build_object\(\s*'enrollment_type'[\s\S]*?\)/,
+      );
+      expect(rulesConfigValuesMatch).not.toBeNull();
+      const rulesConfigPayload = rulesConfigValuesMatch?.[0] ?? "";
+      expect(rulesConfigPayload).not.toContain("reflection_points");
+      expect(rulesConfigPayload).not.toContain("finalize_day_points");
+      expect(rulesConfigPayload).not.toContain("all_habits_bonus_points");
+      expect(rulesConfigPayload).not.toContain("streak_minimum_completion");
+    });
+
+    it("writes the new canonical rules_config keys", () => {
+      for (const key of [
+        "enrollment_type",
+        "allow_join_after_start",
+        "allow_abandonment",
+        "participant_limit",
+        "single_active_challenge",
+      ]) {
+        expect(activeSql).toContain(`'${key}',`);
+      }
+    });
   });
 });

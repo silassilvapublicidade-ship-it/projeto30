@@ -16,10 +16,12 @@
 -- - NAO contem credenciais, chaves ou segredos.
 -- - Qualquer alteracao destrutiva (delete/drop) exige aprovacao explicita e
 --   fica isolada em bloco comentado ao final do arquivo.
--- - Depende das colunas/enum criados em
---   supabase/migrations/0009_habit_frequency_and_challenge_media.sql
---   (habits.frequency_type, challenges.cover_image_url). Rode a migration
---   0009 antes deste script.
+-- - Depende do enum/coluna habits.frequency_type criados em
+--   supabase/migrations/0009_habit_frequency_and_challenge_media.sql. Rode a
+--   migration 0009 antes deste script. Essa mesma migration tambem criou
+--   challenges.cover_image_url, mas este script (e o app) nao usam mais essa
+--   coluna - a capa agora vive em theme_config.cover_image_url (ver secao
+--   CAPA abaixo).
 --
 -- O QUE ESTE SCRIPT NUNCA FAZ
 -- - Nao cria usuarios (auth.users / public.users).
@@ -52,18 +54,94 @@
 -- (august-challenge-script.test.ts) e usado nas rotas /app/desafios/[slug]
 -- do catalogo ja implementado. Trocar o slug nao quebraria nenhuma FK (slug
 -- nao e referenciado por nenhuma outra tabela), mas quebraria o link direto
--- e exigiria atualizar o teste sem nenhum ganho funcional. Titulo curto,
--- subtitulo e demais textos de identidade foram atualizados normalmente.
+-- e exigiria atualizar o teste sem nenhum ganho funcional.
 --
 -- STATUS
 -- Mantido como 'active' (target_status abaixo). O desafio ja esta ativo no
--- ambiente usado para validacao (Fase de catalogo) e ja tem uma inscricao de
--- teste real (conta QA) em andamento; voltar para 'draft' o esconderia do
--- catalogo e quebraria essa validacao em curso. Decisao documentada aqui
--- conforme pedido, em vez de alterar silenciosamente.
+-- ambiente usado para validacao e ja tem uma inscricao de teste real (conta
+-- QA) em andamento; voltar para 'draft' o esconderia do catalogo e quebraria
+-- essa validacao em curso. Decisao documentada aqui conforme pedido, em vez
+-- de alterar silenciosamente.
 --
--- LIMITACOES CONHECIDAS DO MOTOR ATUAL (documentadas, nao "resolvidas
--- silenciosamente"):
+-- ESCOPO DESTA RODADA (motor de frequencia fica para uma fase propria)
+-- Esta rodada so toca dados de apresentacao/conteudo do desafio de agosto:
+-- name, description (colunas relacionais) e theme_config/rules_config
+-- (JSONB). NAO redefine journey_recalculate_daily_log(), finalize_daily_log(),
+-- calculo de pontos, streak, conclusao diaria ou challenge_day_habits - essas
+-- pecas ja existem e ficam exatamente como estao (a extensao de frequencia
+-- semanal/mensal feita na migration 0009 em uma rodada anterior nao e
+-- alterada nem revertida aqui; simplesmente nao e o foco desta rodada).
+-- Tambem nao cria public.challenge_habits nem nenhuma estrutura paralela -
+-- os 4 JSONB ja existentes (theme_config, rules_config, frequency_config em
+-- habits, validation_config em habits) sao formalizados como o padrao
+-- oficial de conteudo, documentado abaixo, em vez de novas colunas.
+--
+-- POR QUE supabase/seed.sql NAO CONTEM ESTE DESAFIO
+-- supabase/seed.sql e um fixture de desenvolvimento local generico (desafio
+-- "Projeto 30 - Ciclo Base", id 10000000-...), sem usuarios/autenticacao,
+-- pensado para popular um banco local vazio. Ele nao referencia o desafio
+-- real de agosto (a3080000-...) porque este e um dado de produto real, com
+-- inscricoes reais associadas, versionado separadamente neste script
+-- administrativo - misturar os dois faria o seed de desenvolvimento carregar
+-- (ou apagar, em um reset) dados que pertencem ao ambiente real.
+--
+-- PADRAO OFICIAL DE theme_config (chaves usadas por esta rodada; outras
+-- chaves decorativas ja existentes - scope, visibility, category,
+-- difficulty, audience, campaign, visual_style, mood, accent, timezone,
+-- closing_message - continuam validas e sao preservadas pelo merge, nao
+-- fazem parte do "padrao oficial" mas nao sao removidas):
+--   headline               texto principal curto (hero, distinto de `name`)
+--   subheadline             subtitulo
+--   tagline                 frase motivacional
+--   hero_message            mensagem complementar do hero
+--   short_description       descricao curta para cards do catalogo
+--   cover_image_url          URL publica da capa (fallback = gradiente)
+--   cta_label                texto principal do botao de adesao
+--   cta_supporting_text      texto complementar do CTA
+--
+-- PADRAO OFICIAL DE rules_config (chaves usadas por esta rodada; chaves
+-- funcionais ja existentes - reflection_points, finalize_day_points,
+-- all_habits_bonus_points, journal_edit_minutes_after_finalize - continuam
+-- lidas por member-area.service.ts e NAO sao tocadas por este script):
+--   enrollment_type              "open" | outros valores futuros
+--   allow_join_after_start        permite entrar depois do inicio do ciclo
+--   allow_abandonment             permite abandono
+--   participant_limit             limite de participantes (null = sem limite)
+--   single_active_challenge       reforca a regra global de 1 desafio ativo
+--   streak_minimum_completion     preservado, nao redefinido por esta rodada
+--
+-- Chaves antigas substituidas nesta rodada (removidas via merge para nao
+-- duplicar sentido com nomes diferentes): theme_config.short_title,
+-- theme_config.subtitle, theme_config.motivational_phrase,
+-- theme_config.cta_subtext; rules_config.admission_type,
+-- rules_config.allow_late_entry, rules_config.max_participants,
+-- rules_config.completion_criteria.
+--
+-- ESTRATEGIA DE MERGE (nao sobrescrever o JSONB inteiro)
+-- theme_config/rules_config sao atualizados com `(config_atual - chaves
+-- antigas) || novo_delta`, nunca com uma substituicao completa. Isso
+-- preserva qualquer chave nao relacionada (decorativas de theme_config,
+-- pontuacao/streak de rules_config) e so remove explicitamente as chaves
+-- antigas que este payload substitui por um nome novo.
+--
+-- CAPA (sem coluna nova nesta rodada)
+-- challenges.cover_image_url (coluna, criada na migration 0009) NAO e mais
+-- a fonte usada pelo catalogo/detalhe a partir desta rodada - o padrao
+-- oficial usa theme_config.cover_image_url (JSONB), entao esta coluna fica
+-- sem uso (nao e removida - remover coluna e mudanca de schema fora do
+-- escopo desta rodada - so deixa de ser lida/escrita pela aplicacao e por
+-- este script). Nenhuma coluna nova foi criada so para a capa.
+--
+-- A imagem oficial (poster com titulo, subtitulo e os 13 habitos) foi
+-- localizada no ambiente de execucao, convertida para WebP (mesma resolucao
+-- 941x1672, sem recorte/redesenho) e publicada no bucket challenge-covers em
+-- challenges/a3080000-0000-4000-8000-000000000001/cover.webp (leitura
+-- publica, escrita restrita a admin/super_admin - politicas da migration
+-- 0009). Como a imagem e um poster com texto (nao uma foto de fundo), o
+-- card/detalhe usam object-contain (nunca object-cover) para nunca cortar
+-- conteudo importante - ver challenge-card.tsx e desafios/[slug]/page.tsx.
+--
+-- LIMITACOES CONHECIDAS (documentadas, nao "resolvidas silenciosamente"):
 -- 1) Sono (habito 8): a meta oficial e uma faixa (7 a 8 horas), mas
 --    habits.validation_config so tem um "target" numerico unico (sem campo
 --    de teto). Registrado target = 7 (o minimo, compativel com o mecanismo
@@ -75,28 +153,17 @@
 --    Este script insere os mesmos 10 achievements canonicos ja usados pela
 --    migration 0002 e pelo desafio de validacao interna, escopados a este
 --    challenge_id.
---
--- FREQUENCIA (corrigido nesta rodada via migration 0009)
--- Musculacao (semanal, meta 4 sessoes) e Livro/Autocuidado (mensal, metas 1
--- e 2) agora tem habits.frequency_type <> 'daily'. journey_recalculate_daily_log
--- (redefinida em 0009) passou a considerar SOMENTE habitos frequency_type =
--- 'daily' no completion_percent do dia e no bonus de "todos os habitos
--- concluidos" - portanto essas 3 metas nunca reduzem a conclusao diaria nem
--- bloqueiam o bonus, mesmo pendentes. Elas continuam registraveis em
--- qualquer dia do ciclo (update_habit_log nao muda) e continuam gerando
--- pontos por conclusao (finalize_daily_log nao muda nisso), mas o PROGRESSO
--- acumulado da semana/mes e calculado e exibido pela camada de aplicacao
--- (nao no banco), lendo os habit_logos ja existentes.
---
--- PONTUACAO ESPERADA (ver validacao no final do arquivo):
---   13 habitos obrigatorios x 10 pts = 130 (nenhum habito opcional nesta
---   versao - Musculacao e Autocuidado passaram a ser obrigatorios tambem,
---   apenas com frequencia diferente de diaria)
---   10 habitos diarios x 10 pts = 100 | reflexao = 10 | finalizacao = 10 |
---   bonus 100% (calculado so sobre os 10 diarios) = 30
---   total diario obrigatorio esperado = 150
---   + 3 habitos nao-diarios (Musculacao, Livro, Autocuidado) x 10 pts,
---   conforme completados ao longo da semana/mes = 30 (fora do calculo diario)
+-- 4) Musculacao (semanal, meta 4 sessoes) e Livro/Autocuidado (mensal, metas
+--    1 e 2): no catalogo e na pagina de detalhe (atualizados nesta rodada),
+--    a meta conceitual e apenas exibida (badge "Meta semanal"/"Meta mensal"
+--    + meta e unidade, lidos de habits.validation_config) - nenhum contador
+--    acumulado "X de Y" e mostrado ali, para nao afirmar um acompanhamento
+--    que essas telas nao calculam. A tela Hoje (nao alterada nesta rodada)
+--    ja tem, de uma fase anterior, um contador real de progresso
+--    semanal/mensal baseado em habit_logs; esse mecanismo continua existindo
+--    exatamente como estava. O motor central (journey_recalculate_daily_log)
+--    tambem nao e alterado aqui. Uma extensao mais completa do motor de
+--    frequencia (ex.: acumulado tambem no catalogo) fica para fase propria.
 
 begin;
 
@@ -111,10 +178,23 @@ begin
     raise exception
       'Desafio de Agosto ja existe com um id diferente. Abortando para nao misturar dados de ciclos distintos.';
   end if;
+
+  if not exists (
+    select 1 from public.challenges where id = 'a3080000-0000-4000-8000-000000000001'::uuid
+  ) then
+    raise exception
+      'Desafio de Agosto (id a3080000-0000-4000-8000-000000000001) nao encontrado neste banco. '
+      'Este script so atualiza o desafio canonico ja existente - ele nao cria um novo desafio '
+      'silenciosamente. Confirme que esta rodando contra o ambiente correto antes de tentar novamente.';
+  end if;
 end;
 $$;
 
 -- CHALLENGE ------------------------------------------------------------------
+-- name/description ficam nas colunas relacionais (fonte principal). theme_config
+-- e rules_config recebem apenas o "delta" desta rodada, que e mesclado (nao
+-- substitui o objeto inteiro) sobre o que ja existe no banco - ver secao
+-- ESTRATEGIA DE MERGE no cabecalho.
 
 insert into public.challenges (
   id,
@@ -127,59 +207,44 @@ insert into public.challenges (
   enrollment_start,
   enrollment_end,
   status,
-  cover_image_url,
   theme_config,
   rules_config
 )
 values (
   'a3080000-0000-4000-8000-000000000001',
-  'Desafio para se tornar irreconhecivel em agosto',
+  'Desafio de Agosto - Irreconhecível',
   'desafio-agosto-irreconhecivel',
-  'Agosto sera o mes da disciplina. Durante 31 dias, voce assumira um compromisso consigo mesmo por meio de habitos simples, mas consistentes. O objetivo nao e buscar perfeicao, mas criar constancia. Cada habito concluido representa mais um passo para uma versao mais saudavel, disciplinada e consciente de voce mesmo. Pequenas escolhas diarias podem gerar grandes resultados para sempre.',
+  E'Agosto será o mês da disciplina.\n\nDurante 31 dias, você assumirá um compromisso consigo mesmo por meio de hábitos simples, mas consistentes.\n\nO objetivo não é buscar perfeição, mas criar constância. Cada hábito concluído representa mais um passo para uma versão mais saudável, disciplinada e consciente de você mesmo.\n\nPequenas escolhas diárias podem gerar grandes resultados para sempre.',
   31,
   date '2026-08-01',
   date '2026-08-31',
   date '2026-07-28',
   date '2026-08-05',
   'active', -- target_status: ja ativo (ver secao STATUS no cabecalho)
-  null, -- cover_image_url: imagem oficial fornecida no chat, mas o arquivo
-        -- local (/mnt/data/...) nao esta acessivel neste ambiente de
-        -- execucao. Atualize manualmente apos subir o arquivo ao bucket
-        -- challenge-covers (ver docs/challenge-content-model.md).
   jsonb_build_object(
-    -- chaves canonicas novas (padrao obrigatorio para qualquer desafio)
-    'short_title', 'Irreconhecivel em Agosto',
-    'subtitle', 'Pequenas escolhas diarias, grandes resultados para sempre.',
-    'short_description', 'Um desafio de transformacao pessoal baseado em disciplina, saude, treino, alimentacao, sono, desenvolvimento pessoal, autocuidado, mentalidade e espiritualidade.',
-    'motivational_phrase', 'Disciplina hoje, liberdade amanha!',
+    -- padrao oficial desta rodada (ver cabecalho). cover_image_url aponta
+    -- para o objeto publicado no bucket challenge-covers (ver secao CAPA);
+    -- reexecutar este script apenas reafirma a mesma URL publica, nunca
+    -- volta a null.
+    'headline', 'Desafio para se tornar irreconhecível em agosto',
+    'subheadline', 'Pequenas escolhas diárias, grandes resultados para sempre.',
+    'tagline', 'Disciplina hoje, liberdade amanhã!',
+    'hero_message', 'O melhor mês do ano começa agora.',
+    'short_description', 'Um desafio de transformação pessoal baseado em disciplina, saúde, treino, alimentação, sono, desenvolvimento pessoal, autocuidado, mentalidade e espiritualidade.',
+    'cover_image_url', 'https://dvcgicrfwzpydugfgkfi.supabase.co/storage/v1/object/public/challenge-covers/challenges/a3080000-0000-4000-8000-000000000001/cover.webp',
     'cta_label', 'Vem comigo!',
-    'cta_subtext', 'O melhor mes do ano comeca agora.',
-    -- chaves ja existentes desde a primeira versao (mantidas por
-    -- compatibilidade; nao lidas pelo codigo novo, apenas preservadas)
-    'scope', 'public',
-    'visibility', 'public',
-    'category', 'transformacao-pessoal',
-    'difficulty', 'intermediaria',
-    'audience', 'adultos',
-    'campaign', 'agosto_2026',
-    'visual_style', 'premium_dark',
-    'mood', 'intense',
-    'accent', 'orange',
-    'timezone', 'America/Sao_Paulo',
-    'closing_message', 'Voce nao terminou apenas um desafio. Voce provou que consegue sustentar novas escolhas.'
+    'cta_supporting_text', 'O melhor mês do ano começa agora.'
   ),
   jsonb_build_object(
-    'reflection_points', 10,
-    'finalize_day_points', 10,
-    'all_habits_bonus_points', 30,
-    'streak_minimum_completion', 70,
-    'journal_edit_minutes_after_finalize', 0,
-    -- chaves canonicas novas (regras de adesao - padrao obrigatorio)
-    'admission_type', 'open',
-    'allow_late_entry', true,
+    -- padrao oficial desta rodada (ver cabecalho). reflection_points,
+    -- finalize_day_points, all_habits_bonus_points e streak_minimum_completion
+    -- ficam de fora de proposito - continuam lidos pelo app e nao devem ser
+    -- sobrescritos por este script.
+    'enrollment_type', 'open',
+    'allow_join_after_start', true,
     'allow_abandonment', true,
-    'max_participants', null,
-    'completion_criteria', 'finalize_all_days'
+    'participant_limit', null,
+    'single_active_challenge', true
   )
 )
 on conflict (slug) do update set
@@ -191,9 +256,14 @@ on conflict (slug) do update set
   enrollment_start = excluded.enrollment_start,
   enrollment_end = excluded.enrollment_end,
   status = excluded.status,
-  cover_image_url = coalesce(public.challenges.cover_image_url, excluded.cover_image_url),
-  theme_config = excluded.theme_config,
-  rules_config = excluded.rules_config,
+  theme_config = (
+    coalesce(public.challenges.theme_config, '{}'::jsonb)
+    - 'short_title' - 'subtitle' - 'motivational_phrase' - 'cta_subtext'
+  ) || excluded.theme_config,
+  rules_config = (
+    coalesce(public.challenges.rules_config, '{}'::jsonb)
+    - 'admission_type' - 'allow_late_entry' - 'max_participants' - 'completion_criteria'
+  ) || excluded.rules_config,
   updated_at = now();
 
 -- DIAS (31) -------------------------------------------------------------------
@@ -640,6 +710,8 @@ begin
     raise exception 'Esperado 30 pontos somados nos habitos nao-diarios, encontrado %', v_sum;
   end if;
 
+  -- rules_config: chaves funcionais preexistentes preservadas (nao tocadas
+  -- pelo payload desta rodada) + novas chaves canonicas de adesao mescladas.
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id
@@ -647,24 +719,49 @@ begin
     and (rules_config ->> 'finalize_day_points')::int = 10
     and (rules_config ->> 'all_habits_bonus_points')::int = 30
     and (rules_config ->> 'streak_minimum_completion')::int = 70
-    and rules_config ->> 'admission_type' = 'open'
-    and (rules_config ->> 'allow_late_entry')::boolean = true
-    and (rules_config ->> 'allow_abandonment')::boolean = true;
+    and rules_config ->> 'enrollment_type' = 'open'
+    and (rules_config ->> 'allow_join_after_start')::boolean = true
+    and (rules_config ->> 'allow_abandonment')::boolean = true
+    and (rules_config ->> 'single_active_challenge')::boolean = true
+    and rules_config ? 'participant_limit'
+    and not (rules_config ? 'admission_type')
+    and not (rules_config ? 'allow_late_entry')
+    and not (rules_config ? 'max_participants')
+    and not (rules_config ? 'completion_criteria');
   if v_count <> 1 then
-    raise exception 'rules_config do desafio nao confere com o esperado.';
+    raise exception 'rules_config do desafio nao confere com o padrao oficial desta rodada (merge incorreto).';
+  end if;
+
+  -- theme_config: novas chaves canonicas mescladas; chaves antigas
+  -- substituidas por elas devem ter sido removidas pelo merge.
+  select count(*) into v_count
+  from public.challenges
+  where id = target_challenge_id
+    and theme_config ? 'headline'
+    and theme_config ? 'subheadline'
+    and theme_config ? 'tagline'
+    and theme_config ? 'hero_message'
+    and theme_config ? 'short_description'
+    and theme_config ? 'cover_image_url'
+    and theme_config ? 'cta_label'
+    and theme_config ? 'cta_supporting_text'
+    and theme_config ->> 'headline' = 'Desafio para se tornar irreconhecível em agosto'
+    and theme_config ->> 'cover_image_url' like 'https://%/storage/v1/object/public/challenge-covers/%'
+    and not (theme_config ? 'short_title')
+    and not (theme_config ? 'subtitle')
+    and not (theme_config ? 'motivational_phrase')
+    and not (theme_config ? 'cta_subtext');
+  if v_count <> 1 then
+    raise exception 'theme_config do desafio nao confere com o padrao oficial desta rodada (merge incorreto).';
   end if;
 
   select count(*) into v_count
   from public.challenges
   where id = target_challenge_id
-    and theme_config ? 'short_title'
-    and theme_config ? 'subtitle'
-    and theme_config ? 'short_description'
-    and theme_config ? 'motivational_phrase'
-    and theme_config ? 'cta_label'
-    and theme_config ->> 'short_title' = 'Irreconhecivel em Agosto';
+    and name = 'Desafio de Agosto - Irreconhecível'
+    and description like 'Agosto será o mês da disciplina.%';
   if v_count <> 1 then
-    raise exception 'theme_config do desafio nao confere com o padrao canonico esperado.';
+    raise exception 'name/description (colunas relacionais) nao conferem com o esperado.';
   end if;
 
   select count(*) into v_count
@@ -734,8 +831,9 @@ select
   'august_irreconhecivel_ready' as result,
   c.id,
   c.slug,
+  c.name,
   c.status,
-  c.cover_image_url,
+  c.theme_config ->> 'cover_image_url' as cover_image_url,
   c.duration_days,
   c.start_date,
   c.end_date,
@@ -747,8 +845,15 @@ where c.slug = 'desafio-agosto-irreconhecivel';
 -- Consultas adicionais para operadores (somente leitura):
 -- select id, title, frequency_type, is_required, points from public.habits where challenge_id = 'a3080000-0000-4000-8000-000000000001' order by sort_order;
 --
--- Atualizar a capa depois de subir o arquivo ao bucket challenge-covers:
--- update public.challenges set cover_image_url = 'https://<project>.supabase.co/storage/v1/object/public/challenge-covers/challenges/a3080000-0000-4000-8000-000000000001/cover.webp', updated_at = now()
+-- Trocar a capa no futuro (faz upload de um novo arquivo ao bucket e depois
+-- atualiza a URL via merge, sem sobrescrever outras chaves de theme_config):
+-- npx supabase storage cp --experimental --linked <arquivo>.webp ss:///challenge-covers/challenges/a3080000-0000-4000-8000-000000000001/cover.webp
+-- update public.challenges
+-- set theme_config = theme_config || jsonb_build_object(
+--   'cover_image_url',
+--   'https://<project>.supabase.co/storage/v1/object/public/challenge-covers/challenges/a3080000-0000-4000-8000-000000000001/cover.webp'
+-- ),
+-- updated_at = now()
 -- where id = 'a3080000-0000-4000-8000-000000000001';
 --
 -- Cleanup nao destrutivo (arquivar sem apagar):

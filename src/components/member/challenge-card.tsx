@@ -43,8 +43,11 @@ export function ChallengeCard({
   const cta = getChallengeCta(displayStatus, hasActiveEnrollmentElsewhere);
   const detailHref = `/app/desafios/${challenge.slug}`;
   const theme = parseChallengeThemeConfig(challenge.theme_config);
-  const cardTitle = theme.short_title ?? challenge.name;
+  // Title stays on the relational `name` column (source of truth); theme_config
+  // only supplies the shorter marketing description used on cards.
+  const cardTitle = challenge.name;
   const cardDescription = theme.short_description ?? challenge.description;
+  const coverImageUrl = theme.cover_image_url;
 
   return (
     <article className="flex flex-col overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-white/[0.03] shadow-[var(--shadow-soft)] transition-[border-color,transform] duration-[var(--motion-base)] hover:-translate-y-0.5 hover:border-white/16">
@@ -53,14 +56,22 @@ export function ChallengeCard({
         className="relative flex aspect-[16/9] w-full items-end overflow-hidden p-5 focus-visible:outline-action-soft"
         href={detailHref}
       >
-        {challenge.cover_image_url ? (
-          <Image
-            alt=""
-            className="absolute inset-0 -z-10 object-cover"
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            src={challenge.cover_image_url}
-          />
+        {coverImageUrl ? (
+          // object-contain (not object-cover): covers may be posters with
+          // baked-in text (title, habit list, CTA) - cropping to fill would
+          // cut important content. A portrait cover pillarboxes inside this
+          // 16:9 card rather than losing information; the black backdrop
+          // blends with the poster's own dark background.
+          <>
+            <div aria-hidden="true" className="absolute inset-0 -z-20 bg-black" />
+            <Image
+              alt=""
+              className="absolute inset-0 -z-10 object-contain"
+              fill
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              src={coverImageUrl}
+            />
+          </>
         ) : (
           <div
             aria-hidden="true"
