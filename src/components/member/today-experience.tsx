@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -62,25 +61,16 @@ function getMissionValue(value: unknown) {
   return "";
 }
 
-function getCompletionTone(progress: number) {
+function getCompletionEyebrow(progress: number) {
   if (progress >= 100) {
-    return {
-      eyebrow: "Dia completo",
-      phrase: "Constância registrada. Amanhã começa mais leve.",
-    };
+    return "Dia completo";
   }
 
   if (progress > 0) {
-    return {
-      eyebrow: "Dia em movimento",
-      phrase: "Não precisa ser perfeito. Precisa continuar real.",
-    };
+    return "Dia em movimento";
   }
 
-  return {
-    eyebrow: "Dia aberto",
-    phrase: "Um gesto honesto já muda o ritmo do dia.",
-  };
+  return "Dia aberto";
 }
 
 function getMissionIconKey(
@@ -132,7 +122,7 @@ function getMissionIconKey(
 
 function MissionGlyph({ mission }: { mission: TodayMission }) {
   const iconKey = getMissionIconKey(mission);
-  const props = { "aria-hidden": true, size: 20 };
+  const props = { "aria-hidden": true, size: 16 };
 
   if (iconKey === "droplets") {
     return <Droplets {...props} />;
@@ -162,22 +152,14 @@ function MissionGlyph({ mission }: { mission: TodayMission }) {
 }
 
 const missionStateClassName: Record<TodayMissionState, string> = {
-  completed: "border-success/30 bg-success/12 text-success",
+  completed: "border-action/38 bg-action/16 text-action-soft",
   in_progress: "border-action/32 bg-action/12 text-action-soft",
   not_applicable: "border-white/10 bg-white/[0.05] text-muted",
   pending: "border-white/[0.10] bg-white/[0.045] text-muted",
   skipped: "border-warning/28 bg-warning/10 text-warning",
 };
 
-const missionRailClassName: Record<TodayMissionState, string> = {
-  completed: "bg-success",
-  in_progress: "bg-action-soft",
-  not_applicable: "bg-white/20",
-  pending: "bg-white/14",
-  skipped: "bg-warning",
-};
-
-function TodayRhythmSignature({
+function TodayProgressBar({
   currentDay,
   durationDays,
   progress,
@@ -188,58 +170,35 @@ function TodayRhythmSignature({
 }) {
   const safeProgress = clampPercent(progress);
   const rhythmIndex = Math.max(1, Math.min(durationDays, currentDay));
-  const slats = Array.from({ length: 9 }, (_, index) => index);
 
   return (
-    <div className="relative mx-auto w-full max-w-sm pt-4">
-      <div
-        aria-label="Progresso do dia"
-        aria-valuemax={100}
-        aria-valuemin={0}
-        aria-valuenow={safeProgress}
-        className="relative mx-auto grid size-64 place-items-center rounded-full"
-        role="progressbar"
-        style={
-          {
-            "--today-progress": `${safeProgress * 3.6}deg`,
-          } as CSSProperties
-        }
-      >
-        <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_210deg,var(--p30-orange)_0deg,var(--p30-orange-soft)_var(--today-progress),rgba(255,255,255,0.08)_var(--today-progress),rgba(255,255,255,0.08)_360deg)] p-[1px]">
-          <div className="size-full rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.08),rgba(5,5,5,0.92)_58%)]" />
-        </div>
-        <div className="relative z-10 text-center">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-action-soft">
-            Hoje
-          </p>
-          <p className="mt-3 font-display text-7xl leading-none text-foreground">
-            {safeProgress}
-          </p>
-          <p className="mt-1 font-mono text-xs text-muted-2">%</p>
-        </div>
-      </div>
-
-      <div className="mx-auto mt-6 flex max-w-xs items-end justify-center gap-2">
-        {slats.map((item) => {
-          const distance = Math.abs(item - 4);
-          const active = item <= 4;
-
-          return (
-            <span
-              aria-hidden="true"
-              className={cn(
-                "w-1.5 rounded-[var(--radius-pill)] transition-transform duration-[var(--motion-base)]",
-                active ? "bg-action-soft" : "bg-white/12",
-                distance === 0 ? "h-12" : distance === 1 ? "h-9" : "h-6",
-              )}
-              key={item}
-            />
-          );
-        })}
-      </div>
-      <p className="mt-4 text-center font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-        Dia {rhythmIndex} de {durationDays}
+    <div className="flex items-center gap-3">
+      <p className="font-display text-2xl leading-none text-foreground">
+        {safeProgress}
+        <span className="text-xs font-normal text-muted-2">%</span>
       </p>
+      <div className="min-w-0 flex-1">
+        <div
+          aria-label="Progresso do dia"
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={safeProgress}
+          className="h-2 w-full overflow-visible rounded-full bg-white/10"
+          role="progressbar"
+        >
+          <div
+            className="relative h-full rounded-full bg-[linear-gradient(90deg,var(--p30-orange),var(--p30-amber))] transition-[width] duration-[var(--motion-slow)] ease-[var(--ease-premium)]"
+            style={{ width: `${safeProgress}%` }}
+          >
+            {safeProgress > 0 ? (
+              <span className="absolute right-0 top-1/2 size-2.5 -translate-y-1/2 translate-x-1/3 rounded-full bg-[var(--p30-amber-soft)] shadow-[0_0_9px_rgba(255,203,115,0.75)] transition-[right] duration-[var(--motion-slow)] ease-[var(--ease-premium)]" />
+            ) : null}
+          </div>
+        </div>
+        <p className="mt-1.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">
+          Dia {rhythmIndex} de {durationDays}
+        </p>
+      </div>
     </div>
   );
 }
@@ -262,154 +221,116 @@ function MissionRow({
     <li>
       <div
         className={cn(
-          "group relative overflow-hidden rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-4 transition-[background,border-color,transform] duration-[var(--motion-base)] ease-[var(--ease-premium)] hover:-translate-y-0.5 hover:border-white/16 hover:bg-white/[0.055]",
-          completed && "border-success/24 bg-success/[0.055]",
+          "rounded-lg border border-white/[0.08] bg-white/[0.035] p-2.5 transition-[background,border-color] duration-[var(--motion-base)] ease-[var(--ease-premium)]",
+          completed && "border-action/28 bg-action/[0.05]",
         )}
       >
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-2">
           <span
             className={cn(
-              "flex size-12 shrink-0 items-center justify-center rounded-full border",
+              "flex size-8 shrink-0 items-center justify-center rounded-full border",
               missionStateClassName[mission.state],
             )}
           >
             <MissionGlyph mission={mission} />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold leading-6 text-foreground">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h3 className="text-sm font-semibold leading-5 text-foreground">
                 {mission.title}
               </h3>
-              {mission.required ? (
-                <span className="rounded-full border border-white/[0.08] px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-2">
-                  Essencial
-                </span>
-              ) : (
-                <span className="rounded-full border border-white/[0.08] px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-2">
-                  Opcional
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              {mission.description ?? mission.targetLabel}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-foreground">
-                {mission.targetLabel}
+              <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5 font-mono text-[0.56rem] uppercase tracking-[0.1em] text-muted-2">
+                {mission.required ? "Essencial" : "Opcional"}
               </span>
+            </div>
+            <p className="text-xs leading-4 text-muted-2">
               <span
                 className={cn(
-                  "rounded-full border px-3 py-1 text-xs",
-                  missionStateClassName[mission.state],
+                  "font-semibold",
+                  mission.state === "completed"
+                    ? "text-action-soft"
+                    : mission.state === "not_applicable"
+                      ? "text-muted"
+                      : "text-action-soft",
                 )}
               >
                 {mission.statusLabel}
-              </span>
-            </div>
+              </span>{" "}
+              · {mission.targetLabel}
+            </p>
           </div>
         </div>
 
         <form
           action={updateHabitLogAction}
-          className="mt-5 rounded-[1.1rem] border border-white/[0.07] bg-black/20 p-3"
+          className="mt-2 rounded-md border border-white/[0.05] bg-black/15 p-1.5"
         >
           <input name="dailyLogId" type="hidden" value={dailyLogId ?? ""} />
           <input name="habitId" type="hidden" value={mission.habitId} />
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+          <div className={cn("grid gap-1.5", supportsValue ? "grid-cols-2" : "grid-cols-1")}>
             {supportsValue ? (
-              <label className="block">
-                <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">
-                  Valor
-                </span>
-                <input
-                  className="mt-2 min-h-11 w-full rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-3 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/70 focus:shadow-[0_0_0_4px_rgba(255,106,0,0.12)] disabled:opacity-45"
-                  defaultValue={getMissionValue(mission.valueJson)}
-                  disabled={disabled}
-                  inputMode="decimal"
-                  min="0"
-                  name="value"
-                  placeholder={
-                    mission.habitType === "duration" ? "Minutos" : "Quantidade"
-                  }
-                  step="0.01"
-                  type="number"
-                />
-              </label>
-            ) : null}
-            <label className={cn("block", !supportsValue && "sm:col-span-2")}>
-              <span className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">
-                Nota opcional
-              </span>
               <input
-                className="mt-2 min-h-11 w-full rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-3 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/70 focus:shadow-[0_0_0_4px_rgba(255,106,0,0.12)] disabled:opacity-45"
-                defaultValue={mission.note ?? ""}
+                aria-label="Valor"
+                className="min-h-8 w-full rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/60 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.1)] disabled:opacity-45"
+                defaultValue={getMissionValue(mission.valueJson)}
                 disabled={disabled}
-                name="note"
-                placeholder="Algo breve para lembrar depois"
-                type="text"
+                inputMode="decimal"
+                min="0"
+                name="value"
+                placeholder={mission.habitType === "duration" ? "Minutos" : "Quantidade"}
+                step="0.01"
+                type="number"
               />
-            </label>
+            ) : null}
+            <input
+              aria-label="Nota"
+              className="min-h-8 w-full rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/60 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.1)] disabled:opacity-45"
+              defaultValue={mission.note ?? ""}
+              disabled={disabled}
+              name="note"
+              placeholder="Nota opcional"
+              type="text"
+            />
           </div>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs leading-5 text-muted-2">
-              {disabled
-                ? "Este registro fica bloqueado depois da finalização."
-                : "Salvo no servidor e recalculado automaticamente."}
-            </p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <Button
+              disabled={disabled}
+              leadingIcon={<CheckCircle2 aria-hidden="true" size={12} />}
+              name="status"
+              size="xs"
+              type="submit"
+              value="completed"
+            >
+              {supportsValue ? "Registrar" : "Concluir"}
+            </Button>
+            {completed ||
+            mission.state === "in_progress" ||
+            mission.state === "not_applicable" ? (
               <Button
                 disabled={disabled}
-                leadingIcon={<CheckCircle2 aria-hidden="true" size={15} />}
                 name="status"
-                size="sm"
+                size="xs"
                 type="submit"
-                value="completed"
+                value="pending"
+                variant="secondary"
               >
-                {supportsValue ? "Registrar" : "Concluir"}
+                Desmarcar
               </Button>
-              {completed ||
-              mission.state === "in_progress" ||
-              mission.state === "not_applicable" ? (
-                <Button
-                  disabled={disabled}
-                  name="status"
-                  size="sm"
-                  type="submit"
-                  value="pending"
-                  variant="secondary"
-                >
-                  Desmarcar
-                </Button>
-              ) : null}
-              {!mission.required ? (
-                <Button
-                  disabled={disabled}
-                  name="status"
-                  size="sm"
-                  type="submit"
-                  value="not_applicable"
-                  variant="ghost"
-                >
-                  Não se aplica
-                </Button>
-              ) : null}
-            </div>
+            ) : null}
+            {!mission.required ? (
+              <Button
+                disabled={disabled}
+                name="status"
+                size="xs"
+                type="submit"
+                value="not_applicable"
+                variant="ghost"
+              >
+                Não se aplica
+              </Button>
+            ) : null}
           </div>
         </form>
-
-        <div className="mt-5 grid grid-cols-5 gap-1.5" aria-hidden="true">
-          {Array.from({ length: 5 }, (_, index) => (
-            <span
-              className={cn(
-                "h-1.5 rounded-full",
-                index === 0 || completed
-                  ? missionRailClassName[mission.state]
-                  : "bg-white/[0.08]",
-              )}
-              key={index}
-            />
-          ))}
-        </div>
       </div>
     </li>
   );
@@ -425,26 +346,19 @@ function MissionsSection({
   missions: TodayMission[];
 }) {
   return (
-    <section className="space-y-5" aria-labelledby="missions-title">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-action-soft">
-            Missões do dia
-          </p>
-          <h2
-            className="mt-2 text-2xl font-semibold tracking-[-0.01em] text-foreground"
-            id="missions-title"
-          >
-            Pequenas provas de continuidade.
-          </h2>
-        </div>
-        <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-muted sm:inline-flex">
-          {missions.length} ativas
-        </span>
+    <section className="space-y-2.5" aria-labelledby="missions-title">
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          className="font-mono text-xs uppercase tracking-[0.16em] text-action-soft"
+          id="missions-title"
+        >
+          Missões do dia
+        </h2>
+        <span className="text-xs text-muted">{missions.length} ativas</span>
       </div>
 
       {missions.length > 0 ? (
-        <ul className="space-y-3">
+        <ul className="grid gap-2 sm:grid-cols-2">
           {missions.map((mission) => (
             <MissionRow
               dailyLogId={dailyLogId}
@@ -455,13 +369,51 @@ function MissionsSection({
           ))}
         </ul>
       ) : (
-        <div className="rounded-[1.6rem] border border-dashed border-white/12 bg-white/[0.03] p-8">
-          <p className="max-w-xl text-sm leading-7 text-muted">
+        <div className="rounded-xl border border-dashed border-white/12 bg-white/[0.03] p-6">
+          <p className="max-w-xl text-sm leading-6 text-muted">
             Nenhuma missão foi publicada para este dia. Quando o ciclo tiver hábitos
             configurados, eles aparecerão aqui sem tarefas inventadas.
           </p>
         </div>
       )}
+    </section>
+  );
+}
+
+function FinalizeSection({ context }: { context: MemberContext }) {
+  const dailyLog = context.activeEnrollment?.todayLog ?? null;
+  const editable = Boolean(dailyLog && dailyLog.status !== "finalized");
+
+  return (
+    <section className="rounded-xl border border-action/16 bg-action/[0.045] p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-muted">
+          <span className="font-semibold text-foreground">
+            {context.todayProgress.completedHabits} de{" "}
+            {context.todayProgress.applicableHabits}
+          </span>{" "}
+          hábitos aplicáveis. A finalização calcula pontos, sequência e conquistas no
+          servidor e bloqueia edições depois.
+        </p>
+        <form action={finalizeDailyLogAction} className="flex flex-col gap-2 sm:w-64 sm:shrink-0">
+          <input name="dailyLogId" type="hidden" value={dailyLog?.id ?? ""} />
+          <Checkbox
+            description="Entendo que o dia será fechado com as regras atuais do ciclo."
+            disabled={!editable}
+            label="Confirmar finalização"
+            name="confirm"
+            required
+          />
+          <Button
+            disabled={!editable}
+            leadingIcon={<CheckCircle2 aria-hidden="true" size={14} />}
+            size="sm"
+            type="submit"
+          >
+            {dailyLog?.status === "finalized" ? "Dia finalizado" : "Finalizar dia"}
+          </Button>
+        </form>
+      </div>
     </section>
   );
 }
@@ -480,93 +432,90 @@ function ReflectionSection({ context }: { context: MemberContext }) {
   );
 
   return (
-    <section className="rounded-[1.8rem] border border-white/[0.08] bg-white/[0.035] p-5 backdrop-blur-xl sm:p-7">
-      <div className="flex items-start gap-4">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-action-soft">
-          <PenLine aria-hidden="true" size={19} />
+    <section className="rounded-xl border border-white/[0.08] bg-white/[0.035] p-4 sm:p-5">
+      <div className="flex items-center gap-2.5">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-action-soft">
+          <PenLine aria-hidden="true" size={15} />
         </span>
         <div>
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-muted-2">
-            Reflexão
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            O que vale guardar de hoje?
+          <h2 className="font-display text-base text-foreground">
+            Seu diário de hoje.
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-muted">
-            Um registro breve ajuda o dia a não passar despercebido.
+          <p className="text-xs leading-4 text-muted-2">
+            Sem filtro. Ninguém mais lê isso além de você.
           </p>
         </div>
       </div>
 
-      <form action={saveJournalEntryAction} className="mt-6 space-y-3">
+      <form action={saveJournalEntryAction} className="mt-4 space-y-2.5">
         <input name="dailyLogId" type="hidden" value={dailyLog?.id ?? ""} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Como foi meu dia
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              Como foi o meu dia?
             </span>
             <textarea
-              className="mt-3 min-h-28 w-full resize-none border-0 bg-transparent p-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-16 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.content ?? ""}
               disabled={!editable}
               name="content"
-              placeholder="Uma frase honesta sobre o dia."
+              placeholder="Escreva como se ninguém fosse ler."
             />
           </label>
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Gratidão
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              Pelo que sou grato hoje?
             </span>
             <textarea
-              className="mt-3 min-h-28 w-full resize-none border-0 bg-transparent p-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-16 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.gratitude ?? ""}
               disabled={!editable}
               name="gratitude"
               placeholder="Algo pequeno que merece ficar."
             />
           </label>
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Maior dificuldade
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              O que pesou hoje?
             </span>
             <textarea
-              className="mt-3 min-h-24 w-full resize-none border-0 bg-transparent p-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-14 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.difficulty ?? ""}
               disabled={!editable}
               name="difficulty"
               placeholder="O ponto que pediu mais presença."
             />
           </label>
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Vitória
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              O que eu venci hoje?
             </span>
             <textarea
-              className="mt-3 min-h-24 w-full resize-none border-0 bg-transparent p-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-14 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.victory ?? ""}
               disabled={!editable}
               name="victory"
-              placeholder="O que você fez apesar do dia real."
+              placeholder="Mesmo pequeno, conta."
             />
           </label>
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Foco para amanhã
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              Amanhã, eu quero...
             </span>
             <textarea
-              className="mt-3 min-h-24 w-full resize-none border-0 bg-transparent p-0 text-sm leading-7 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-14 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.tomorrow_focus ?? ""}
               disabled={!editable}
               name="tomorrowFocus"
               placeholder="Uma direção simples para o próximo dia."
             />
           </label>
-          <label className="rounded-[1.25rem] border border-white/[0.08] bg-black/25 p-4">
-            <span className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Humor
+          <label className="rounded-lg border border-white/[0.08] bg-black/25 p-3">
+            <span className="font-display text-sm italic text-foreground/85">
+              Como estou me sentindo?
             </span>
             <input
-              className="mt-3 min-h-11 w-full border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
+              className="mt-2 min-h-9 w-full border-0 bg-transparent p-0 text-sm text-foreground outline-none placeholder:text-muted-2 disabled:opacity-55"
               defaultValue={entry?.mood ?? ""}
               disabled={!editable}
               name="mood"
@@ -576,15 +525,16 @@ function ReflectionSection({ context }: { context: MemberContext }) {
           </label>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-muted-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-4 text-muted-2">
             {hasEntry
               ? "Reflexão salva no diário privado deste ciclo."
               : "Nada salvo ainda. O texto só sai do aparelho ao tocar em salvar."}
           </p>
           <Button
             disabled={!editable}
-            leadingIcon={<Save aria-hidden="true" size={15} />}
+            leadingIcon={<Save aria-hidden="true" size={14} />}
+            size="sm"
             type="submit"
             variant="secondary"
           >
@@ -592,47 +542,6 @@ function ReflectionSection({ context }: { context: MemberContext }) {
           </Button>
         </div>
       </form>
-
-      <details className="mt-6 rounded-[1.35rem] border border-action/18 bg-action/8 p-4 open:bg-action/10">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-foreground outline-none transition-colors hover:text-action-soft focus-visible:text-action-soft [&::-webkit-details-marker]:hidden">
-          Revisar e finalizar o dia
-        </summary>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.8fr] lg:items-end">
-          <div className="space-y-2 text-sm leading-6 text-muted">
-            <p>
-              A finalização calcula percentual, pontos, sequência e conquistas no
-              servidor. Depois disso, os hábitos ficam bloqueados para evitar dupla
-              pontuação.
-            </p>
-            <p>
-              Progresso atual:{" "}
-              <span className="font-semibold text-foreground">
-                {context.todayProgress.completedHabits} de{" "}
-                {context.todayProgress.applicableHabits}
-              </span>{" "}
-              hábitos aplicáveis.
-            </p>
-          </div>
-          <form action={finalizeDailyLogAction} className="space-y-3">
-            <input name="dailyLogId" type="hidden" value={dailyLog?.id ?? ""} />
-            <Checkbox
-              description="Entendo que o dia será fechado com as regras atuais do ciclo."
-              disabled={!editable}
-              label="Confirmar finalização"
-              name="confirm"
-              required
-            />
-            <Button
-              className="w-full"
-              disabled={!editable}
-              leadingIcon={<CheckCircle2 aria-hidden="true" size={15} />}
-              type="submit"
-            >
-              {dailyLog?.status === "finalized" ? "Dia finalizado" : "Finalizar dia"}
-            </Button>
-          </form>
-        </div>
-      </details>
     </section>
   );
 }
@@ -645,46 +554,15 @@ function SecondaryContext({ context }: { context: MemberContext }) {
   }
 
   return (
-    <section aria-label="Contexto da jornada" className="grid gap-3 sm:grid-cols-3">
-      {[
-        {
-          href: null,
-          icon: Flame,
-          label: "Sequência",
-          value: `${enrollment.streak_current} dias`,
-        },
-        {
-          href: null,
-          icon: Sparkles,
-          label: "Pontos",
-          value: `${enrollment.points_total}`,
-        },
-        { href: "/app/jornada", icon: Route, label: "Jornada", value: "Ver ciclo" },
-      ].map((item) => {
-        const TypedIcon = item.icon;
-        const content = (
-          <div className="flex min-h-24 items-center gap-4 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.03] p-4 transition-[background,border-color,transform] duration-[var(--motion-base)] hover:-translate-y-0.5 hover:border-white/14 hover:bg-white/[0.05]">
-            <span className="flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-action-soft">
-              <TypedIcon aria-hidden="true" size={18} />
-            </span>
-            <span>
-              <span className="block text-xs text-muted">{item.label}</span>
-              <span className="mt-1 block text-sm font-semibold text-foreground">
-                {item.value}
-              </span>
-            </span>
-          </div>
-        );
-
-        return item.href ? (
-          <Link href={item.href} key={item.label}>
-            {content}
-          </Link>
-        ) : (
-          <div key={item.label}>{content}</div>
-        );
-      })}
-    </section>
+    <div className="flex justify-center">
+      <Link
+        className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-semibold text-muted transition-[background,border-color,color] duration-[var(--motion-base)] hover:border-white/14 hover:bg-white/[0.05] hover:text-foreground"
+        href="/app/jornada"
+      >
+        <Route aria-hidden="true" size={14} />
+        Ver jornada completa
+      </Link>
+    </div>
   );
 }
 
@@ -855,78 +733,58 @@ export function TodayExperience({
   const durationDays =
     enrollment.challenge?.duration_days ?? Math.max(1, enrollment.current_day);
   const dailyProgress = clampPercent(context.todayProgress.completionPercent);
-  const completionTone = getCompletionTone(dailyProgress);
   const editable =
     context.journeyState === "day_available" &&
     Boolean(enrollment.todayLog) &&
     enrollment.todayLog?.status !== "finalized";
 
   return (
-    <div className="space-y-12 pb-6">
-      <div className="space-y-3">
+    <div className="space-y-5 pb-6">
+      <div className="space-y-2">
         <JourneyNotice notice={notice} />
         <JourneyStatePanel context={context} />
       </div>
-      <section className="relative isolate overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))] px-5 py-7 shadow-[var(--shadow-soft)] sm:px-8 sm:py-10 lg:min-h-[34rem] lg:px-10">
-        <div className="absolute inset-x-6 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.24),transparent)]" />
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-center">
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-action/24 bg-action/10 px-3 py-1 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-action-soft">
-                Dia {enrollment.current_day}
-              </span>
-              <span className="text-sm text-muted">{context.todayLabel}</span>
-            </div>
-            <p className="mt-10 text-sm font-semibold text-muted">
-              Olá, {firstName(displayName)}.
-            </p>
-            <h1 className="mt-4 max-w-4xl font-display text-6xl leading-[0.92] text-foreground sm:text-7xl lg:text-8xl">
-              Hoje eu continuo.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
-              {context.todayChallengeDay?.message ??
-                "A disciplina de hoje não precisa fazer barulho. Ela precisa existir."}
-            </p>
-            <p className="mt-6 max-w-xl text-sm leading-7 text-muted-2">
-              {completionTone.phrase}
-            </p>
-          </div>
 
-          <div className="lg:justify-self-end">
-            <TodayRhythmSignature
-              currentDay={enrollment.current_day}
-              durationDays={durationDays}
-              progress={dailyProgress}
-            />
+      <section className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
+        <div className="absolute inset-x-4 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)]" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-action/24 bg-action/10 px-2.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-action-soft">
+              Dia {enrollment.current_day}
+            </span>
+            <span className="text-xs text-muted">{context.todayLabel}</span>
           </div>
+          <span className="text-xs text-muted-2">{getCompletionEyebrow(dailyProgress)}</span>
         </div>
 
-        <div className="mt-10 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Estado
-            </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {completionTone.eyebrow}
-            </p>
-          </div>
-          <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Sequência
-            </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {enrollment.streak_current} dias
-            </p>
-          </div>
-          <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-            <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-              Pontos
-            </p>
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {context.todayProgress.pointsEarned} de{" "}
-              {context.todayProgress.pointsPotential}
-            </p>
-          </div>
+        <h1 className="mt-2 text-xl font-semibold leading-tight text-foreground sm:text-2xl">
+          Olá, {firstName(displayName)}. Hoje eu continuo.
+        </h1>
+        <p className="mt-1 truncate text-sm text-muted">
+          {context.todayChallengeDay?.message ??
+            "A disciplina de hoje não precisa fazer barulho. Ela precisa existir."}
+        </p>
+
+        <div className="mt-3">
+          <TodayProgressBar
+            currentDay={enrollment.current_day}
+            durationDays={durationDays}
+            progress={dailyProgress}
+          />
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-muted-2">
+          <span>
+            {context.todayProgress.completedHabits}/{context.todayProgress.applicableHabits}{" "}
+            hábitos
+          </span>
+          <span>
+            {context.todayProgress.pointsEarned}/{context.todayProgress.pointsPotential} pts
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Flame aria-hidden="true" className="text-action-soft" size={12} />
+            {enrollment.streak_current}d sequência
+          </span>
         </div>
       </section>
 
@@ -935,6 +793,7 @@ export function TodayExperience({
         editable={editable}
         missions={context.todayMissions}
       />
+      <FinalizeSection context={context} />
       <ReflectionSection context={context} />
       <SecondaryContext context={context} />
     </div>

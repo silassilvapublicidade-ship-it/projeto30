@@ -32,19 +32,19 @@ export function StatusCard({
   return (
     <div
       className={cn(
-        "flex gap-3 rounded-[var(--radius-card)] border p-4 shadow-[var(--shadow-hairline)]",
+        "flex items-center gap-2 rounded-[var(--radius-control)] border px-3 py-2 shadow-[var(--shadow-hairline)]",
         statusTone[tone].className,
         className,
       )}
       role={tone === "error" ? "alert" : "status"}
       {...props}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-current/10">
-        <Icon aria-hidden="true" size={16} />
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-current/10">
+        <Icon aria-hidden="true" size={12} />
       </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-foreground">{title}</span>
-        <span className="mt-1 block text-xs leading-5 text-muted">{description}</span>
+      <span className="min-w-0 leading-4">
+        <span className="text-xs font-semibold text-foreground">{title}</span>
+        <span className="text-xs text-muted"> — {description}</span>
       </span>
     </div>
   );

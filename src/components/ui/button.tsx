@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 type ButtonBaseProps = {
   variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   loading?: boolean;
   leadingIcon?: ReactNode;
   trailingIcon?: ReactNode;
@@ -35,6 +35,7 @@ const variants = {
 };
 
 const sizes = {
+  xs: "min-h-7 gap-1.5 px-2.5 text-[0.7rem]",
   sm: "min-h-9 gap-2 px-3 text-xs",
   md: "min-h-11 gap-2.5 px-4 text-sm",
   lg: "min-h-13 gap-3 px-5 text-sm",
