@@ -120,43 +120,52 @@ describe("getChallengeDisplayStatus", () => {
 
 describe("getChallengeCta", () => {
   it("offers to continue when already joined", () => {
-    expect(getChallengeCta("joined", false)).toEqual({
+    expect(getChallengeCta("joined")).toEqual({
       disabled: false,
       kind: "continue",
       label: "Continuar desafio",
     });
   });
 
-  it("blocks joining an available challenge when another one is active elsewhere", () => {
-    const cta = getChallengeCta("available", true);
-    expect(cta.kind).toBe("blocked");
-    expect(cta.disabled).toBe(true);
-    expect(cta.label).toBe("Você já está participando de outro desafio");
-  });
-
-  it("allows joining an available challenge when nothing else is active", () => {
-    expect(getChallengeCta("available", false)).toEqual({
+  it("allows joining an available challenge - simultaneous enrollments elsewhere never block it", () => {
+    expect(getChallengeCta("available")).toEqual({
       disabled: false,
       kind: "join",
       label: "Participar",
     });
   });
 
-  it("never offers to join non-available, non-joined statuses even without a conflicting enrollment", () => {
+  it("never offers to join non-available, non-joined statuses", () => {
     const nonJoinable = ["completed", "abandoned", "coming_soon", "ended", "unavailable"] as const;
 
     for (const status of nonJoinable) {
-      const cta = getChallengeCta(status, false);
+      const cta = getChallengeCta(status);
       expect(cta.kind).not.toBe("join");
     }
   });
 
   it("marks a completed challenge as informational and disabled", () => {
-    expect(getChallengeCta("completed", false)).toEqual({
+    expect(getChallengeCta("completed")).toEqual({
       disabled: true,
       kind: "info",
       label: "Desafio concluído",
     });
+  });
+
+  it("has no 'blocked' kind anymore - cross-challenge blocking was removed", () => {
+    const statuses = [
+      "abandoned",
+      "available",
+      "coming_soon",
+      "completed",
+      "ended",
+      "joined",
+      "unavailable",
+    ] as const;
+
+    for (const status of statuses) {
+      expect(getChallengeCta(status).kind).not.toBe("blocked");
+    }
   });
 });
 

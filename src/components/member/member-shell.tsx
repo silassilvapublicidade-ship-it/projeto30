@@ -22,9 +22,20 @@ export function MemberShell({
 }) {
   const displayName =
     context.profile.display_name || context.profile.name || context.profile.email;
-  const cycleLabel = context.activeEnrollment?.challenge
-    ? `Dia ${context.activeEnrollment.current_day}`
-    : "Sem ciclo ativo";
+  const enrollmentCount = context.enrollments.length;
+  const firstEnrollment = context.enrollments[0]?.enrollment ?? null;
+  const cycleLabel =
+    enrollmentCount === 0
+      ? "Sem ciclo ativo"
+      : enrollmentCount === 1
+        ? `Dia ${firstEnrollment?.current_day}`
+        : `${enrollmentCount} desafios ativos`;
+  const cycleSubLabel =
+    enrollmentCount === 0
+      ? "Entre em um ciclo para começar com calma."
+      : enrollmentCount === 1
+        ? (firstEnrollment?.challenge?.name ?? "Ciclo ativo")
+        : "Veja cada um na tela Hoje.";
   const showAdminAccess = isAdminRole(context.profile.role);
 
   return (
@@ -53,10 +64,7 @@ export function MemberShell({
                   Ciclo
                 </p>
                 <p className="mt-2 text-sm font-semibold text-foreground">{cycleLabel}</p>
-                <p className="mt-1 text-xs leading-5 text-muted">
-                  {context.activeEnrollment?.challenge?.name ??
-                    "Entre em um ciclo para começar com calma."}
-                </p>
+                <p className="mt-1 text-xs leading-5 text-muted">{cycleSubLabel}</p>
               </div>
 
               <Link

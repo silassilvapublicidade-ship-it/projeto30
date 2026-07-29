@@ -76,38 +76,54 @@ type HabitForMission = Pick<
   | "validation_config"
 >;
 
-export type MemberContext = {
-  activeEnrollment: ActiveEnrollment | null;
-  availableChallenge: Tables<"challenges"> | null;
-  journeyError: string | null;
-  journeyState:
-    | "cycle_ended"
-    | "cycle_not_started"
-    | "day_available"
-    | "day_finalized"
-    | "error"
-    | "no_active_cycle";
+export type JourneyState =
+  | "cycle_ended"
+  | "cycle_not_started"
+  | "day_available"
+  | "day_finalized"
+  | "error"
+  | "no_active_cycle";
+
+export type TodayProgress = {
+  applicableHabits: number;
+  completedHabits: number;
+  completionPercent: number;
+  pointsEarned: number;
+  pointsPotential: number;
+  state: "complete" | "finalized" | "in_progress" | "not_started" | "partial";
+};
+
+/**
+ * Everything Hoje needs to render ONE challenge's card - own day, own
+ * missions, own progress/points/streak, own journal entry. A member may
+ * hold several of these simultaneously (one per active/paused enrollment);
+ * nothing here is ever aggregated across enrollments, so progress/points/
+ * streak from challenge A never leak into challenge B's card.
+ */
+export type EnrollmentDayContext = {
+  enrollment: ActiveEnrollment;
   journalEntry: Pick<
     Tables<"journal_entries">,
     "content" | "difficulty" | "gratitude" | "mood" | "tomorrow_focus" | "victory"
   > | null;
-  preferences: Tables<"user_preferences"> | null;
-  profile: MemberProfile;
-  today: string;
+  journeyError: string | null;
+  journeyState: JourneyState;
   todayChallengeDay: Pick<
     Tables<"challenge_days">,
     "day_number" | "id" | "message" | "theme" | "title"
   > | null;
-  todayLabel: string;
   todayMissions: TodayMission[];
-  todayProgress: {
-    applicableHabits: number;
-    completedHabits: number;
-    completionPercent: number;
-    pointsEarned: number;
-    pointsPotential: number;
-    state: "complete" | "finalized" | "in_progress" | "not_started" | "partial";
-  };
+  todayProgress: TodayProgress;
+};
+
+export type MemberContext = {
+  availableChallenge: Tables<"challenges"> | null;
+  /** One entry per active/paused enrollment - a member can hold several at once. */
+  enrollments: EnrollmentDayContext[];
+  preferences: Tables<"user_preferences"> | null;
+  profile: MemberProfile;
+  today: string;
+  todayLabel: string;
 };
 
 function getLocalDate(timezone: string) {
@@ -414,21 +430,6 @@ async function getTodayMissionData({
   };
 }
 
-type GetMemberContextOptions = {
-  ensureTodayLog?: boolean;
-};
-
-function getEmptyProgress(): MemberContext["todayProgress"] {
-  return {
-    applicableHabits: 0,
-    completedHabits: 0,
-    completionPercent: 0,
-    pointsEarned: 0,
-    pointsPotential: 0,
-    state: "not_started",
-  };
-}
-
 async function ensureTodayLog({
   enrollmentId,
   supabase,
@@ -454,6 +455,112 @@ async function ensureTodayLog({
   };
 }
 
+async function buildEnrollmentDayContext({
+  ensureLog,
+  enrollment,
+  challenge,
+  supabase,
+  today,
+}: {
+  ensureLog: boolean;
+  enrollment: Tables<"challenge_enrollments">;
+  challenge: Tables<"challenges"> | null;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+  today: string;
+}): Promise<EnrollmentDayContext> {
+  const dayResult = challenge
+    ? calculateChallengeDay({
+        durationDays: challenge.duration_days,
+        personalStartDate: enrollment.personal_start_date,
+        targetDate: today,
+      })
+    : null;
+
+  let journeyState: JourneyState = "day_available";
+  let journeyError: string | null = null;
+  let ensuredDailyLogId: string | null = null;
+
+  if (!challenge) {
+    journeyState = "error";
+    journeyError = "O ciclo desta inscricao nao foi encontrado.";
+  } else if (dayResult?.status === "not_started") {
+    journeyState = "cycle_not_started";
+  } else if (dayResult?.status === "completed") {
+    journeyState = "cycle_ended";
+  } else if (ensureLog) {
+    const ensured = await ensureTodayLog({ enrollmentId: enrollment.id, supabase });
+    ensuredDailyLogId = ensured.id;
+    journeyError = ensured.error;
+    journeyState = ensured.error ? "error" : "day_available";
+  }
+
+  const { data: todayLog } = ensuredDailyLogId
+    ? await supabase.from("daily_logs").select("*").eq("id", ensuredDailyLogId).maybeSingle()
+    : await supabase
+        .from("daily_logs")
+        .select("*")
+        .eq("enrollment_id", enrollment.id)
+        .eq("log_date", today)
+        .maybeSingle();
+
+  if (todayLog?.status === "finalized") {
+    journeyState = "day_finalized";
+  }
+
+  const activeEnrollment: ActiveEnrollment = {
+    ...enrollment,
+    current_day: dayResult?.dayNumber || enrollment.current_day,
+    challenge,
+    todayLog,
+  };
+
+  const todayData = await getTodayMissionData({
+    challengeId: enrollment.challenge_id,
+    currentDay: activeEnrollment.current_day,
+    enrollmentId: enrollment.id,
+    localDate: today,
+    supabase,
+    todayLog,
+  });
+
+  const progress = calculateDailyProgress({
+    finalized: todayLog?.status === "finalized",
+    habits: todayData.todayMissions.map((mission) => ({
+      frequencyType: mission.frequencyType,
+      habitId: mission.habitId,
+      status: mission.state === "in_progress" ? "pending" : mission.state,
+      touched:
+        mission.state === "in_progress" ||
+        Boolean(mission.note) ||
+        (isJsonRecord(mission.valueJson) && Object.keys(mission.valueJson).length > 0),
+    })),
+  });
+  const rulesConfig = challenge?.rules_config ?? {};
+  const pointsPotential =
+    todayData.todayMissions.reduce((total, mission) => total + mission.points, 0) +
+    getRuleInt(rulesConfig, "reflection_points", 10) +
+    getRuleInt(rulesConfig, "finalize_day_points", 10) +
+    getRuleInt(rulesConfig, "all_habits_bonus_points", 30);
+
+  return {
+    enrollment: activeEnrollment,
+    journalEntry: todayData.journalEntry,
+    journeyError,
+    journeyState,
+    todayChallengeDay: todayData.todayChallengeDay,
+    todayMissions: todayData.todayMissions,
+    todayProgress: {
+      ...progress,
+      pointsEarned: todayLog?.points_earned ?? 0,
+      pointsPotential,
+    },
+  };
+}
+
+type GetMemberContextOptions = {
+  ensureTodayLog?: boolean;
+};
+
 export async function getMemberContext(
   options: GetMemberContextOptions = {},
 ): Promise<MemberContext> {
@@ -471,147 +578,53 @@ export async function getMemberContext(
   const today = getLocalDate(timezone);
   const todayLabel = getTodayLabel(timezone);
 
-  const [{ data: enrollment }, { data: availableChallenge }, { data: preferences }] =
+  const [{ data: enrollments }, { data: activeChallenges }, { data: preferences }] =
     await Promise.all([
       supabase
         .from("challenge_enrollments")
         .select("*")
         .in("status", ["active", "paused"])
-        .order("joined_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order("joined_at", { ascending: false }),
       supabase
         .from("challenges")
         .select("*")
         .eq("status", "active")
         .is("deleted_at", null)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle(),
+        .order("created_at", { ascending: true }),
       supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
     ]);
 
-  let activeEnrollment: ActiveEnrollment | null = null;
-  let journeyError: string | null = null;
-  let journeyState: MemberContext["journeyState"] = "no_active_cycle";
-  let journalEntry: MemberContext["journalEntry"] = null;
-  let todayChallengeDay: MemberContext["todayChallengeDay"] = null;
-  let todayMissions: TodayMission[] = [];
-  let todayProgress = getEmptyProgress();
+  const enrollmentRows = enrollments ?? [];
+  const enrolledChallengeIds = new Set(enrollmentRows.map((enrollment) => enrollment.challenge_id));
+  const availableChallenge =
+    (activeChallenges ?? []).find((challenge) => !enrolledChallengeIds.has(challenge.id)) ?? null;
 
-  if (enrollment) {
-    const { data: challenge } = await supabase
-      .from("challenges")
-      .select("*")
-      .eq("id", enrollment.challenge_id)
-      .maybeSingle();
+  const challengeIds = Array.from(new Set(enrollmentRows.map((enrollment) => enrollment.challenge_id)));
+  const { data: challengeRows } =
+    challengeIds.length > 0
+      ? await supabase.from("challenges").select("*").in("id", challengeIds)
+      : { data: [] as Tables<"challenges">[] };
+  const challengeById = new Map((challengeRows ?? []).map((challenge) => [challenge.id, challenge]));
 
-    const dayResult = challenge
-      ? calculateChallengeDay({
-          durationDays: challenge.duration_days,
-          personalStartDate: enrollment.personal_start_date,
-          targetDate: today,
-        })
-      : null;
-
-    let ensuredDailyLogId: string | null = null;
-
-    if (!challenge) {
-      journeyState = "error";
-      journeyError = "O ciclo desta inscricao nao foi encontrado.";
-    } else if (dayResult?.status === "not_started") {
-      journeyState = "cycle_not_started";
-    } else if (dayResult?.status === "completed") {
-      journeyState = "cycle_ended";
-    } else if (options.ensureTodayLog) {
-      const ensured = await ensureTodayLog({
-        enrollmentId: enrollment.id,
+  const enrollmentContexts = await Promise.all(
+    enrollmentRows.map((enrollment) =>
+      buildEnrollmentDayContext({
+        challenge: challengeById.get(enrollment.challenge_id) ?? null,
+        enrollment,
+        ensureLog: Boolean(options.ensureTodayLog),
         supabase,
-      });
-
-      ensuredDailyLogId = ensured.id;
-      journeyError = ensured.error;
-      journeyState = ensured.error ? "error" : "day_available";
-    } else {
-      journeyState = "day_available";
-    }
-
-    const { data: todayLog } = ensuredDailyLogId
-      ? await supabase
-          .from("daily_logs")
-          .select("*")
-          .eq("id", ensuredDailyLogId)
-          .maybeSingle()
-      : await supabase
-          .from("daily_logs")
-          .select("*")
-          .eq("enrollment_id", enrollment.id)
-          .eq("log_date", today)
-          .maybeSingle();
-
-    if (todayLog?.status === "finalized") {
-      journeyState = "day_finalized";
-    }
-
-    activeEnrollment = {
-      ...enrollment,
-      current_day: dayResult?.dayNumber || enrollment.current_day,
-      challenge,
-      todayLog,
-    };
-
-    const todayData = await getTodayMissionData({
-      challengeId: enrollment.challenge_id,
-      currentDay: activeEnrollment.current_day,
-      enrollmentId: enrollment.id,
-      localDate: today,
-      supabase,
-      todayLog,
-    });
-
-    journalEntry = todayData.journalEntry;
-    todayChallengeDay = todayData.todayChallengeDay;
-    todayMissions = todayData.todayMissions;
-
-    const progress = calculateDailyProgress({
-      finalized: todayLog?.status === "finalized",
-      habits: todayMissions.map((mission) => ({
-        frequencyType: mission.frequencyType,
-        habitId: mission.habitId,
-        status: mission.state === "in_progress" ? "pending" : mission.state,
-        touched:
-          mission.state === "in_progress" ||
-          Boolean(mission.note) ||
-          (isJsonRecord(mission.valueJson) && Object.keys(mission.valueJson).length > 0),
-      })),
-    });
-    const rulesConfig = challenge?.rules_config ?? {};
-    const pointsPotential =
-      todayMissions.reduce((total, mission) => total + mission.points, 0) +
-      getRuleInt(rulesConfig, "reflection_points", 10) +
-      getRuleInt(rulesConfig, "finalize_day_points", 10) +
-      getRuleInt(rulesConfig, "all_habits_bonus_points", 30);
-
-    todayProgress = {
-      ...progress,
-      pointsEarned: todayLog?.points_earned ?? 0,
-      pointsPotential,
-    };
-  }
+        today,
+      }),
+    ),
+  );
 
   return {
-    activeEnrollment,
     availableChallenge,
-    journeyError,
-    journeyState,
-    journalEntry,
+    enrollments: enrollmentContexts,
     preferences,
     profile,
     today,
-    todayChallengeDay,
     todayLabel,
-    todayMissions,
-    todayProgress,
   };
 }
 

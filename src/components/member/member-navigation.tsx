@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
   Flag,
   Home,
+  Lightbulb,
   Medal,
   NotebookPen,
   Route,
@@ -19,7 +19,7 @@ const mainItems = [
   { href: "/app/hoje", icon: Home, label: "Hoje" },
   { href: "/app/desafios", icon: Flag, label: "Desafios" },
   { href: "/app/jornada", icon: Route, label: "Jornada" },
-  { href: "/app/leitura", icon: BookOpen, label: "Leitura" },
+  { href: "/app/dicas", icon: Lightbulb, label: "Dicas" },
   { href: "/app/conquistas", icon: Medal, label: "Conquistas", mobileLabel: "Marcos" },
   { href: "/app/perfil", icon: UserRound, label: "Perfil" },
 ];

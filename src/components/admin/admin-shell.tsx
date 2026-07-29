@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LogOut } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 
 import {
   AdminDesktopNavigation,
@@ -56,6 +56,16 @@ export function AdminShell({
                 </p>
               </div>
 
+              <Button
+                as="a"
+                className="w-full"
+                href="/app/hoje"
+                leadingIcon={<ArrowLeft aria-hidden="true" size={15} />}
+                variant="secondary"
+              >
+                Voltar para o aplicativo
+              </Button>
+
               <form action={signOutAndRedirectAction}>
                 <Button
                   className="w-full"
@@ -81,17 +91,28 @@ export function AdminShell({
                   {admin.email}
                 </p>
               </div>
-              <form action={signOutAndRedirectAction}>
+              <div className="flex shrink-0 items-center gap-2">
                 <Button
-                  aria-label="Sair"
-                  leadingIcon={<LogOut aria-hidden="true" size={15} />}
+                  aria-label="Voltar para o aplicativo"
+                  as="a"
+                  href="/app/hoje"
                   size="sm"
-                  type="submit"
                   variant="secondary"
                 >
-                  Sair
+                  <ArrowLeft aria-hidden="true" size={15} />
                 </Button>
-              </form>
+                <form action={signOutAndRedirectAction}>
+                  <Button
+                    aria-label="Sair"
+                    leadingIcon={<LogOut aria-hidden="true" size={15} />}
+                    size="sm"
+                    type="submit"
+                    variant="secondary"
+                  >
+                    Sair
+                  </Button>
+                </form>
+              </div>
             </div>
           </header>
 

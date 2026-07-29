@@ -129,3 +129,46 @@ export function getUnlockedAchievementSlugs(
       .map(([slug]) => slug),
   };
 }
+
+export type AchievementProgress = {
+  current: number;
+  target: number;
+};
+
+/**
+ * Numeric progress toward a still-locked achievement, for slugs with a
+ * countable threshold. Returns null for slugs whose criterion is a boolean
+ * condition (e.g. "retorno-forte") rather than a running count - there is
+ * no honest fraction to show for those.
+ */
+export function getAchievementProgress(
+  slug: string,
+  input: AchievementCheckInput,
+): AchievementProgress | null {
+  switch (slug) {
+    case "primeiro-habito":
+      return { current: Math.min(input.completedHabitsLifetime, 1), target: 1 };
+    case "primeiro-dia":
+      return { current: Math.min(input.finalizedDays, 1), target: 1 };
+    case "tres-dias-seguidos":
+      return { current: Math.min(input.streakCurrent, 3), target: 3 };
+    case "primeira-semana":
+      return { current: Math.min(input.finalizedDays, 7), target: 7 };
+    case "sete-leituras":
+      return { current: Math.min(input.readingCompletions, 7), target: 7 };
+    case "sete-atividades-fisicas":
+      return { current: Math.min(input.physicalActivityCompletions, 7), target: 7 };
+    case "sete-reflexoes":
+      return { current: Math.min(input.reflectionDays, 7), target: 7 };
+    case "metade-do-caminho": {
+      const target = getHalfwayTarget(input.durationDays);
+      return { current: Math.min(input.finalizedDays, target), target };
+    }
+    case "missao-concluida":
+      return { current: Math.min(input.finalizedDays, input.durationDays), target: input.durationDays };
+    case "retorno-forte":
+      return null;
+    default:
+      return null;
+  }
+}

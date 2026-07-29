@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, CalendarDays, ListChecks, Trophy } from "lucide-react";
+import { ArrowLeft, CalendarDays, Lightbulb, ListChecks, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
@@ -16,6 +16,7 @@ import {
   parseHabitGoalConfig,
 } from "@/features/member/challenge-catalog.core";
 import { getChallengeDetailBySlug } from "@/server/services/challenge-catalog.service";
+import { getTipsForChallenge } from "@/server/services/tips.service";
 
 type DesafioDetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -52,8 +53,8 @@ export default async function DesafioDetailPage({
     notFound();
   }
 
-  const { achievements, challenge, habits, hasActiveEnrollmentElsewhere, localDate, ownEnrollment } =
-    detail;
+  const { achievements, challenge, habits, localDate, ownEnrollment } = detail;
+  const challengeTips = await getTipsForChallenge(challenge.id);
 
   const displayStatus = getChallengeDisplayStatus({
     challengeStatus: challenge.status,
@@ -61,7 +62,7 @@ export default async function DesafioDetailPage({
     enrollmentStatus: ownEnrollment?.status ?? null,
     localDate,
   });
-  const cta = getChallengeCta(displayStatus, hasActiveEnrollmentElsewhere);
+  const cta = getChallengeCta(displayStatus);
   const theme = parseChallengeThemeConfig(challenge.theme_config);
   const joinLabel = cta.kind === "join" ? (theme.cta_label ?? cta.label) : cta.label;
   // headline is a presentational hero heading distinct from the relational
@@ -185,13 +186,9 @@ export default async function DesafioDetailPage({
             </Button>
           ) : (
             <StatusCard
-              description={
-                cta.kind === "blocked"
-                  ? "Finalize ou abandone o desafio atual antes de começar um novo."
-                  : "Este desafio não aceita novas inscrições no momento."
-              }
+              description="Este desafio não aceita novas inscrições no momento."
               title={cta.label}
-              tone={cta.kind === "blocked" ? "error" : "success"}
+              tone="success"
             />
           )}
         </div>
@@ -249,6 +246,33 @@ export default async function DesafioDetailPage({
                 </li>
               );
             })}
+          </ul>
+        </section>
+      ) : null}
+
+      {challengeTips.length > 0 ? (
+        <section aria-labelledby="challenge-tips" className="space-y-3">
+          <h2
+            className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
+            id="challenge-tips"
+          >
+            <Lightbulb aria-hidden="true" size={13} />
+            Dicas para este desafio
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {challengeTips.map((tip) => (
+              <li key={tip.id}>
+                <Link
+                  className="block rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 transition-colors hover:border-white/16"
+                  href={`/app/dicas/${tip.slug}`}
+                >
+                  <p className="text-sm font-semibold text-foreground">{tip.title}</p>
+                  {tip.excerpt ? (
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{tip.excerpt}</p>
+                  ) : null}
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
       ) : null}

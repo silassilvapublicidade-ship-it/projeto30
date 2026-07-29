@@ -27,11 +27,9 @@ const badgeTone: Record<ChallengeDisplayStatus, string> = {
 
 export function ChallengeCard({
   challenge,
-  hasActiveEnrollmentElsewhere,
   localDate,
 }: {
   challenge: CatalogChallenge;
-  hasActiveEnrollmentElsewhere: boolean;
   localDate: string;
 }) {
   const displayStatus = getChallengeDisplayStatus({
@@ -40,7 +38,7 @@ export function ChallengeCard({
     enrollmentStatus: challenge.enrollment?.status ?? null,
     localDate,
   });
-  const cta = getChallengeCta(displayStatus, hasActiveEnrollmentElsewhere);
+  const cta = getChallengeCta(displayStatus);
   const detailHref = `/app/desafios/${challenge.slug}`;
   const theme = parseChallengeThemeConfig(challenge.theme_config);
   // Title stays on the relational `name` column (source of truth); theme_config

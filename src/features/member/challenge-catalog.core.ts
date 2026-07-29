@@ -129,9 +129,8 @@ export type ChallengeDisplayStatus =
 
 /**
  * Pure badge/status resolver for a single challenge card. Only looks at the
- * viewer's own enrollment for THIS challenge (if any) - whether the viewer
- * has an active enrollment on a DIFFERENT challenge is a separate concern,
- * handled by getChallengeCta's hasActiveEnrollmentElsewhere flag.
+ * viewer's own enrollment for THIS challenge - a viewer may simultaneously
+ * be enrolled in other challenges too, which has no bearing on this one.
  */
 export function getChallengeDisplayStatus(params: {
   challengeStatus: ChallengeStatus;
@@ -170,20 +169,16 @@ export function getChallengeDisplayStatus(params: {
 
 export type ChallengeCta = {
   disabled: boolean;
-  kind: "blocked" | "continue" | "info" | "join";
+  kind: "continue" | "info" | "join";
   label: string;
 };
 
 /**
- * CTA resolver. `hasActiveEnrollmentElsewhere` reflects the product rule for
- * this phase: a viewer can only have one active/paused enrollment at a time,
- * so an otherwise "available" challenge becomes non-joinable (but still
- * viewable) while another one is active.
+ * CTA resolver. A viewer may hold active/paused enrollments in several
+ * challenges at once - the only thing that ever disables "Participar" is
+ * this specific challenge's own status/window, never another enrollment.
  */
-export function getChallengeCta(
-  displayStatus: ChallengeDisplayStatus,
-  hasActiveEnrollmentElsewhere: boolean,
-): ChallengeCta {
+export function getChallengeCta(displayStatus: ChallengeDisplayStatus): ChallengeCta {
   if (displayStatus === "joined") {
     return { disabled: false, kind: "continue", label: "Continuar desafio" };
   }
@@ -206,14 +201,6 @@ export function getChallengeCta(
 
   if (displayStatus === "unavailable") {
     return { disabled: true, kind: "info", label: "Indisponível" };
-  }
-
-  if (hasActiveEnrollmentElsewhere) {
-    return {
-      disabled: true,
-      kind: "blocked",
-      label: "Você já está participando de outro desafio",
-    };
   }
 
   return { disabled: false, kind: "join", label: "Participar" };

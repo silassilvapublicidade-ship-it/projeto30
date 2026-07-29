@@ -26,8 +26,7 @@ function formatDate(value: string | null) {
 }
 
 export default async function DesafiosPage() {
-  const { catalog, currentEnrollment, hasActiveEnrollmentElsewhere, history, localDate } =
-    await getMemberChallengeCatalog();
+  const { activeEnrollments, catalog, history, localDate } = await getMemberChallengeCatalog();
 
   return (
     <div className="space-y-8">
@@ -39,44 +38,54 @@ export default async function DesafiosPage() {
           Desafios
         </h1>
         <p className="mt-4 text-base leading-7 text-muted">
-          Você participa de um desafio por vez. Escolha, continue ou revise o que já concluiu.
+          Você pode participar de vários desafios ao mesmo tempo. Escolha, continue ou revise o
+          que já concluiu.
         </p>
       </section>
 
-      {currentEnrollment?.challenge ? (
-        <section aria-labelledby="current-challenge" className="space-y-3">
+      {activeEnrollments.length > 0 ? (
+        <section aria-labelledby="current-challenges" className="space-y-3">
           <h2
             className="font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
-            id="current-challenge"
+            id="current-challenges"
           >
-            Meu desafio atual
+            {activeEnrollments.length > 1 ? "Meus desafios atuais" : "Meu desafio atual"}
           </h2>
-          <div className="rounded-[1.75rem] border border-action/24 bg-[linear-gradient(180deg,rgba(255,106,0,0.1),rgba(255,255,255,0.02))] p-5 shadow-[var(--shadow-soft)] sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-action-soft">
-                  Dia {currentEnrollment.current_day} de {currentEnrollment.challenge.duration_days}
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-foreground">
-                  {currentEnrollment.challenge.name}
-                </h3>
-              </div>
-              <Button as="a" href="/app/hoje">
-                Continuar desafio
-              </Button>
-            </div>
-            <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,var(--p30-orange),var(--p30-amber))]"
-                style={{
-                  width: `${Math.min(100, Math.max(0, currentEnrollment.completion_percent))}%`,
-                }}
-              />
-            </div>
-            <p className="mt-2 font-mono text-[0.68rem] text-muted-2">
-              {Math.round(currentEnrollment.completion_percent)}% concluído · sequência atual de{" "}
-              {currentEnrollment.streak_current} dias
-            </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {activeEnrollments.map((enrollment) =>
+              enrollment.challenge ? (
+                <div
+                  className="rounded-[1.75rem] border border-action/24 bg-[linear-gradient(180deg,rgba(255,106,0,0.1),rgba(255,255,255,0.02))] p-5 shadow-[var(--shadow-soft)] sm:p-6"
+                  key={enrollment.id}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-action-soft">
+                        Dia {enrollment.current_day} de {enrollment.challenge.duration_days}
+                      </p>
+                      <h3 className="mt-2 text-2xl font-semibold text-foreground">
+                        {enrollment.challenge.name}
+                      </h3>
+                    </div>
+                    <Button as="a" href="/app/hoje">
+                      Continuar desafio
+                    </Button>
+                  </div>
+                  <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                    <div
+                      className="h-full rounded-full bg-[linear-gradient(90deg,var(--p30-orange),var(--p30-amber))]"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, enrollment.completion_percent))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 font-mono text-[0.68rem] text-muted-2">
+                    {Math.round(enrollment.completion_percent)}% concluído · sequência atual de{" "}
+                    {enrollment.streak_current} dias
+                  </p>
+                </div>
+              ) : null,
+            )}
           </div>
         </section>
       ) : null}
@@ -139,12 +148,7 @@ export default async function DesafiosPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {catalog.map((challenge) => (
-              <ChallengeCard
-                challenge={challenge}
-                hasActiveEnrollmentElsewhere={hasActiveEnrollmentElsewhere}
-                key={challenge.id}
-                localDate={localDate}
-              />
+              <ChallengeCard challenge={challenge} key={challenge.id} localDate={localDate} />
             ))}
           </div>
         )}

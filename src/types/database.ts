@@ -42,6 +42,7 @@ export type Database = {
       achievements: {
         Row: {
           active: boolean
+          category: string | null
           challenge_id: string
           created_at: string
           description: string | null
@@ -50,13 +51,17 @@ export type Database = {
           image_url: string | null
           name: string
           points_bonus: number
+          rarity: string | null
           rule_config: Json
+          share_message: string | null
+          share_title: string | null
           slug: string
           sort_order: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          category?: string | null
           challenge_id: string
           created_at?: string
           description?: string | null
@@ -65,13 +70,17 @@ export type Database = {
           image_url?: string | null
           name: string
           points_bonus?: number
+          rarity?: string | null
           rule_config?: Json
+          share_message?: string | null
+          share_title?: string | null
           slug: string
           sort_order?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          category?: string | null
           challenge_id?: string
           created_at?: string
           description?: string | null
@@ -80,7 +89,10 @@ export type Database = {
           image_url?: string | null
           name?: string
           points_bonus?: number
+          rarity?: string | null
           rule_config?: Json
+          share_message?: string | null
+          share_title?: string | null
           slug?: string
           sort_order?: number
           updated_at?: string
@@ -395,8 +407,10 @@ export type Database = {
         Row: {
           author_id: string | null
           body: string | null
+          category: string | null
           challenge_id: string | null
           created_at: string
+          display_order: number
           excerpt: string | null
           id: string
           media_url: string | null
@@ -410,8 +424,10 @@ export type Database = {
         Insert: {
           author_id?: string | null
           body?: string | null
+          category?: string | null
           challenge_id?: string | null
           created_at?: string
+          display_order?: number
           excerpt?: string | null
           id?: string
           media_url?: string | null
@@ -425,8 +441,10 @@ export type Database = {
         Update: {
           author_id?: string | null
           body?: string | null
+          category?: string | null
           challenge_id?: string | null
           created_at?: string
+          display_order?: number
           excerpt?: string | null
           id?: string
           media_url?: string | null

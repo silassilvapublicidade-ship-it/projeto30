@@ -23,9 +23,8 @@ export type CatalogChallenge = Tables<"challenges"> & {
 };
 
 export type MemberChallengeCatalog = {
+  activeEnrollments: EnrollmentWithChallenge[];
   catalog: CatalogChallenge[];
-  currentEnrollment: EnrollmentWithChallenge | null;
-  hasActiveEnrollmentElsewhere: boolean;
   history: EnrollmentWithChallenge[];
   localDate: string;
 };
@@ -72,10 +71,9 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
   }
 
   const typedEnrollments = (enrollments ?? []) as EnrollmentWithChallenge[];
-  const currentEnrollment =
-    typedEnrollments.find(
-      (enrollment) => enrollment.status === "active" || enrollment.status === "paused",
-    ) ?? null;
+  const activeEnrollments = typedEnrollments.filter(
+    (enrollment) => enrollment.status === "active" || enrollment.status === "paused",
+  );
   const history = typedEnrollments.filter(
     (enrollment) =>
       enrollment.status === "completed" ||
@@ -83,8 +81,12 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
       enrollment.status === "restarted",
   );
 
+  // A user may hold at most one open (active/paused) enrollment PER
+  // challenge (enforced by challenge_enrollments_one_active_per_user_challenge),
+  // but may hold several simultaneously across different challenges - so
+  // this is keyed by challenge_id, not a single "current" enrollment.
   const enrollmentByChallengeId = new Map(
-    typedEnrollments.map((enrollment) => [enrollment.challenge_id, enrollment]),
+    activeEnrollments.map((enrollment) => [enrollment.challenge_id, enrollment]),
   );
 
   const catalog: CatalogChallenge[] = (challenges ?? []).map((challenge) => {
@@ -105,9 +107,8 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
   });
 
   return {
+    activeEnrollments,
     catalog,
-    currentEnrollment,
-    hasActiveEnrollmentElsewhere: currentEnrollment !== null,
     history,
     localDate,
   };
@@ -116,7 +117,6 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
 export type ChallengeDetail = {
   achievements: Array<Pick<Tables<"achievements">, "description" | "icon" | "id" | "name" | "points_bonus">>;
   challenge: Tables<"challenges">;
-  hasActiveEnrollmentElsewhere: boolean;
   habits: Array<
     Pick<
       Tables<"habits">,
@@ -152,46 +152,35 @@ export async function getChallengeDetailBySlug(slug: string): Promise<ChallengeD
 
   const localDate = await getLocalDateForUser(user.id, supabase);
 
-  const [{ data: habits }, { data: achievements }, { data: ownEnrollment }, { data: activeElsewhere }] =
-    await Promise.all([
-      supabase
-        .from("habits")
-        .select(
-          "id,title,description,category,habit_type,points,is_required,frequency_type,validation_config",
-        )
-        .eq("challenge_id", challenge.id)
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("achievements")
-        .select("id,name,description,icon,points_bonus")
-        .eq("challenge_id", challenge.id)
-        .eq("active", true)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("challenge_enrollments")
-        .select("*")
-        .eq("challenge_id", challenge.id)
-        .eq("user_id", user.id)
-        .order("joined_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from("challenge_enrollments")
-        .select("id,challenge_id")
-        .eq("user_id", user.id)
-        .in("status", ["active", "paused"])
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const [{ data: habits }, { data: achievements }, { data: ownEnrollment }] = await Promise.all([
+    supabase
+      .from("habits")
+      .select(
+        "id,title,description,category,habit_type,points,is_required,frequency_type,validation_config",
+      )
+      .eq("challenge_id", challenge.id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("achievements")
+      .select("id,name,description,icon,points_bonus")
+      .eq("challenge_id", challenge.id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("challenge_enrollments")
+      .select("*")
+      .eq("challenge_id", challenge.id)
+      .eq("user_id", user.id)
+      .order("joined_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   return {
     achievements: achievements ?? [],
     challenge,
     habits: habits ?? [],
-    hasActiveEnrollmentElsewhere: Boolean(
-      activeElsewhere && activeElsewhere.challenge_id !== challenge.id,
-    ),
     localDate,
     ownEnrollment: ownEnrollment ?? null,
   };

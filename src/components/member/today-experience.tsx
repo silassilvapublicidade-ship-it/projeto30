@@ -23,6 +23,7 @@ import {
 } from "@/features/member/journey.actions";
 import { cn } from "@/lib/utils";
 import type {
+  EnrollmentDayContext,
   MemberContext,
   TodayMission,
   TodayMissionState,
@@ -401,8 +402,8 @@ function MissionsSection({
   );
 }
 
-function FinalizeSection({ context }: { context: MemberContext }) {
-  const dailyLog = context.activeEnrollment?.todayLog ?? null;
+function FinalizeSection({ enrollmentContext }: { enrollmentContext: EnrollmentDayContext }) {
+  const dailyLog = enrollmentContext.enrollment.todayLog ?? null;
   const editable = Boolean(dailyLog && dailyLog.status !== "finalized");
 
   return (
@@ -410,8 +411,8 @@ function FinalizeSection({ context }: { context: MemberContext }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-muted">
           <span className="font-semibold text-foreground">
-            {context.todayProgress.completedHabits} de{" "}
-            {context.todayProgress.applicableHabits}
+            {enrollmentContext.todayProgress.completedHabits} de{" "}
+            {enrollmentContext.todayProgress.applicableHabits}
           </span>{" "}
           hábitos aplicáveis. A finalização calcula pontos, sequência e conquistas no
           servidor e bloqueia edições depois.
@@ -439,9 +440,9 @@ function FinalizeSection({ context }: { context: MemberContext }) {
   );
 }
 
-function ReflectionSection({ context }: { context: MemberContext }) {
-  const entry = context.journalEntry;
-  const dailyLog = context.activeEnrollment?.todayLog ?? null;
+function ReflectionSection({ enrollmentContext }: { enrollmentContext: EnrollmentDayContext }) {
+  const entry = enrollmentContext.journalEntry;
+  const dailyLog = enrollmentContext.enrollment.todayLog ?? null;
   const editable = Boolean(dailyLog && dailyLog.status !== "finalized");
   const hasEntry = Boolean(
     entry?.content ||
@@ -567,13 +568,7 @@ function ReflectionSection({ context }: { context: MemberContext }) {
   );
 }
 
-function SecondaryContext({ context }: { context: MemberContext }) {
-  const enrollment = context.activeEnrollment;
-
-  if (!enrollment) {
-    return null;
-  }
-
+function SecondaryContext() {
   return (
     <div className="flex justify-center">
       <Link
@@ -654,13 +649,13 @@ function NoCycleToday({ context }: { context: MemberContext }) {
   );
 }
 
-function JourneyStatePanel({ context }: { context: MemberContext }) {
-  if (!context.journeyError && context.journeyState === "day_available") {
+function JourneyStatePanel({ enrollmentContext }: { enrollmentContext: EnrollmentDayContext }) {
+  if (!enrollmentContext.journeyError && enrollmentContext.journeyState === "day_available") {
     return null;
   }
 
   const stateContent: Record<
-    MemberContext["journeyState"],
+    EnrollmentDayContext["journeyState"],
     { description: string; title: string; tone: "error" | "success" }
   > = {
     cycle_ended: {
@@ -689,7 +684,7 @@ function JourneyStatePanel({ context }: { context: MemberContext }) {
     error: {
       title: "Não foi possível abrir o dia",
       description:
-        context.journeyError ??
+        enrollmentContext.journeyError ??
         "A estrutura da jornada ainda precisa ser concluída no servidor.",
       tone: "error",
     },
@@ -699,7 +694,7 @@ function JourneyStatePanel({ context }: { context: MemberContext }) {
       tone: "success",
     },
   };
-  const content = stateContent[context.journeyState];
+  const content = stateContent[enrollmentContext.journeyState];
 
   return (
     <StatusCard
@@ -733,9 +728,8 @@ export function TodayExperience({
 }) {
   const displayName =
     context.profile.display_name || context.profile.name || context.profile.email;
-  const enrollment = context.activeEnrollment;
 
-  if (!enrollment) {
+  if (context.enrollments.length === 0) {
     return (
       <div className="space-y-5">
         <JourneyNotice notice={notice} />
@@ -744,39 +738,81 @@ export function TodayExperience({
     );
   }
 
+  return (
+    <div className="space-y-6 pb-6">
+      <div>
+        <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-action-soft">
+          {context.todayLabel}
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+          Olá, {firstName(displayName)}. Hoje eu continuo.
+        </h1>
+        {context.enrollments.length > 1 ? (
+          <p className="mt-1 text-sm text-muted">
+            Você está com {context.enrollments.length} desafios ativos agora. Cada um mantém seu
+            próprio progresso, pontos e sequência.
+          </p>
+        ) : null}
+      </div>
+
+      <JourneyNotice notice={notice} />
+
+      <div className="space-y-5">
+        {context.enrollments.map((enrollmentContext) => (
+          <EnrollmentSection
+            enrollmentContext={enrollmentContext}
+            key={enrollmentContext.enrollment.id}
+            todayLabel={context.todayLabel}
+          />
+        ))}
+      </div>
+
+      <SecondaryContext />
+    </div>
+  );
+}
+
+function EnrollmentSection({
+  enrollmentContext,
+  todayLabel,
+}: {
+  enrollmentContext: EnrollmentDayContext;
+  todayLabel: string;
+}) {
+  const { enrollment } = enrollmentContext;
   const dailyLogId = enrollment.todayLog?.id ?? null;
   const durationDays =
     enrollment.challenge?.duration_days ?? Math.max(1, enrollment.current_day);
-  const dailyProgress = clampPercent(context.todayProgress.completionPercent);
+  const dailyProgress = clampPercent(enrollmentContext.todayProgress.completionPercent);
   const editable =
-    context.journeyState === "day_available" &&
+    enrollmentContext.journeyState === "day_available" &&
     Boolean(enrollment.todayLog) &&
     enrollment.todayLog?.status !== "finalized";
 
   return (
-    <div className="space-y-5 pb-6">
-      <div className="space-y-2">
-        <JourneyNotice notice={notice} />
-        <JourneyStatePanel context={context} />
-      </div>
+    <section
+      aria-label={enrollment.challenge?.name ?? "Desafio"}
+      className="space-y-3 rounded-[1.75rem] border border-white/[0.06] bg-white/[0.015] p-3 sm:p-4"
+    >
+      <JourneyStatePanel enrollmentContext={enrollmentContext} />
 
-      <section className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
+      <div className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
         <div className="absolute inset-x-4 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)]" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-action/24 bg-action/10 px-2.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-action-soft">
               Dia {enrollment.current_day}
             </span>
-            <span className="text-xs text-muted">{context.todayLabel}</span>
+            <span className="text-xs text-muted">{todayLabel}</span>
           </div>
           <span className="text-xs text-muted-2">{getCompletionEyebrow(dailyProgress)}</span>
         </div>
 
-        <h1 className="mt-2 text-xl font-semibold leading-tight text-foreground sm:text-2xl">
-          Olá, {firstName(displayName)}. Hoje eu continuo.
-        </h1>
+        <h2 className="mt-2 text-xl font-semibold leading-tight text-foreground sm:text-2xl">
+          {enrollment.challenge?.name ?? "Desafio"}
+        </h2>
         <p className="mt-1 truncate text-sm text-muted">
-          {context.todayChallengeDay?.message ??
+          {enrollmentContext.todayChallengeDay?.message ??
             "A disciplina de hoje não precisa fazer barulho. Ela precisa existir."}
         </p>
 
@@ -790,27 +826,27 @@ export function TodayExperience({
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-muted-2">
           <span>
-            {context.todayProgress.completedHabits}/{context.todayProgress.applicableHabits}{" "}
-            hábitos
+            {enrollmentContext.todayProgress.completedHabits}/
+            {enrollmentContext.todayProgress.applicableHabits} hábitos
           </span>
           <span>
-            {context.todayProgress.pointsEarned}/{context.todayProgress.pointsPotential} pts
+            {enrollmentContext.todayProgress.pointsEarned}/
+            {enrollmentContext.todayProgress.pointsPotential} pts
           </span>
           <span className="inline-flex items-center gap-1">
             <Flame aria-hidden="true" className="text-action-soft" size={12} />
             {enrollment.streak_current}d sequência
           </span>
         </div>
-      </section>
+      </div>
 
       <MissionsSection
         dailyLogId={dailyLogId}
         editable={editable}
-        missions={context.todayMissions}
+        missions={enrollmentContext.todayMissions}
       />
-      <FinalizeSection context={context} />
-      <ReflectionSection context={context} />
-      <SecondaryContext context={context} />
-    </div>
+      <FinalizeSection enrollmentContext={enrollmentContext} />
+      <ReflectionSection enrollmentContext={enrollmentContext} />
+    </section>
   );
 }
