@@ -34,6 +34,10 @@ export function getSafeJourneyErrorMessage(error: RpcError | null | undefined) {
     return "Nao encontramos um ciclo disponivel para esta acao.";
   }
 
+  if (error.code === "P0003") {
+    return "Conclua todos os habitos essenciais do dia antes de finalizar.";
+  }
+
   if (error.code === "22023") {
     return "Este dia nao aceita essa alteracao agora.";
   }

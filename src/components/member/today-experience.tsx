@@ -284,7 +284,11 @@ function MissionRow({
                 <span className="rounded-full border border-white/[0.08] px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-2">
                   Essencial
                 </span>
-              ) : null}
+              ) : (
+                <span className="rounded-full border border-white/[0.08] px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-muted-2">
+                  Opcional
+                </span>
+              )}
             </div>
             <p className="mt-1 text-sm leading-6 text-muted">
               {mission.description ?? mission.targetLabel}
@@ -363,7 +367,9 @@ function MissionRow({
               >
                 {supportsValue ? "Registrar" : "Concluir"}
               </Button>
-              {completed || mission.state === "in_progress" ? (
+              {completed ||
+              mission.state === "in_progress" ||
+              mission.state === "not_applicable" ? (
                 <Button
                   disabled={disabled}
                   name="status"
