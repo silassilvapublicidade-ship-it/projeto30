@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 
 import { challengeIdSchema } from "./admin-analytics.schemas";
+import { validateChallengeForPublish } from "./challenge-editor.core";
 
 type StatusTransition = {
   from: readonly string[];
@@ -56,6 +57,52 @@ async function transitionChallengeStatus(
 }
 
 export async function publishChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  // Revalida tudo de novo no servidor antes de publicar - nunca confia em
+  // um estado "parece valido" calculado no cliente (ver
+  // validateChallengeForPublish em challenge-editor.core.ts).
+  const supabase = await createSupabaseServerClient();
+  const [{ data: challenge }, { count: habitsCount }, { count: daysCount }] = await Promise.all([
+    supabase
+      .from("challenges")
+      .select("duration_days, name, slug")
+      .eq("id", parsedId.data)
+      .maybeSingle(),
+    supabase
+      .from("habits")
+      .select("id", { count: "exact", head: true })
+      .eq("challenge_id", parsedId.data)
+      .eq("active", true),
+    supabase
+      .from("challenge_days")
+      .select("id", { count: "exact", head: true })
+      .eq("challenge_id", parsedId.data),
+  ]);
+
+  if (!challenge) {
+    redirect(`${target}${separator}feedback=error`);
+  }
+
+  const issues = validateChallengeForPublish({
+    durationDays: challenge.duration_days,
+    generatedDaysCount: daysCount ?? 0,
+    habitsCount: habitsCount ?? 0,
+    name: challenge.name,
+    slug: challenge.slug,
+  });
+
+  if (issues.length > 0) {
+    redirect(`${target}${separator}feedback=validation-failed`);
+  }
+
   await transitionChallengeStatus(formData, "publish");
 }
 

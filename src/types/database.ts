@@ -151,6 +151,70 @@ export type Database = {
           },
         ]
       }
+      analytics_events: {
+        Row: {
+          anonymous_id: string | null
+          challenge_id: string | null
+          created_at: string
+          enrollment_id: string | null
+          event_name: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          session_id: string | null
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          anonymous_id?: string | null
+          challenge_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          event_name: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          session_id?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          anonymous_id?: string | null
+          challenge_id?: string | null
+          created_at?: string
+          enrollment_id?: string | null
+          event_name?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          session_id?: string | null
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_day_habits: {
         Row: {
           challenge_day_id: string
@@ -920,45 +984,77 @@ export type Database = {
       }
       share_cards: {
         Row: {
+          achievement_id: string | null
+          card_type: string
           challenge_id: string
-          daily_log_id: string
+          daily_log_id: string | null
           downloaded_at: string | null
           enrollment_id: string
           generated_at: string
           id: string
           image_url: string | null
+          payload_hash: string | null
           share_config: Json
           shared_at: string | null
+          storage_path: string | null
           template_id: string | null
+          template_version: number
+          user_achievement_id: string | null
           user_id: string
         }
         Insert: {
+          achievement_id?: string | null
+          card_type?: string
           challenge_id: string
-          daily_log_id: string
+          daily_log_id?: string | null
           downloaded_at?: string | null
           enrollment_id: string
           generated_at?: string
           id?: string
           image_url?: string | null
+          payload_hash?: string | null
           share_config?: Json
           shared_at?: string | null
+          storage_path?: string | null
           template_id?: string | null
+          template_version?: number
+          user_achievement_id?: string | null
           user_id: string
         }
         Update: {
+          achievement_id?: string | null
+          card_type?: string
           challenge_id?: string
-          daily_log_id?: string
+          daily_log_id?: string | null
           downloaded_at?: string | null
           enrollment_id?: string
           generated_at?: string
           id?: string
           image_url?: string | null
+          payload_hash?: string | null
           share_config?: Json
           shared_at?: string | null
+          storage_path?: string | null
           template_id?: string | null
+          template_version?: number
+          user_achievement_id?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "share_cards_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_cards_user_achievement_id_fkey"
+            columns: ["user_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "user_achievements"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "share_cards_daily_log_id_enrollment_id_challenge_id_fkey"
             columns: ["daily_log_id", "enrollment_id", "challenge_id"]
@@ -974,43 +1070,46 @@ export type Database = {
             referencedColumns: ["id", "user_id", "challenge_id"]
           },
           {
-            foreignKeyName: "share_cards_template_id_challenge_id_fkey"
-            columns: ["template_id", "challenge_id"]
+            foreignKeyName: "share_cards_template_id_fkey"
+            columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "share_templates"
-            referencedColumns: ["id", "challenge_id"]
+            referencedColumns: ["id"]
           },
         ]
       }
       share_templates: {
         Row: {
           active: boolean
-          challenge_id: string
+          challenge_id: string | null
           config: Json
           created_at: string
           id: string
           name: string
           preview_url: string | null
+          slug: string | null
           updated_at: string
         }
         Insert: {
           active?: boolean
-          challenge_id: string
+          challenge_id?: string | null
           config?: Json
           created_at?: string
           id?: string
           name: string
           preview_url?: string | null
+          slug?: string | null
           updated_at?: string
         }
         Update: {
           active?: boolean
-          challenge_id?: string
+          challenge_id?: string | null
           config?: Json
           created_at?: string
           id?: string
           name?: string
           preview_url?: string | null
+          slug?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1172,8 +1271,16 @@ export type Database = {
         Args: { p_challenge_id: string }
         Returns: Json
       }
+      admin_challenge_funnel: {
+        Args: { p_challenge_id: string }
+        Returns: Json
+      }
       admin_dashboard_overview: {
         Args: never
+        Returns: Json
+      }
+      admin_generate_challenge_days: {
+        Args: { p_challenge_id: string }
         Returns: Json
       }
       admin_list_challenges: {
@@ -1284,6 +1391,17 @@ export type Database = {
       owns_enrollment: {
         Args: { target_enrollment_id: string }
         Returns: boolean
+      }
+      record_analytics_event: {
+        Args: {
+          p_challenge_id?: string
+          p_enrollment_id?: string
+          p_event_name: string
+          p_metadata?: Json
+          p_session_id?: string
+          p_source?: string
+        }
+        Returns: string
       }
       save_journal_entry: {
         Args: {

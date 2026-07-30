@@ -86,6 +86,16 @@ export type AdminChallengeDetail = {
   total_enrolled: number;
 };
 
+export type AdminChallengeFunnelStage = {
+  key: string;
+  label: string;
+  value: number;
+};
+
+export type AdminChallengeFunnel = {
+  stages: AdminChallengeFunnelStage[];
+};
+
 export type AdminParticipantListRow = {
   activity: "active" | "completed" | "inactive";
   completion_percent: number;
@@ -212,6 +222,21 @@ export async function getAdminChallengeDetail(
   }
 
   return { data: data as unknown as AdminChallengeDetail, error: null };
+}
+
+export async function getAdminChallengeFunnel(
+  challengeId: string,
+): Promise<AdminServiceResult<AdminChallengeFunnel>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_challenge_funnel", {
+    p_challenge_id: challengeId,
+  });
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminChallengeFunnel, error: null };
 }
 
 export async function listAdminParticipants(

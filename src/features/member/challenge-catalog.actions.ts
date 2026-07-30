@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { requireAuthUser } from "@/server/services/auth-session.service";
 
 import { challengeIdSchema } from "./challenge-catalog.schemas";
@@ -18,10 +19,6 @@ function getSafeErrorMessage(error: { code?: string; message: string } | null) {
 
   if (error.code === "P0002") {
     return "Este desafio não está disponível para inscrição agora.";
-  }
-
-  if (error.code === "P0004") {
-    return "Você já está participando de outro desafio ativo.";
   }
 
   return "Não foi possível concluir a inscrição agora. Tente novamente em instantes.";
@@ -41,6 +38,11 @@ export async function joinChallengeAction(formData: FormData) {
     redirect(`${detailPath}?joinFeedback=invalid`);
   }
 
+  await recordAnalyticsEvent({
+    challengeId: parsedId.data,
+    eventName: "challenge_join_clicked",
+  });
+
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.rpc("join_specific_challenge", {
     target_challenge_id: parsedId.data,
@@ -48,8 +50,7 @@ export async function joinChallengeAction(formData: FormData) {
 
   if (error) {
     const message = encodeURIComponent(getSafeErrorMessage(error));
-    const code = error.code === "P0004" ? "already-active" : "error";
-    redirect(`${detailPath}?joinFeedback=${code}&joinMessage=${message}`);
+    redirect(`${detailPath}?joinFeedback=error&joinMessage=${message}`);
   }
 
   redirect("/app/hoje?journey=joined");

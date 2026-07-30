@@ -24,6 +24,7 @@ type AchievementFields = Pick<
 export type UnlockedAchievement = AchievementFields & {
   challengeName: string | null;
   unlockedAt: string;
+  userAchievementId: string;
 };
 
 export type LockedAchievement = AchievementFields & {
@@ -63,7 +64,7 @@ export async function getMemberAchievements(): Promise<MemberAchievements> {
     supabase
       .from("user_achievements")
       .select(
-        "unlocked_at, achievement:achievements(id,name,description,icon,category,rarity,share_title,share_message,points_bonus,challenge_id,slug,challenge:challenges(name))",
+        "id, unlocked_at, achievement:achievements(id,name,description,icon,category,rarity,share_title,share_message,points_bonus,challenge_id,slug,challenge:challenges(name))",
       )
       .eq("user_id", user.id)
       .order("unlocked_at", { ascending: false }),
@@ -81,6 +82,7 @@ export async function getMemberAchievements(): Promise<MemberAchievements> {
         ...achievementFields,
         challengeName: challenge?.name ?? null,
         unlockedAt: row.unlocked_at,
+        userAchievementId: row.id,
       },
     ];
   });

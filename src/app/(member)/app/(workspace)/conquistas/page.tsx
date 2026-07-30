@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Lock, Medal, Trophy } from "lucide-react";
 
+import { AchievementArtShareButton } from "@/components/member/achievement-art-share-button";
 import { AchievementShareButton } from "@/components/member/achievement-share-button";
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
 import { getMemberAchievements } from "@/server/services/achievements.service";
@@ -112,7 +113,7 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
                     <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted-2">
                       Desbloqueada em {formatDate(achievement.unlockedAt)}
                     </p>
-                    <div className="mt-auto pt-1">
+                    <div className="mt-auto flex flex-wrap gap-2 pt-1">
                       <AchievementShareButton
                         achievement={{
                           challengeName: achievement.challengeName,
@@ -122,6 +123,7 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
                         }}
                         displayName={displayName}
                       />
+                      <AchievementArtShareButton userAchievementId={achievement.userAchievementId} />
                     </div>
                   </div>
                 ))}

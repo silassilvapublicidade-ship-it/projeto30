@@ -14,6 +14,7 @@ import {
   publishChallengeAction,
   unpublishChallengeAction,
 } from "@/features/admin/admin-challenges.actions";
+import { duplicateChallengeAsDraftAction } from "@/features/admin/challenge-editor.actions";
 import {
   getTotalPages,
   parseChallengeListParams,
@@ -72,11 +73,16 @@ export default async function AdminChallengesPage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Desafios</h1>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          Gestão dos ciclos configurados, com participantes e progresso médio reais.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Desafios</h1>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Gestão dos ciclos configurados, com participantes e progresso médio reais.
+          </p>
+        </div>
+        <Button as="a" href="/admin/desafios/novo">
+          Novo desafio
+        </Button>
       </div>
 
       {feedback ? (
@@ -241,6 +247,12 @@ export default async function AdminChallengesPage({
                             </ConfirmSubmitButton>
                           </form>
                         ) : null}
+                        <form action={duplicateChallengeAsDraftAction}>
+                          <input name="challengeId" type="hidden" value={challenge.id} />
+                          <Button size="sm" type="submit" variant="ghost">
+                            Duplicar
+                          </Button>
+                        </form>
                       </div>
                     </td>
                   </tr>

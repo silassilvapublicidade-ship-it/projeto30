@@ -15,6 +15,7 @@ import {
   parseChallengeThemeConfig,
   parseHabitGoalConfig,
 } from "@/features/member/challenge-catalog.core";
+import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getChallengeDetailBySlug } from "@/server/services/challenge-catalog.service";
 import { getTipsForChallenge } from "@/server/services/tips.service";
 
@@ -54,6 +55,10 @@ export default async function DesafioDetailPage({
   }
 
   const { achievements, challenge, habits, localDate, ownEnrollment } = detail;
+  await recordAnalyticsEvent({
+    challengeId: challenge.id,
+    eventName: "challenge_detail_viewed",
+  });
   const challengeTips = await getTipsForChallenge(challenge.id);
 
   const displayStatus = getChallengeDisplayStatus({

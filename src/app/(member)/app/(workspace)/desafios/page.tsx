@@ -6,6 +6,7 @@ import { ChallengeCard } from "@/components/member/challenge-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
 import { describeEnrollmentStatus } from "@/features/admin/admin-metrics.core";
+import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getMemberChallengeCatalog } from "@/server/services/challenge-catalog.service";
 
 export const metadata: Metadata = {
@@ -26,6 +27,8 @@ function formatDate(value: string | null) {
 }
 
 export default async function DesafiosPage() {
+  await recordAnalyticsEvent({ eventName: "challenge_catalog_viewed" });
+
   const { activeEnrollments, catalog, history, localDate } = await getMemberChallengeCatalog();
 
   return (

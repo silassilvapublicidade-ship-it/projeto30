@@ -15,7 +15,7 @@ import {
   formatDate,
   formatPercent,
 } from "@/features/admin/admin-metrics.core";
-import { getAdminChallengeDetail } from "@/server/services/admin-analytics.service";
+import { getAdminChallengeDetail, getAdminChallengeFunnel } from "@/server/services/admin-analytics.service";
 
 export const metadata: Metadata = {
   title: "Detalhe do desafio · Administração",
@@ -35,7 +35,10 @@ export default async function AdminChallengeDetailPage({
     notFound();
   }
 
-  const { data, error } = await getAdminChallengeDetail(parsedId.data);
+  const [{ data, error }, { data: funnel }] = await Promise.all([
+    getAdminChallengeDetail(parsedId.data),
+    getAdminChallengeFunnel(parsedId.data),
+  ]);
 
   if (error === "Registro não encontrado.") {
     notFound();
@@ -76,15 +79,44 @@ export default async function AdminChallengeDetailPage({
               {data.challenge.duration_days} dias
             </p>
           </div>
-          <Button
-            as="a"
-            href={`/admin/desafios/${data.challenge.id}/participantes`}
-            leadingIcon={<Users aria-hidden="true" size={15} />}
-          >
-            Ver participantes
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button as="a" href={`/admin/desafios/${data.challenge.id}/editar`} variant="secondary">
+              Editar
+            </Button>
+            <Button
+              as="a"
+              href={`/admin/desafios/${data.challenge.id}/participantes`}
+              leadingIcon={<Users aria-hidden="true" size={15} />}
+            >
+              Ver participantes
+            </Button>
+          </div>
         </div>
       </div>
+
+      {funnel && funnel.stages.length > 0 ? (
+        <section aria-labelledby="challenge-funnel" className="space-y-3">
+          <h2
+            className="font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
+            id="challenge-funnel"
+          >
+            Funil do desafio
+          </h2>
+          <div className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4">
+            <AdminBarList
+              items={funnel.stages.map((stage) => ({
+                label: stage.label,
+                trailingLabel: formatCount(stage.value),
+                value: stage.value,
+              }))}
+            />
+          </div>
+          <p className="font-mono text-[0.65rem] text-muted-2">
+            &quot;Abandonou&quot; ainda não é instrumentado nesta fase (nenhum fluxo do produto
+            transiciona uma inscrição para esse status).
+          </p>
+        </section>
+      ) : null}
 
       <section aria-labelledby="challenge-kpis" className="space-y-3">
         <h2
