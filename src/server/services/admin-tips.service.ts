@@ -21,8 +21,32 @@ export type AdminTipListParams = {
 
 export const ADMIN_TIP_PAGE_SIZE = 20;
 
+/**
+ * Internal error code surfaced in server logs (never shown to the user) so an
+ * unhandled failure here can be told apart from other admin-area crashes.
+ */
+export const ADMIN_TIPS_LOAD_FAILED = "ADMIN_TIPS_LOAD_FAILED";
+
 function toErrorMessage(error: { message?: string } | null): string {
   return error?.message ?? "Erro inesperado.";
+}
+
+/**
+ * Supabase-js resolves query-level errors (bad SQL, RLS denial, etc.) as
+ * `{ data: null, error }` rather than throwing, so those are already handled
+ * by the `if (error)` checks below. This only catches the other failure
+ * class - the underlying `fetch` itself rejecting (network reset, timeout,
+ * DNS) - which propagates as a real exception. Left unguarded, that
+ * exception would blow past this service, past the page component, and
+ * crash the whole /admin route tree via the generic error boundary with no
+ * record of what happened. Converting it to the same AdminServiceResult
+ * shape keeps the failure contained to the Dicas UI and logs it server-side
+ * (message only, never headers/tokens) so it's diagnosable if it recurs.
+ */
+function logUnexpectedFailure(operation: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[${ADMIN_TIPS_LOAD_FAILED}] ${operation}:`, message);
+  return "Não foi possível carregar os dados agora. Tente novamente em alguns segundos.";
 }
 
 /**
@@ -70,35 +94,54 @@ export async function listAdminTips(
     .order("id", { ascending: true })
     .range(offset, offset + ADMIN_TIP_PAGE_SIZE - 1);
 
-  const { count, data, error } = await query;
+  try {
+    const { count, data, error } = await query;
 
-  if (error) {
-    return { data: null, error: toErrorMessage(error) };
+    if (error) {
+      return { data: null, error: toErrorMessage(error) };
+    }
+
+    const rows = (data ?? []).map((row) => {
+      const { challenge, ...rest } = row as typeof row & {
+        challenge: { name: string } | null;
+      };
+      return { ...rest, challenge_name: challenge?.name ?? null };
+    });
+
+    return { data: { rows, totalCount: count ?? rows.length }, error: null };
+  } catch (caughtError) {
+    return { data: null, error: logUnexpectedFailure("listAdminTips", caughtError) };
   }
-
-  const rows = (data ?? []).map((row) => {
-    const { challenge, ...rest } = row as typeof row & {
-      challenge: { name: string } | null;
-    };
-    return { ...rest, challenge_name: challenge?.name ?? null };
-  });
-
-  return { data: { rows, totalCount: count ?? rows.length }, error: null };
 }
 
 export type ChallengeOption = { id: string; name: string };
 
-/** Populates the optional "desafio relacionado" select in the tip form. */
+/**
+ * Populates the optional "desafio relacionado" select in the tip form. This
+ * is a non-essential enrichment - if it fails, the form must still render
+ * and work without the picker's options, so failures degrade to an empty
+ * list rather than taking the whole form down.
+ */
 export async function listChallengesForTipPicker(): Promise<ChallengeOption[]> {
-  const supabase = await createSupabaseServerClient();
+  try {
+    const supabase = await createSupabaseServerClient();
 
-  const { data } = await supabase
-    .from("challenges")
-    .select("id, name")
-    .is("deleted_at", null)
-    .order("name", { ascending: true });
+    const { data, error } = await supabase
+      .from("challenges")
+      .select("id, name")
+      .is("deleted_at", null)
+      .order("name", { ascending: true });
 
-  return data ?? [];
+    if (error) {
+      logUnexpectedFailure("listChallengesForTipPicker", error);
+      return [];
+    }
+
+    return data ?? [];
+  } catch (caughtError) {
+    logUnexpectedFailure("listChallengesForTipPicker", caughtError);
+    return [];
+  }
 }
 
 export async function getAdminTipById(
@@ -106,20 +149,24 @@ export async function getAdminTipById(
 ): Promise<AdminServiceResult<Tables<"content_items">>> {
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("content_items")
-    .select("*")
-    .eq("id", id)
-    .eq("content_type", TIP_CONTENT_TYPE)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("content_items")
+      .select("*")
+      .eq("id", id)
+      .eq("content_type", TIP_CONTENT_TYPE)
+      .maybeSingle();
 
-  if (error) {
-    return { data: null, error: toErrorMessage(error) };
+    if (error) {
+      return { data: null, error: toErrorMessage(error) };
+    }
+
+    if (!data) {
+      return { data: null, error: "Dica não encontrada." };
+    }
+
+    return { data, error: null };
+  } catch (caughtError) {
+    return { data: null, error: logUnexpectedFailure("getAdminTipById", caughtError) };
   }
-
-  if (!data) {
-    return { data: null, error: "Dica não encontrada." };
-  }
-
-  return { data, error: null };
 }
