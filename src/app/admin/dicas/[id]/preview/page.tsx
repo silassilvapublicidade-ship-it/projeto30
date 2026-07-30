@@ -19,7 +19,8 @@ export const metadata: Metadata = {
  * Read-only, admin-only rendering of exactly the same TipCard component the
  * member gallery uses - "preview fiel ao que o usuário verá" is structural
  * (shared component), not a lookalike copy. Never records a view, never
- * reachable by a member, never touches analytics_events.
+ * reachable by a member, never touches analytics_events, never changes
+ * status.
  */
 export default async function PreviewDicaPage({ params }: PreviewDicaPageProps) {
   const { id } = await params;
@@ -45,7 +46,7 @@ export default async function PreviewDicaPage({ params }: PreviewDicaPageProps) 
         </p>
       </div>
 
-      {!tip.media_url ? (
+      {!tip.image_url ? (
         <StatusCard
           description="Esta dica ainda não tem imagem enviada - ela não pode ser publicada até que uma imagem seja enviada."
           title="Sem imagem"
@@ -53,39 +54,58 @@ export default async function PreviewDicaPage({ params }: PreviewDicaPageProps) 
         />
       ) : null}
 
-      <div className="grid gap-8 sm:grid-cols-2">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-2">
-            Card na listagem (/app/dicas)
-          </p>
-          <div className="max-w-[320px]">
-            <TipCard
-              altText={tip.alt_text}
-              category={tip.category}
-              excerpt={tip.excerpt}
-              imageUrl={tip.media_url}
-              title={tip.title}
-            />
-          </div>
-        </div>
-
-        {tip.body ? (
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-2">
+          Card na listagem (/app/dicas)
+        </p>
+        <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-2">
-              Tela de detalhe (/app/dicas/{tip.slug})
-            </p>
-            <div className="max-w-md space-y-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
-              {tip.category ? (
-                <span className="w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">
-                  {tip.category}
-                </span>
-              ) : null}
-              <h2 className="font-display text-2xl text-foreground">{tip.title}</h2>
-              {tip.excerpt ? <p className="text-sm leading-6 text-muted">{tip.excerpt}</p> : null}
-              <p className="whitespace-pre-line text-sm leading-6 text-foreground/85">{tip.body}</p>
+            <p className="mb-2 text-xs text-muted-2">Mobile (390px)</p>
+            <div className="w-[220px]">
+              <TipCard
+                altText={tip.alt_text}
+                category={tip.category}
+                imageUrl={tip.image_url}
+                summary={tip.summary}
+                title={tip.title}
+              />
             </div>
           </div>
-        ) : null}
+          <div>
+            <p className="mb-2 text-xs text-muted-2">Desktop (card em grid de 3-4 colunas)</p>
+            <div className="w-[320px]">
+              <TipCard
+                altText={tip.alt_text}
+                category={tip.category}
+                imageUrl={tip.image_url}
+                summary={tip.summary}
+                title={tip.title}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-2">
+          Tela de detalhe (/app/dicas/{tip.slug})
+        </p>
+        <div className="max-w-md space-y-3 rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] p-5">
+          {tip.category ? (
+            <span className="w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">
+              {tip.category}
+            </span>
+          ) : null}
+          <h2 className="font-display text-2xl text-foreground">{tip.title}</h2>
+          {tip.summary ? <p className="text-sm leading-6 text-muted">{tip.summary}</p> : null}
+          {tip.content ? (
+            <p className="whitespace-pre-line text-sm leading-6 text-foreground/85">{tip.content}</p>
+          ) : (
+            <p className="text-xs italic leading-5 text-muted-2">
+              Sem descrição - o card abre mostrando só a imagem ampliada.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

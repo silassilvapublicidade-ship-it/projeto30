@@ -476,68 +476,74 @@ export type Database = {
       content_items: {
         Row: {
           alt_text: string | null
-          author_id: string | null
-          body: string | null
           category: string | null
           challenge_id: string | null
+          content: string | null
+          content_type: string
           created_at: string
+          created_by: string | null
           display_order: number
           ends_at: string | null
-          excerpt: string | null
           id: string
-          media_url: string | null
+          image_storage_path: string | null
+          image_url: string | null
           published_at: string | null
           slug: string
           starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
+          summary: string | null
           title: string
-          type: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           alt_text?: string | null
-          author_id?: string | null
-          body?: string | null
           category?: string | null
           challenge_id?: string | null
+          content?: string | null
+          content_type: string
           created_at?: string
+          created_by?: string | null
           display_order?: number
           ends_at?: string | null
-          excerpt?: string | null
           id?: string
-          media_url?: string | null
+          image_storage_path?: string | null
+          image_url?: string | null
           published_at?: string | null
           slug: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
+          summary?: string | null
           title: string
-          type: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           alt_text?: string | null
-          author_id?: string | null
-          body?: string | null
           category?: string | null
           challenge_id?: string | null
+          content?: string | null
+          content_type?: string
           created_at?: string
+          created_by?: string | null
           display_order?: number
           ends_at?: string | null
-          excerpt?: string | null
           id?: string
-          media_url?: string | null
+          image_storage_path?: string | null
+          image_url?: string | null
           published_at?: string | null
           slug?: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
+          summary?: string | null
           title?: string
-          type?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "content_items_author_id_fkey"
-            columns: ["author_id"]
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -547,6 +553,13 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

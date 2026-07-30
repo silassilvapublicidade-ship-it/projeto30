@@ -5,10 +5,12 @@ import { ArrowLeft } from "lucide-react";
 
 import { TipForm } from "@/components/admin/tip-form";
 import { TipImageUploader } from "@/components/admin/tip-image-uploader";
+import { StatusCard } from "@/components/ui/feedback";
 import { getAdminTipById, listChallengesForTipPicker } from "@/server/services/admin-tips.service";
 
 type EditarDicaPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ feedback?: string }>;
 };
 
 export async function generateMetadata({ params }: EditarDicaPageProps): Promise<Metadata> {
@@ -17,8 +19,9 @@ export async function generateMetadata({ params }: EditarDicaPageProps): Promise
   return { title: tip ? `Editar ${tip.title} · Administração` : "Editar dica · Administração" };
 }
 
-export default async function EditarDicaPage({ params }: EditarDicaPageProps) {
+export default async function EditarDicaPage({ params, searchParams }: EditarDicaPageProps) {
   const { id } = await params;
+  const { feedback } = await searchParams;
   const [{ data: tip }, challenges] = await Promise.all([
     getAdminTipById(id),
     listChallengesForTipPicker(),
@@ -44,13 +47,21 @@ export default async function EditarDicaPage({ params }: EditarDicaPageProps) {
             className="text-xs font-semibold text-muted transition-colors hover:text-foreground"
             href={`/admin/dicas/${tip.id}/preview`}
           >
-            Ver preview →
+            Ver prévia →
           </Link>
         </div>
       </div>
 
+      {feedback === "create-success" ? (
+        <StatusCard
+          description="Continue ajustando os detalhes abaixo ou volte para a listagem."
+          title="Card criado"
+          tone="success"
+        />
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-        <TipImageUploader currentImageUrl={tip.media_url} tipId={tip.id} />
+        <TipImageUploader currentImageUrl={tip.image_url} tipId={tip.id} />
         <TipForm challenges={challenges} tip={tip} />
       </div>
     </div>

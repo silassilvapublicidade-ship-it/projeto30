@@ -6,14 +6,14 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { TIP_CATEGORIES } from "@/features/admin/admin-tips.schemas";
 import { updateTipAction, type AdminTipActionResult } from "@/features/admin/admin-tips.actions";
 import type { Tables } from "@/types/database";
 
 const initialState: AdminTipActionResult = { ok: false, message: "" };
 
-const selectClassName =
-  "min-h-12 w-full rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none focus:border-action/70";
+const categoryOptions = TIP_CATEGORIES.map((category) => ({ label: category, value: category }));
 
 function toDateTimeLocal(value: string | null): string {
   if (!value) {
@@ -42,6 +42,10 @@ export function TipForm({
 }) {
   const [state, formAction] = useActionState(updateTipAction, initialState);
   const fieldErrors = state.ok ? undefined : state.fieldErrors;
+  const challengeOptions = [
+    { label: "Nenhum", value: "" },
+    ...challenges.map((challenge) => ({ label: challenge.name, value: challenge.id })),
+  ];
 
   return (
     <form action={formAction} className="space-y-4">
@@ -67,33 +71,30 @@ export function TipForm({
         <Input defaultValue={tip.slug} maxLength={120} name="slug" required />
       </Field>
 
-      <Field error={fieldErrors?.category?.[0]} label="Categoria">
-        <select className={selectClassName} defaultValue={tip.category ?? ""} name="category" required>
-          <option disabled value="">
-            Selecione uma categoria
-          </option>
-          {TIP_CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Select
+        defaultValue={tip.category ?? ""}
+        error={fieldErrors?.category?.[0]}
+        label="Categoria"
+        name="category"
+        options={categoryOptions}
+        placeholder="Selecione uma categoria"
+        required
+      />
 
       <Field
-        error={fieldErrors?.excerpt?.[0]}
+        error={fieldErrors?.summary?.[0]}
         hint="Aparece na listagem do usuário, abaixo do título."
         label="Resumo (opcional)"
       >
-        <Textarea defaultValue={tip.excerpt ?? ""} maxLength={280} name="excerpt" rows={2} />
+        <Textarea defaultValue={tip.summary ?? ""} maxLength={280} name="summary" rows={2} />
       </Field>
 
       <Field
-        error={fieldErrors?.body?.[0]}
+        error={fieldErrors?.content?.[0]}
         hint="Se vazio, o card só mostra a imagem (sem tela de detalhe com texto)."
         label="Descrição completa (opcional)"
       >
-        <Textarea defaultValue={tip.body ?? ""} maxLength={4000} name="body" rows={5} />
+        <Textarea defaultValue={tip.content ?? ""} maxLength={4000} name="content" rows={5} />
       </Field>
 
       <Field
@@ -104,16 +105,13 @@ export function TipForm({
         <Input defaultValue={tip.alt_text ?? ""} maxLength={200} name="altText" />
       </Field>
 
-      <Field hint="Opcional - associa esta dica a um desafio específico." label="Desafio relacionado">
-        <select className={selectClassName} defaultValue={tip.challenge_id ?? ""} name="challengeId">
-          <option value="">Nenhum</option>
-          {challenges.map((challenge) => (
-            <option key={challenge.id} value={challenge.id}>
-              {challenge.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      <Select
+        defaultValue={tip.challenge_id ?? ""}
+        label="Desafio relacionado (opcional)"
+        name="challengeId"
+        options={challengeOptions}
+        placeholder="Nenhum"
+      />
 
       <Field
         error={fieldErrors?.displayOrder?.[0]}

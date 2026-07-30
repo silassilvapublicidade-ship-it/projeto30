@@ -38,6 +38,16 @@ describe("validateTipImageUpload", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("rejects GIF", () => {
+    const result = validateTipImageUpload({ size: 1000, type: "image/gif" });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects PDF", () => {
+    const result = validateTipImageUpload({ size: 1000, type: "application/pdf" });
+    expect(result.ok).toBe(false);
+  });
+
   it("rejects an executable disguised with an image-like MIME type", () => {
     const result = validateTipImageUpload({ size: 1000, type: "application/x-msdownload" });
     expect(result.ok).toBe(false);
@@ -109,5 +119,33 @@ describe("tipFormSchema", () => {
       startsAt: "2026-01-01T00:00",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing category (category is mandatory even for drafts)", () => {
+    const { category: _category, ...withoutCategory } = validBase;
+    const result = tipFormSchema.safeParse(withoutCategory);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("TIP_CATEGORIES", () => {
+  it("includes Foco alongside the other categories", () => {
+    expect(TIP_CATEGORIES).toContain("Foco");
+  });
+
+  it("has exactly the 11 categories specified for this round", () => {
+    expect(TIP_CATEGORIES).toEqual([
+      "Leitura",
+      "Organização",
+      "Rotina",
+      "Foco",
+      "Motivação",
+      "Alimentação",
+      "Treino",
+      "Sono",
+      "Bem-estar",
+      "Produtividade",
+      "Geral",
+    ]);
   });
 });

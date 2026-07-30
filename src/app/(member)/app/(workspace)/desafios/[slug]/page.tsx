@@ -278,8 +278,8 @@ export default async function DesafioDetailPage({
                   href={`/app/dicas/${tip.slug}`}
                 >
                   <p className="text-sm font-semibold text-foreground">{tip.title}</p>
-                  {tip.excerpt ? (
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{tip.excerpt}</p>
+                  {tip.summary ? (
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">{tip.summary}</p>
                   ) : null}
                 </Link>
               </li>

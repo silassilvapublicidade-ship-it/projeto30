@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   archiveTipAction,
   duplicateTipAsDraftAction,
   publishTipAction,
   unpublishTipAction,
-  deleteTipAction,
 } from "@/features/admin/admin-tips.actions";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { TipDeleteDialog } from "@/components/admin/tip-delete-dialog";
 
 type TipStatus = "archived" | "draft" | "published";
 
@@ -48,71 +50,80 @@ function ActionForm({
  * Same DropdownMenu primitive and per-status gating philosophy as
  * ChallengeRowActions. Unlike challenge deletion (blocked by real
  * enrollment/log history via an FK restrict), a tip card has no
- * user-history dependency - deleting one is low-stakes, so it only needs a
- * plain window.confirm() guard, not a name-typed modal.
+ * user-history dependency - deleting one is low-stakes, so its
+ * confirmation is a plain modal (TipDeleteDialog), not a name-typed one.
  */
 export function TipRowActions({ redirectTo, status, tipId, tipTitle }: TipRowActionsProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
   return (
-    <DropdownMenu label={`Ações para ${tipTitle}`}>
-      {({ close }) => (
-        <>
-          <DropdownMenuItem href={`/admin/dicas/${tipId}/preview`}>Ver preview</DropdownMenuItem>
-
-          {status === "draft" || status === "published" ? (
+    <>
+      <DropdownMenu label={`Ações para ${tipTitle}`}>
+        {({ close }) => (
+          <>
+            <DropdownMenuItem href={`/admin/dicas/${tipId}/preview`}>Ver prévia</DropdownMenuItem>
             <DropdownMenuItem href={`/admin/dicas/${tipId}/editar`}>Editar</DropdownMenuItem>
-          ) : null}
 
-          {status === "draft" ? (
-            <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
-              Publicar
-            </ActionForm>
-          ) : null}
+            {status === "draft" ? (
+              <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
+                Publicar
+              </ActionForm>
+            ) : null}
 
-          {status === "published" ? (
+            {status === "archived" ? (
+              <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
+                Publicar novamente
+              </ActionForm>
+            ) : null}
+
+            {status === "published" ? (
+              <ActionForm
+                action={unpublishTipAction}
+                close={close}
+                hiddenTipId={tipId}
+                redirectTo={redirectTo}
+              >
+                Despublicar
+              </ActionForm>
+            ) : null}
+
+            {status === "published" ? (
+              <ActionForm action={archiveTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
+                Arquivar
+              </ActionForm>
+            ) : null}
+
             <ActionForm
-              action={unpublishTipAction}
+              action={duplicateTipAsDraftAction}
               close={close}
               hiddenTipId={tipId}
               redirectTo={redirectTo}
             >
-              Despublicar
+              Duplicar
             </ActionForm>
-          ) : null}
 
-          {status === "published" ? (
-            <ActionForm action={archiveTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
-              Arquivar
-            </ActionForm>
-          ) : null}
+            <DropdownMenuSeparator />
 
-          <ActionForm
-            action={duplicateTipAsDraftAction}
-            close={close}
-            hiddenTipId={tipId}
-            redirectTo={redirectTo}
-          >
-            Duplicar
-          </ActionForm>
-
-          <DropdownMenuSeparator />
-
-          <form action={deleteTipAction} onSubmit={close}>
-            <input name="tipId" type="hidden" value={tipId} />
-            <input name="redirectTo" type="hidden" value={redirectTo} />
             <DropdownMenuItem
-              onSelect={(event) => {
-                if (!window.confirm(`Excluir definitivamente a dica "${tipTitle}"?`)) {
-                  event.preventDefault();
-                }
+              onSelect={() => {
+                close();
+                setDeleteOpen(true);
               }}
               tone="danger"
-              type="submit"
             >
               Excluir
             </DropdownMenuItem>
-          </form>
-        </>
-      )}
-    </DropdownMenu>
+          </>
+        )}
+      </DropdownMenu>
+
+      <TipDeleteDialog
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+        redirectTo={redirectTo}
+        tipId={tipId}
+        tipTitle={tipTitle}
+      />
+    </>
   );
 }

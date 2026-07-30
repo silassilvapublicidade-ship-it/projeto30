@@ -6,6 +6,7 @@ export const TIP_CATEGORIES = [
   "Leitura",
   "Organização",
   "Rotina",
+  "Foco",
   "Motivação",
   "Alimentação",
   "Treino",
@@ -22,12 +23,11 @@ export const tipIdSchema = z.uuid("Identificador de dica inválido.");
 export const tipFormSchema = z
   .object({
     altText: z.string().trim().max(200).optional(),
-    body: z.string().trim().max(4000).optional(),
-    category: z.enum(TIP_CATEGORIES),
+    category: z.enum(TIP_CATEGORIES, "Selecione uma categoria."),
     challengeId: z.uuid().optional(),
+    content: z.string().trim().max(4000).optional(),
     displayOrder: z.coerce.number().int().min(0).max(9999).default(0),
     endsAt: z.string().trim().optional(),
-    excerpt: z.string().trim().max(280).optional(),
     slug: z
       .string()
       .trim()
@@ -35,6 +35,7 @@ export const tipFormSchema = z
       .max(120)
       .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use apenas letras minúsculas, números e hífens."),
     startsAt: z.string().trim().optional(),
+    summary: z.string().trim().max(280).optional(),
     title: z.string().trim().min(3, "Informe um título com pelo menos 3 caracteres.").max(160),
   })
   .refine((data) => !data.startsAt || !data.endsAt || data.startsAt <= data.endsAt, {
@@ -46,7 +47,9 @@ export type TipFormInput = z.infer<typeof tipFormSchema>;
 
 // Mesmo padrao de validateAvatarUpload (profile.schemas.ts): tamanho + MIME
 // real, nunca confiando na extensao do nome do arquivo. SVG e arquivos
-// executaveis nunca sao aceitos nesta primeira versao.
+// executaveis nunca sao aceitos nesta primeira versao. Reforcado tambem no
+// proprio bucket do Storage (0025_tip_cards_storage_hardening.sql) como
+// defesa em profundidade.
 const ACCEPTED_TIP_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const TIP_IMAGE_EXTENSION_BY_MIME: Record<(typeof ACCEPTED_TIP_IMAGE_MIME_TYPES)[number], string> = {
   "image/jpeg": "jpg",
@@ -54,7 +57,7 @@ const TIP_IMAGE_EXTENSION_BY_MIME: Record<(typeof ACCEPTED_TIP_IMAGE_MIME_TYPES)
   "image/webp": "webp",
 };
 
-export const MAX_TIP_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+export const MAX_TIP_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 // 4:5 e a proporcao recomendada (1080x1350) - nao exigida, mas usada para
 // alertar quando a imagem enviada foge muito do padrao esperado do feed.

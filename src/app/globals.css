@@ -180,6 +180,15 @@ html {
   min-width: 0;
   scroll-behavior: smooth;
   background: var(--background);
+  /* This app is dark-only (no light theme toggle). Without this, Chromium
+     renders native form-control chrome (select popups, date pickers,
+     scrollbars) using its light-theme defaults regardless of our own CSS -
+     the browser has no way to know the page is dark, so a native <option>
+     list ends up with a light popup background while inheriting our white
+     text color, i.e. white-on-white. Custom listbox-style components (see
+     Select in ui/select.tsx) don't depend on this at all, but this is
+     defense in depth for every other native control still in the app. */
+  color-scheme: dark;
 }
 
 body {

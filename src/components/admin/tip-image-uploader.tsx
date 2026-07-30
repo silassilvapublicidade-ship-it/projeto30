@@ -132,7 +132,8 @@ export function TipImageUploader({ currentImageUrl, tipId }: TipImageUploaderPro
       ) : null}
 
       <p className="text-xs leading-5 text-muted-2">
-        JPEG, PNG ou WebP · até 8 MB · publicação exige uma imagem enviada.
+        JPEG, PNG ou WebP · até 10 MB · publicação exige uma imagem enviada. Enviar uma nova imagem
+        substitui a atual.
       </p>
 
       {uploadState.message ? (

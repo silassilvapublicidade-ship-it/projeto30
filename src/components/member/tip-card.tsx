@@ -4,7 +4,7 @@ import Link from "next/link";
 type TipCardProps = {
   altText: string | null;
   category: string | null;
-  excerpt: string | null;
+  summary: string | null;
   href?: string;
   imageUrl: string | null;
   priority?: boolean;
@@ -21,10 +21,10 @@ type TipCardProps = {
 export function TipCard({
   altText,
   category,
-  excerpt,
   href,
   imageUrl,
   priority = false,
+  summary,
   title,
 }: TipCardProps) {
   const content = (
@@ -52,7 +52,7 @@ export function TipCard({
           </span>
         ) : null}
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
-        {excerpt ? <p className="line-clamp-2 text-sm leading-6 text-muted">{excerpt}</p> : null}
+        {summary ? <p className="line-clamp-2 text-sm leading-6 text-muted">{summary}</p> : null}
       </div>
     </>
   );

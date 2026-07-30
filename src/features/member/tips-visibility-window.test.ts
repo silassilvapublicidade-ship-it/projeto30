@@ -10,7 +10,7 @@ describe("tips.service - display window (starts_at/ends_at)", () => {
   const source = readSource("src", "server", "services", "tips.service.ts");
 
   it("every published-only query also applies the starts_at/ends_at window", () => {
-    const queryFunctions = ["getPublishedTips", "getTipCategories", "getTipBySlug", "getTipsForChallenge"];
+    const queryFunctions = ["getPublishedTips", "getTipBySlug", "getTipsForChallenge"];
 
     for (const fnName of queryFunctions) {
       const start = source.indexOf(`export async function ${fnName}`);
@@ -31,6 +31,12 @@ describe("tips.service - display window (starts_at/ends_at)", () => {
   it("exposes alt_text on both the summary and detail shapes", () => {
     expect(source).toContain('"alt_text"');
     expect(source).toContain("alt_text");
+  });
+
+  it("filters by content_type = 'tip_card', not the old type = 'tip'", () => {
+    expect(source).toContain('const TIP_CONTENT_TYPE = "tip_card";');
+    expect(source).toContain('.eq("content_type", TIP_CONTENT_TYPE)');
+    expect(source).not.toContain('.eq("type",');
   });
 });
 

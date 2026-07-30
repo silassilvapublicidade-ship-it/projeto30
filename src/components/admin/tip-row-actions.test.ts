@@ -9,21 +9,30 @@ function readSource(...pathSegments: string[]) {
 describe("TipRowActions - per-status menu gating", () => {
   const source = readSource("src", "components", "admin", "tip-row-actions.tsx");
 
-  it("always renders Ver preview and Duplicar, regardless of status", () => {
+  it("always renders Ver prévia, Editar and Duplicar, regardless of status (matches every status's action list)", () => {
     expect(source).toContain(
-      '<DropdownMenuItem href={`/admin/dicas/${tipId}/preview`}>Ver preview</DropdownMenuItem>',
+      '<DropdownMenuItem href={`/admin/dicas/${tipId}/preview`}>Ver prévia</DropdownMenuItem>',
     );
+    expect(source).toContain(
+      '<DropdownMenuItem href={`/admin/dicas/${tipId}/editar`}>Editar</DropdownMenuItem>',
+    );
+
     const duplicateIndex = source.indexOf("duplicateTipAsDraftAction");
     const before = source.slice(Math.max(0, duplicateIndex - 200), duplicateIndex);
     expect(before).not.toMatch(/status === "\w+"\s*\?\s*\($/);
   });
 
-  it("only offers Editar for draft or published, never archived", () => {
-    expect(source).toContain('status === "draft" || status === "published" ?');
-  });
-
-  it("only offers Publicar for draft", () => {
+  it("offers Publicar for draft and Publicar novamente for archived, both via publishTipAction", () => {
     expect(source).toContain('{status === "draft" ? (');
+    expect(source).toContain('{status === "archived" ? (');
+    const draftIndex = source.indexOf('{status === "draft" ? (');
+    const draftBlock = source.slice(draftIndex, draftIndex + 250);
+    expect(draftBlock).toContain("action={publishTipAction}");
+    expect(draftBlock).toContain("Publicar");
+    const archivedIndex = source.indexOf('{status === "archived" ? (');
+    const archivedBlock = source.slice(archivedIndex, archivedIndex + 250);
+    expect(archivedBlock).toContain("action={publishTipAction}");
+    expect(archivedBlock).toContain("Publicar novamente");
   });
 
   it("only offers Despublicar and Arquivar for published", () => {
@@ -31,11 +40,9 @@ describe("TipRowActions - per-status menu gating", () => {
     expect(matches?.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("uses a plain window.confirm guard for delete, not a name-typed modal (proportionate to the lower stakes of a tip card)", () => {
-    const deleteFormIndex = source.indexOf("action={deleteTipAction}");
-    const body = source.slice(deleteFormIndex, deleteFormIndex + 600);
-    expect(body).toContain("window.confirm(");
-    expect(body).toContain("event.preventDefault()");
+  it("uses a real modal (TipDeleteDialog) for delete, not window.confirm", () => {
+    expect(source).toContain("TipDeleteDialog");
+    expect(source).not.toContain("window.confirm(");
   });
 
   it("shows a visual separator before the destructive Excluir action", () => {
@@ -43,8 +50,13 @@ describe("TipRowActions - per-status menu gating", () => {
   });
 
   it("styles Excluir as danger", () => {
-    const deleteFormIndex = source.indexOf("action={deleteTipAction}");
-    const body = source.slice(deleteFormIndex, deleteFormIndex + 600);
+    const deleteItemIndex = source.indexOf("Excluir");
+    const body = source.slice(Math.max(0, deleteItemIndex - 200), deleteItemIndex + 50);
     expect(body).toContain('tone="danger"');
+  });
+
+  it("opens the delete dialog via local state, not by submitting a form directly", () => {
+    expect(source).toContain("const [deleteOpen, setDeleteOpen] = useState(false);");
+    expect(source).toContain("setDeleteOpen(true)");
   });
 });

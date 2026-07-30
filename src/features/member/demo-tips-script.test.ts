@@ -51,8 +51,9 @@ describe("demo tips administrative script", () => {
     expect(activeSql).toContain("on conflict (id) do update set");
   });
 
-  it("publishes tips (not left as drafts) so the demo is visible", () => {
-    expect(activeSql).toContain("'published',");
+  it("inserts as draft, never published, since these rows never have a real image_url", () => {
+    expect(activeSql).toContain("'draft',");
+    expect(activeSql).not.toContain("'published',");
   });
 
   it("never deletes rows or creates users", () => {

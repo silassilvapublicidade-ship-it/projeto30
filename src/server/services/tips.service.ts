@@ -5,7 +5,7 @@ import type { Tables } from "@/types/database";
 
 import { requireAuthUser } from "./auth-session.service";
 
-const TIP_TYPE = "tip";
+const TIP_CONTENT_TYPE = "tip_card";
 
 export type TipSummary = Pick<
   Tables<"content_items">,
@@ -13,32 +13,32 @@ export type TipSummary = Pick<
   | "category"
   | "challenge_id"
   | "display_order"
-  | "excerpt"
   | "id"
-  | "media_url"
+  | "image_url"
   | "published_at"
   | "slug"
+  | "summary"
   | "title"
 >;
 
 export type TipDetail = Pick<
   Tables<"content_items">,
   | "alt_text"
-  | "body"
   | "category"
   | "challenge_id"
-  | "excerpt"
+  | "content"
   | "id"
-  | "media_url"
+  | "image_url"
   | "published_at"
   | "slug"
+  | "summary"
   | "title"
 >;
 
 const summaryColumns =
-  "id,title,slug,excerpt,media_url,alt_text,category,challenge_id,display_order,published_at";
+  "id,title,slug,summary,image_url,alt_text,category,challenge_id,display_order,published_at";
 const detailColumns =
-  "id,title,slug,excerpt,body,media_url,alt_text,category,challenge_id,published_at";
+  "id,title,slug,summary,content,image_url,alt_text,category,challenge_id,published_at";
 
 // A published card only actually shows to members while starts_at (if set)
 // has already passed and ends_at (if set) hasn't yet. Each .or() call below
@@ -64,12 +64,14 @@ export async function getPublishedTips(filters: {
   let query = supabase
     .from("content_items")
     .select(summaryColumns)
-    .eq("type", TIP_TYPE)
+    .eq("content_type", TIP_CONTENT_TYPE)
     .eq("status", "published")
     .or(startsFilter)
     .or(endsFilter)
     .order("display_order", { ascending: true })
-    .order("published_at", { ascending: false });
+    .order("published_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true });
 
   if (filters.category) {
     query = query.eq("category", filters.category);
@@ -83,24 +85,6 @@ export async function getPublishedTips(filters: {
   return data ?? [];
 }
 
-export async function getTipCategories(): Promise<string[]> {
-  await requireAuthUser("/app/dicas");
-  const supabase = await createSupabaseServerClient();
-  const { endsFilter, startsFilter } = displayWindowFilters();
-
-  const { data } = await supabase
-    .from("content_items")
-    .select("category")
-    .eq("type", TIP_TYPE)
-    .eq("status", "published")
-    .or(startsFilter)
-    .or(endsFilter)
-    .not("category", "is", null);
-
-  const categories = new Set((data ?? []).map((row) => row.category).filter((value) => Boolean(value)));
-  return Array.from(categories) as string[];
-}
-
 export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
   await requireAuthUser("/app/dicas");
   const supabase = await createSupabaseServerClient();
@@ -109,7 +93,7 @@ export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
   const { data } = await supabase
     .from("content_items")
     .select(detailColumns)
-    .eq("type", TIP_TYPE)
+    .eq("content_type", TIP_CONTENT_TYPE)
     .eq("status", "published")
     .or(startsFilter)
     .or(endsFilter)
@@ -130,7 +114,7 @@ export async function getTipsForChallenge(challengeId: string): Promise<TipSumma
   const { data } = await supabase
     .from("content_items")
     .select(summaryColumns)
-    .eq("type", TIP_TYPE)
+    .eq("content_type", TIP_CONTENT_TYPE)
     .eq("status", "published")
     .or(startsFilter)
     .or(endsFilter)
