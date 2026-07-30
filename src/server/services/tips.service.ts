@@ -9,6 +9,7 @@ const TIP_TYPE = "tip";
 
 export type TipSummary = Pick<
   Tables<"content_items">,
+  | "alt_text"
   | "category"
   | "challenge_id"
   | "display_order"
@@ -22,6 +23,7 @@ export type TipSummary = Pick<
 
 export type TipDetail = Pick<
   Tables<"content_items">,
+  | "alt_text"
   | "body"
   | "category"
   | "challenge_id"
@@ -34,8 +36,22 @@ export type TipDetail = Pick<
 >;
 
 const summaryColumns =
-  "id,title,slug,excerpt,media_url,category,challenge_id,display_order,published_at";
-const detailColumns = "id,title,slug,excerpt,body,media_url,category,challenge_id,published_at";
+  "id,title,slug,excerpt,media_url,alt_text,category,challenge_id,display_order,published_at";
+const detailColumns =
+  "id,title,slug,excerpt,body,media_url,alt_text,category,challenge_id,published_at";
+
+// A published card only actually shows to members while starts_at (if set)
+// has already passed and ends_at (if set) hasn't yet. Each .or() call below
+// is AND'd with the rest of the query by postgrest, so both must hold
+// independently - re-read at call time (not module load) so a long-lived
+// server process never uses a stale "now".
+function displayWindowFilters() {
+  const nowIso = new Date().toISOString();
+  return {
+    endsFilter: `ends_at.is.null,ends_at.gte.${nowIso}`,
+    startsFilter: `starts_at.is.null,starts_at.lte.${nowIso}`,
+  };
+}
 
 export async function getPublishedTips(filters: {
   category?: string;
@@ -43,12 +59,15 @@ export async function getPublishedTips(filters: {
 } = {}): Promise<TipSummary[]> {
   await requireAuthUser("/app/dicas");
   const supabase = await createSupabaseServerClient();
+  const { endsFilter, startsFilter } = displayWindowFilters();
 
   let query = supabase
     .from("content_items")
     .select(summaryColumns)
     .eq("type", TIP_TYPE)
     .eq("status", "published")
+    .or(startsFilter)
+    .or(endsFilter)
     .order("display_order", { ascending: true })
     .order("published_at", { ascending: false });
 
@@ -67,12 +86,15 @@ export async function getPublishedTips(filters: {
 export async function getTipCategories(): Promise<string[]> {
   await requireAuthUser("/app/dicas");
   const supabase = await createSupabaseServerClient();
+  const { endsFilter, startsFilter } = displayWindowFilters();
 
   const { data } = await supabase
     .from("content_items")
     .select("category")
     .eq("type", TIP_TYPE)
     .eq("status", "published")
+    .or(startsFilter)
+    .or(endsFilter)
     .not("category", "is", null);
 
   const categories = new Set((data ?? []).map((row) => row.category).filter((value) => Boolean(value)));
@@ -82,12 +104,15 @@ export async function getTipCategories(): Promise<string[]> {
 export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
   await requireAuthUser("/app/dicas");
   const supabase = await createSupabaseServerClient();
+  const { endsFilter, startsFilter } = displayWindowFilters();
 
   const { data } = await supabase
     .from("content_items")
     .select(detailColumns)
     .eq("type", TIP_TYPE)
     .eq("status", "published")
+    .or(startsFilter)
+    .or(endsFilter)
     .eq("slug", slug)
     .maybeSingle();
 
@@ -100,12 +125,15 @@ export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
  */
 export async function getTipsForChallenge(challengeId: string): Promise<TipSummary[]> {
   const supabase = await createSupabaseServerClient();
+  const { endsFilter, startsFilter } = displayWindowFilters();
 
   const { data } = await supabase
     .from("content_items")
     .select(summaryColumns)
     .eq("type", TIP_TYPE)
     .eq("status", "published")
+    .or(startsFilter)
+    .or(endsFilter)
     .eq("challenge_id", challengeId)
     .order("display_order", { ascending: true });
 

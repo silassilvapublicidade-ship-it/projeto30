@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  getTestChallengePurgePreview,
+  type TestChallengePurgePreview,
+} from "@/server/services/admin-analytics.service";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 
 import { challengeIdSchema } from "./admin-analytics.schemas";
@@ -145,4 +149,78 @@ export async function deleteChallengeAction(formData: FormData) {
   }
 
   redirect(`${target}${separator}feedback=delete-success`);
+}
+
+/**
+ * Permanent purge of a challenge explicitly marked is_test = true, even if
+ * it has enrollment/log history (deleteChallengeAction above never allows
+ * that - it relies on the FK restrict and always blocks on 23503). All
+ * authorization and validation (super_admin, is_test, exact name, exact
+ * phrase) happens inside admin_delete_test_challenge_permanently() itself;
+ * this action never trusts the client beyond forwarding what was typed.
+ */
+export async function purgeTestChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+  const confirmationName = formData.get("confirmationName");
+  const confirmationPhrase = formData.get("confirmationPhrase");
+
+  if (
+    !parsedId.success ||
+    typeof confirmationName !== "string" ||
+    typeof confirmationPhrase !== "string"
+  ) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_delete_test_challenge_permanently", {
+    target_challenge_id: parsedId.data,
+    confirmation_name: confirmationName,
+    confirmation_phrase: confirmationPhrase,
+  });
+
+  if (error) {
+    const feedback =
+      error.code === "42501"
+        ? "purge-forbidden"
+        : error.code === "P0002" || error.code === "P0003"
+          ? "purge-blocked"
+          : "error";
+    redirect(`${target}${separator}feedback=${feedback}`);
+  }
+
+  redirect(`${target}${separator}feedback=purge-success`);
+}
+
+export type PurgePreviewResult =
+  | { ok: true; preview: TestChallengePurgePreview }
+  | { ok: false; message: string };
+
+/**
+ * Callable directly from the client (PurgeTestChallengeDialog) when the
+ * modal opens, so the admin sees real, server-computed counts before typing
+ * the confirmation phrase - never numbers derived from the already-rendered
+ * admin list row.
+ */
+export async function getTestChallengePurgePreviewAction(
+  challengeId: string,
+): Promise<PurgePreviewResult> {
+  await requireAdminUser();
+
+  const parsedId = challengeIdSchema.safeParse(challengeId);
+
+  if (!parsedId.success) {
+    return { ok: false, message: "Identificador de desafio inválido." };
+  }
+
+  const { data, error } = await getTestChallengePurgePreview(parsedId.data);
+
+  if (error || !data) {
+    return { ok: false, message: error ?? "Não foi possível carregar a prévia." };
+  }
+
+  return { ok: true, preview: data };
 }

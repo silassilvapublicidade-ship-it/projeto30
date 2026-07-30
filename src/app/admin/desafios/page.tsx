@@ -21,6 +21,7 @@ import {
   formatPercent,
 } from "@/features/admin/admin-metrics.core";
 import { listAdminChallenges } from "@/server/services/admin-analytics.service";
+import { requireAdminUser } from "@/server/services/admin-session.service";
 
 export const metadata: Metadata = {
   title: "Desafios · Administração",
@@ -54,7 +55,20 @@ const feedbackMessages: Record<string, { description: string; title: string }> =
   "delete-blocked": {
     title: "Não é possível excluir",
     description:
-      "Este desafio já tem participantes ou histórico. Arquive-o em vez de excluir.",
+      "Este desafio possui participantes ou histórico e não pode ser excluído. Utilize Arquivar.",
+  },
+  "purge-success": {
+    title: "Desafio de teste excluído permanentemente",
+    description: "O desafio e todo o seu histórico foram removidos.",
+  },
+  "purge-forbidden": {
+    title: "Ação não permitida",
+    description: "Apenas super_admin pode excluir permanentemente um desafio de teste.",
+  },
+  "purge-blocked": {
+    title: "Não foi possível excluir permanentemente",
+    description:
+      "A confirmação não conferiu ou este desafio não está marcado como desafio de teste.",
   },
 };
 
@@ -67,7 +81,11 @@ export default async function AdminChallengesPage({
 }: AdminChallengesPageProps) {
   const rawParams = await searchParams;
   const params = parseChallengeListParams(rawParams);
-  const { data, error } = await listAdminChallenges(params);
+  const [admin, { data, error }] = await Promise.all([
+    requireAdminUser(),
+    listAdminChallenges(params),
+  ]);
+  const isSuperAdmin = admin.role === "super_admin";
   const feedbackKey = Array.isArray(rawParams.feedback)
     ? rawParams.feedback[0]
     : rawParams.feedback;
@@ -93,7 +111,11 @@ export default async function AdminChallengesPage({
           description={feedback.description}
           title={feedback.title}
           tone={
-            feedbackKey === "error" || feedbackKey === "invalid" || feedbackKey === "delete-blocked"
+            feedbackKey === "error" ||
+            feedbackKey === "invalid" ||
+            feedbackKey === "delete-blocked" ||
+            feedbackKey === "purge-forbidden" ||
+            feedbackKey === "purge-blocked"
               ? "error"
               : "success"
           }
@@ -219,6 +241,8 @@ export default async function AdminChallengesPage({
                       <ChallengeRowActions
                         challengeId={challenge.id}
                         challengeName={challenge.name}
+                        isSuperAdmin={isSuperAdmin}
+                        isTest={challenge.is_test}
                         participantCount={challenge.participant_count}
                         redirectTo={redirectTo}
                         status={challenge.status}

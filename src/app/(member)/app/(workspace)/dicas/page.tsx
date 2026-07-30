@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Lightbulb } from "lucide-react";
 
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
+import { TipCard } from "@/components/member/tip-card";
 import { cn } from "@/lib/utils";
 import { getPublishedTips, getTipCategories } from "@/server/services/tips.service";
 
@@ -29,10 +29,14 @@ export default async function DicasPage({ searchParams }: DicasPageProps) {
       title="Dicas"
     >
       {categories.length > 0 ? (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por categoria">
+        <div
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible"
+          role="group"
+          aria-label="Filtrar por categoria"
+        >
           <Link
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
               !categoria
                 ? "border-action/32 bg-action/14 text-action-soft"
                 : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
@@ -44,7 +48,7 @@ export default async function DicasPage({ searchParams }: DicasPageProps) {
           {categories.map((category) => (
             <Link
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
                 categoria === category
                   ? "border-action/32 bg-action/14 text-action-soft"
                   : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
@@ -59,36 +63,18 @@ export default async function DicasPage({ searchParams }: DicasPageProps) {
       ) : null}
 
       {tips.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tips.map((tip) => (
-            <Link
-              className="flex flex-col overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-white/[0.03] shadow-[var(--shadow-soft)] transition-[border-color,transform] duration-[var(--motion-base)] hover:-translate-y-0.5 hover:border-white/16"
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {tips.map((tip, index) => (
+            <TipCard
+              altText={tip.alt_text}
+              category={tip.category}
+              excerpt={tip.excerpt}
               href={`/app/dicas/${tip.slug}`}
+              imageUrl={tip.media_url}
               key={tip.id}
-            >
-              {tip.media_url ? (
-                <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
-                  <Image
-                    alt=""
-                    className="object-contain"
-                    fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    src={tip.media_url}
-                  />
-                </div>
-              ) : null}
-              <div className="flex flex-1 flex-col gap-2 p-4">
-                {tip.category ? (
-                  <span className="w-fit rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">
-                    {tip.category}
-                  </span>
-                ) : null}
-                <h2 className="text-base font-semibold text-foreground">{tip.title}</h2>
-                {tip.excerpt ? (
-                  <p className="line-clamp-2 text-sm leading-6 text-muted">{tip.excerpt}</p>
-                ) : null}
-              </div>
-            </Link>
+              priority={index < 4}
+              title={tip.title}
+            />
           ))}
         </div>
       ) : (

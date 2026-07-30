@@ -35,8 +35,14 @@ export default async function DicaDetailPage({ params }: DicaDetailPageProps) {
       </Link>
 
       {tip.media_url ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-black">
-          <Image alt="" className="object-contain" fill sizes="100vw" src={tip.media_url} />
+        <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-black sm:aspect-[16/9]">
+          <Image
+            alt={tip.alt_text || tip.title}
+            className="object-contain"
+            fill
+            sizes="100vw"
+            src={tip.media_url}
+          />
         </div>
       ) : null}
 

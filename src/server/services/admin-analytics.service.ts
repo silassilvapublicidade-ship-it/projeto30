@@ -36,6 +36,7 @@ export type AdminChallengeListRow = {
   duration_days: number;
   end_date: string | null;
   id: string;
+  is_test: boolean;
   name: string;
   participant_count: number;
   slug: string;
@@ -207,6 +208,40 @@ export async function listAdminChallenges(
     data: { rows, totalCount: rows[0]?.total_count ?? 0 },
     error: null,
   };
+}
+
+export type TestChallengePurgePreview = {
+  challenge_id: string;
+  challenge_name: string;
+  counts: {
+    analytics_events: number;
+    daily_logs: number;
+    enrollments: number;
+    journal_entries: number;
+    point_events: number;
+  };
+};
+
+/**
+ * Read-only counts shown in the purge confirmation modal before a
+ * super_admin can permanently delete a challenge marked is_test = true.
+ * Backed by admin_test_challenge_purge_preview() - re-validates super_admin
+ * and is_test server-side, never trusts the row the client already has
+ * rendered in the list.
+ */
+export async function getTestChallengePurgePreview(
+  challengeId: string,
+): Promise<AdminServiceResult<TestChallengePurgePreview>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_test_challenge_purge_preview", {
+    target_challenge_id: challengeId,
+  });
+
+  if (error) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as TestChallengePurgePreview, error: null };
 }
 
 export async function getAdminChallengeDetail(

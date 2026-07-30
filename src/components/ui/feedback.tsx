@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Inbox, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type StatusCardProps = ComponentPropsWithoutRef<"div"> & {
-  tone: "success" | "error";
+  tone: "error" | "success" | "warning";
   title: string;
   description: string;
 };
@@ -17,6 +17,10 @@ const statusTone = {
   error: {
     icon: AlertTriangle,
     className: "border-danger/22 bg-danger-wash text-danger",
+  },
+  warning: {
+    icon: AlertTriangle,
+    className: "border-action/25 bg-action/10 text-action-soft",
   },
 };
 

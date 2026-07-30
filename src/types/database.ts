@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -414,6 +414,7 @@ export type Database = {
           enrollment_end: string | null
           enrollment_start: string | null
           id: string
+          is_test: boolean
           name: string
           rules_config: Json
           slug: string
@@ -433,6 +434,7 @@ export type Database = {
           enrollment_end?: string | null
           enrollment_start?: string | null
           id?: string
+          is_test?: boolean
           name: string
           rules_config?: Json
           slug: string
@@ -452,6 +454,7 @@ export type Database = {
           enrollment_end?: string | null
           enrollment_start?: string | null
           id?: string
+          is_test?: boolean
           name?: string
           rules_config?: Json
           slug?: string
@@ -472,51 +475,60 @@ export type Database = {
       }
       content_items: {
         Row: {
+          alt_text: string | null
           author_id: string | null
           body: string | null
           category: string | null
           challenge_id: string | null
           created_at: string
           display_order: number
+          ends_at: string | null
           excerpt: string | null
           id: string
           media_url: string | null
           published_at: string | null
           slug: string
+          starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
           title: string
           type: string
           updated_at: string
         }
         Insert: {
+          alt_text?: string | null
           author_id?: string | null
           body?: string | null
           category?: string | null
           challenge_id?: string | null
           created_at?: string
           display_order?: number
+          ends_at?: string | null
           excerpt?: string | null
           id?: string
           media_url?: string | null
           published_at?: string | null
           slug: string
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           title: string
           type: string
           updated_at?: string
         }
         Update: {
+          alt_text?: string | null
           author_id?: string | null
           body?: string | null
           category?: string | null
           challenge_id?: string | null
           created_at?: string
           display_order?: number
+          ends_at?: string | null
           excerpt?: string | null
           id?: string
           media_url?: string | null
           published_at?: string | null
           slug?: string
+          starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           title?: string
           type?: string
@@ -1052,13 +1064,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "share_cards_user_achievement_id_fkey"
-            columns: ["user_achievement_id"]
-            isOneToOne: false
-            referencedRelation: "user_achievements"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "share_cards_daily_log_id_enrollment_id_challenge_id_fkey"
             columns: ["daily_log_id", "enrollment_id", "challenge_id"]
             isOneToOne: false
@@ -1077,6 +1082,13 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "share_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_cards_user_achievement_id_fkey"
+            columns: ["user_achievement_id"]
+            isOneToOne: false
+            referencedRelation: "user_achievements"
             referencedColumns: ["id"]
           },
         ]
@@ -1270,6 +1282,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abandon_challenge_enrollment: {
+        Args: { target_enrollment_id: string }
+        Returns: Json
+      }
       admin_challenge_detail: {
         Args: { p_challenge_id: string }
         Returns: Json
@@ -1278,20 +1294,17 @@ export type Database = {
         Args: { p_challenge_id: string }
         Returns: Json
       }
-      admin_dashboard_overview: {
-        Args: never
+      admin_dashboard_overview: { Args: never; Returns: Json }
+      admin_delete_test_challenge_permanently: {
+        Args: {
+          confirmation_name: string
+          confirmation_phrase: string
+          target_challenge_id: string
+        }
         Returns: Json
       }
       admin_generate_challenge_days: {
         Args: { p_challenge_id: string }
-        Returns: Json
-      }
-      admin_normalize_early_enrollment: {
-        Args: { p_enrollment_id: string }
-        Returns: Json
-      }
-      abandon_challenge_enrollment: {
-        Args: { target_enrollment_id: string }
         Returns: Json
       }
       admin_list_challenges: {
@@ -1307,12 +1320,13 @@ export type Database = {
           average_progress: number
           created_at: string
           duration_days: number
-          end_date: string | null
+          end_date: string
           id: string
+          is_test: boolean
           name: string
           participant_count: number
           slug: string
-          start_date: string | null
+          start_date: string
           status: Database["public"]["Enums"]["challenge_status"]
           total_count: number
         }[]
@@ -1337,8 +1351,8 @@ export type Database = {
           enrollment_id: string
           finalized_days: number
           joined_at: string
-          last_activity_at: string | null
-          name: string | null
+          last_activity_at: string
+          name: string
           points_total: number
           status: Database["public"]["Enums"]["enrollment_status"]
           streak_best: number
@@ -1347,6 +1361,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_normalize_early_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: Json
+      }
       admin_participant_detail: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -1354,6 +1372,14 @@ export type Database = {
       admin_require_admin: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      admin_require_super_admin: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      admin_test_challenge_purge_preview: {
+        Args: { target_challenge_id: string }
+        Returns: Json
       }
       current_user_role: {
         Args: never

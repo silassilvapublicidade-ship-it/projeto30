@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 
@@ -165,8 +166,11 @@ type DropdownMenuItemProps = {
   className?: string;
   disabled?: boolean;
   href?: string;
-  onSelect?: () => void;
-  tone?: "danger" | "default";
+  // Receives the click event so a type="submit" item (posting to a form)
+  // can still call event.preventDefault() conditionally - e.g. a
+  // window.confirm() guard before letting a destructive form submit.
+  onSelect?: (event: MouseEvent<HTMLButtonElement>) => void;
+  tone?: "critical" | "danger" | "default";
   type?: "button" | "submit";
 };
 
@@ -188,9 +192,10 @@ export function DropdownMenuItem({
 }: DropdownMenuItemProps) {
   const classes = cn(
     "flex w-full items-center rounded-[var(--radius-control)] px-3 py-2 text-left text-sm font-medium outline-none transition-colors",
-    tone === "danger"
-      ? "text-danger hover:bg-danger/12 focus:bg-danger/12"
-      : "text-foreground hover:bg-white/[0.07] focus:bg-white/[0.07]",
+    tone === "danger" && "text-danger hover:bg-danger/12 focus:bg-danger/12",
+    tone === "critical" &&
+      "text-danger font-semibold hover:bg-danger/18 focus:bg-danger/18 border border-danger/25",
+    tone === "default" && "text-foreground hover:bg-white/[0.07] focus:bg-white/[0.07]",
     disabled && "pointer-events-none opacity-40",
     className,
   );
@@ -216,4 +221,13 @@ export function DropdownMenuItem({
       {children}
     </button>
   );
+}
+
+/**
+ * Visual divider before destructive actions (role="separator" so screen
+ * readers announce the group change, excluded from arrow-key navigation
+ * since it's not a menuitem).
+ */
+export function DropdownMenuSeparator() {
+  return <div className="my-1.5 h-px bg-white/[0.08]" role="separator" />;
 }

@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import { DeleteChallengeDialog } from "@/components/admin/delete-challenge-dialog";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { PurgeTestChallengeDialog } from "@/components/admin/purge-test-challenge-dialog";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   archiveChallengeAction,
   publishChallengeAction,
@@ -15,6 +16,8 @@ import type { ChallengeStatus } from "@/server/services/admin-analytics.service"
 type ChallengeRowActionsProps = {
   challengeId: string;
   challengeName: string;
+  isSuperAdmin: boolean;
+  isTest: boolean;
   participantCount: number;
   redirectTo: string;
   status: ChallengeStatus;
@@ -57,21 +60,37 @@ function ActionForm({
 export function ChallengeRowActions({
   challengeId,
   challengeName,
+  isSuperAdmin,
+  isTest,
   participantCount,
   redirectTo,
   status,
 }: ChallengeRowActionsProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const canDelete = status === "draft" && participantCount === 0;
+  const [purgeOpen, setPurgeOpen] = useState(false);
+
+  // A challenge can be deleted (physically) in ANY status as long as it has
+  // zero participants/history - the earlier version of this component only
+  // allowed it for status === "draft", which is why "Excluir" never showed
+  // up for an archived challenge like "Projeto 30 - Validacao Interna" even
+  // though the business rule (zero real history) would have allowed it. The
+  // actual safety net is unchanged: deleteChallengeAction still relies on
+  // challenge_enrollments.challenge_id being ON DELETE RESTRICT, so even if
+  // this check is ever wrong (stale participantCount), the database itself
+  // rejects the delete with 23503 rather than losing real history.
+  const canDelete = participantCount === 0;
+  // Permanent purge (with history) is reserved for challenges explicitly
+  // marked is_test = true, and only super_admin ever sees the option - never
+  // a path available for a real challenge just because it's archived.
+  const canPurge = isSuperAdmin && isTest && status === "archived";
+  const showDestructiveSeparator = canDelete || canPurge;
 
   return (
     <>
       <DropdownMenu label={`Ações para ${challengeName}`}>
         {({ close }) => (
           <>
-            {status === "active" || status === "archived" ? (
-              <DropdownMenuItem href={`/admin/desafios/${challengeId}`}>Ver detalhes</DropdownMenuItem>
-            ) : null}
+            <DropdownMenuItem href={`/admin/desafios/${challengeId}`}>Ver detalhes</DropdownMenuItem>
 
             {status === "draft" || status === "active" ? (
               <DropdownMenuItem href={`/admin/desafios/${challengeId}/editar`}>Editar</DropdownMenuItem>
@@ -99,7 +118,7 @@ export function ChallengeRowActions({
               </ActionForm>
             ) : null}
 
-            {status === "active" ? (
+            {status === "active" || status === "ended" ? (
               <ActionForm
                 action={archiveChallengeAction}
                 close={close}
@@ -110,16 +129,16 @@ export function ChallengeRowActions({
               </ActionForm>
             ) : null}
 
-            {status === "draft" || status === "active" || status === "archived" ? (
-              <ActionForm
-                action={duplicateChallengeAsDraftAction}
-                close={close}
-                hiddenChallengeId={challengeId}
-                redirectTo={redirectTo}
-              >
-                Duplicar
-              </ActionForm>
-            ) : null}
+            <ActionForm
+              action={duplicateChallengeAsDraftAction}
+              close={close}
+              hiddenChallengeId={challengeId}
+              redirectTo={redirectTo}
+            >
+              Duplicar
+            </ActionForm>
+
+            {showDestructiveSeparator ? <DropdownMenuSeparator /> : null}
 
             {canDelete ? (
               <DropdownMenuItem
@@ -132,6 +151,18 @@ export function ChallengeRowActions({
                 Excluir
               </DropdownMenuItem>
             ) : null}
+
+            {canPurge ? (
+              <DropdownMenuItem
+                onSelect={() => {
+                  close();
+                  setPurgeOpen(true);
+                }}
+                tone="critical"
+              >
+                Excluir permanentemente (teste)
+              </DropdownMenuItem>
+            ) : null}
           </>
         )}
       </DropdownMenu>
@@ -142,6 +173,16 @@ export function ChallengeRowActions({
           challengeName={challengeName}
           onOpenChange={setDeleteOpen}
           open={deleteOpen}
+          redirectTo={redirectTo}
+        />
+      ) : null}
+
+      {canPurge ? (
+        <PurgeTestChallengeDialog
+          challengeId={challengeId}
+          challengeName={challengeName}
+          onOpenChange={setPurgeOpen}
+          open={purgeOpen}
           redirectTo={redirectTo}
         />
       ) : null}

@@ -40,18 +40,27 @@ describe("admin challenge deletion - list page wiring", () => {
 
   it("surfaces a 'cannot delete' explanation distinct from a generic error", () => {
     expect(source).toContain('"delete-blocked"');
-    expect(source).toContain("Arquive-o em vez de excluir.");
+    expect(source).toContain(
+      "Este desafio possui participantes ou histórico e não pode ser excluído. Utilize Arquivar.",
+    );
   });
 });
 
 describe("admin challenge deletion - row action gating (ChallengeRowActions)", () => {
   const source = readSource("src", "components", "admin", "challenge-row-actions.tsx");
 
-  it("only allows deletion for draft challenges with zero participants", () => {
-    expect(source).toContain('status === "draft" && participantCount === 0');
+  // Regression: the previous version gated Excluir on
+  // `status === "draft" && participantCount === 0`, which is exactly why
+  // "Excluir" never appeared for an archived, zero-participant challenge
+  // like "Projeto 30 - Validacao Interna" even though the business rule
+  // (zero real history) allowed it. The fix drops the status condition -
+  // canDelete is participantCount === 0 alone, in ANY status.
+  it("allows deletion in any status once participantCount is zero (the fixed bug)", () => {
+    expect(source).toContain("const canDelete = participantCount === 0;");
+    expect(source).not.toContain('status === "draft" && participantCount === 0');
   });
 
-  it("never renders Excluir for active or archived challenges, regardless of participant count", () => {
+  it("never renders Excluir for a challenge with any participant, regardless of status", () => {
     const canDeleteIndex = source.indexOf("canDelete");
     expect(canDeleteIndex).toBeGreaterThan(-1);
     // canDelete is the single gate for both the menu item and the dialog -
@@ -60,19 +69,147 @@ describe("admin challenge deletion - row action gating (ChallengeRowActions)", (
     expect(source.match(/canDelete/g)?.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("renders exactly the spec'd action set for each status", () => {
-    // Draft: Editar, Publicar, Duplicar, Excluir (no Ver detalhes, no Arquivar)
-    expect(source).toContain('status === "draft" || status === "active"');
-    expect(source).toContain('status === "draft" ?');
-    // Active: Ver detalhes, Editar, Despublicar, Arquivar, Duplicar
-    expect(source).toContain('status === "active" || status === "archived"');
-    expect(source).toContain('status === "active" ?');
-    // Archived: Ver detalhes, Duplicar only
-    expect(source).toContain('status === "draft" || status === "active" || status === "archived"');
+  it("gates permanent purge to super_admin, is_test challenges, archived status only", () => {
+    expect(source).toContain(
+      'const canPurge = isSuperAdmin && isTest && status === "archived";',
+    );
+  });
+
+  it("renders Ver detalhes for every status (draft included)", () => {
+    const menuStart = source.indexOf("<DropdownMenu label=");
+    const menuBlock = source.slice(menuStart, menuStart + 400);
+    expect(menuBlock).toContain(
+      '<DropdownMenuItem href={`/admin/desafios/${challengeId}`}>Ver detalhes</DropdownMenuItem>',
+    );
+  });
+
+  it("renders Editar only for draft/active, and Arquivar only for active/ended", () => {
+    expect(source).toContain('status === "draft" || status === "active" ?');
+    expect(source).toContain('status === "active" || status === "ended" ?');
+  });
+
+  it("always renders Duplicar regardless of status", () => {
+    const duplicateIndex = source.indexOf("duplicateChallengeAsDraftAction");
+    expect(duplicateIndex).toBeGreaterThan(-1);
+    // Unlike Editar/Publicar/Arquivar, Duplicar's ActionForm is not wrapped
+    // in a status condition.
+    const before = source.slice(Math.max(0, duplicateIndex - 200), duplicateIndex);
+    expect(before).not.toMatch(/status === "\w+"\s*\?\s*\($/);
+  });
+
+  it("shows a visual separator before any destructive action", () => {
+    expect(source).toContain("const showDestructiveSeparator = canDelete || canPurge;");
+    expect(source).toContain("{showDestructiveSeparator ? <DropdownMenuSeparator /> : null}");
+  });
+
+  it("styles Excluir as danger and Excluir permanentemente as critical", () => {
+    const deleteItemIndex = source.indexOf("Excluir</DropdownMenuItem");
+    expect(deleteItemIndex).toBe(-1); // rendered as children text, not inline closing tag
+    expect(source).toContain('tone="danger"');
+    expect(source).toContain('tone="critical"');
   });
 
   it("closes the menu when a status-transition form is submitted", () => {
     expect(source).toContain('<form action={action} onSubmit={close}>');
+  });
+});
+
+describe("admin challenge deletion - permanent purge of test challenges", () => {
+  const migrationSource = readSource(
+    "supabase",
+    "migrations",
+    "0022_test_challenge_purge.sql",
+  );
+  const actionsSource = readSource("src", "features", "admin", "admin-challenges.actions.ts");
+  const dialogSource = readSource(
+    "src",
+    "components",
+    "admin",
+    "purge-test-challenge-dialog.tsx",
+  );
+
+  it("adds an explicit is_test marker instead of inferring test data from archived status", () => {
+    expect(migrationSource).toContain(
+      "add column if not exists is_test boolean not null default false;",
+    );
+  });
+
+  it("marks only the internal validation challenge as is_test, never touching other rows", () => {
+    expect(migrationSource).toContain("where slug = 'projeto-30-validacao-interna';");
+  });
+
+  it("requires super_admin specifically, not just admin, inside the RPC", () => {
+    expect(migrationSource).toContain("public.admin_require_super_admin();");
+    expect(migrationSource).toContain("v_current_role <> 'super_admin'");
+  });
+
+  it("blocks the purge unless the challenge is explicitly marked is_test", () => {
+    expect(migrationSource).toContain("if v_challenge.is_test is not true then");
+  });
+
+  it("validates both the exact challenge name and the exact confirmation phrase", () => {
+    expect(migrationSource).toContain("if confirmation_phrase is distinct from 'EXCLUIR PERMANENTEMENTE' then");
+    expect(migrationSource).toContain("if v_challenge.name is distinct from confirmation_name then");
+  });
+
+  it("locks the challenge row before deleting, to avoid a race with a fresh enrollment", () => {
+    expect(migrationSource).toContain("where id = target_challenge_id\n  for update;");
+  });
+
+  it("removes restrict-constrained children before their parent in every case", () => {
+    const deleteOrder = migrationSource.indexOf("delete from public.analytics_events");
+    const habitLogsIndex = migrationSource.indexOf("delete from public.habit_logs", deleteOrder);
+    const dayHabitsIndex = migrationSource.indexOf(
+      "delete from public.challenge_day_habits",
+      deleteOrder,
+    );
+    const dailyLogsIndex = migrationSource.indexOf("delete from public.daily_logs", deleteOrder);
+    const daysIndex = migrationSource.indexOf("delete from public.challenge_days", deleteOrder);
+    const enrollmentsIndex = migrationSource.indexOf(
+      "delete from public.challenge_enrollments",
+      deleteOrder,
+    );
+    const challengeIndex = migrationSource.indexOf("delete from public.challenges", deleteOrder);
+
+    // habit_logs -> challenge_day_habits (restrict): habit_logs first.
+    expect(habitLogsIndex).toBeLessThan(dayHabitsIndex);
+    // daily_logs -> challenge_days (restrict): daily_logs first.
+    expect(dailyLogsIndex).toBeLessThan(daysIndex);
+    // challenge_enrollments -> challenges (restrict): enrollments first.
+    expect(enrollmentsIndex).toBeLessThan(challengeIndex);
+  });
+
+  it("writes to admin_audit_logs before returning", () => {
+    expect(migrationSource).toContain("insert into public.admin_audit_logs");
+    expect(migrationSource).toContain("'admin_delete_test_challenge_permanently'");
+  });
+
+  it("revokes public/anon/authenticated execute by default and grants only to authenticated", () => {
+    expect(migrationSource).toContain(
+      "revoke execute on function public.admin_delete_test_challenge_permanently(uuid, text, text)\n  from public, anon, authenticated;",
+    );
+    expect(migrationSource).toContain(
+      "grant execute on function public.admin_delete_test_challenge_permanently(uuid, text, text)\n  to authenticated;",
+    );
+  });
+
+  it("the server action forwards confirmation fields without inventing its own authorization", () => {
+    const actionStart = actionsSource.indexOf("export async function purgeTestChallengeAction");
+    const actionBody = actionsSource.slice(actionStart, actionStart + 900);
+    expect(actionBody).toContain('rpc("admin_delete_test_challenge_permanently"');
+    expect(actionBody).toContain("confirmation_name: confirmationName");
+    expect(actionBody).toContain("confirmation_phrase: confirmationPhrase");
+  });
+
+  it("the dialog requires the exact phrase EXCLUIR PERMANENTEMENTE in addition to the challenge name", () => {
+    expect(dialogSource).toContain('const REQUIRED_PHRASE = "EXCLUIR PERMANENTEMENTE";');
+    expect(dialogSource).toContain(
+      "typedName !== challengeName || typedPhrase !== REQUIRED_PHRASE || !preview?.ok",
+    );
+  });
+
+  it("fetches real server-computed counts before allowing confirmation, never trusting the row already on screen", () => {
+    expect(dialogSource).toContain("getTestChallengePurgePreviewAction(challengeId)");
   });
 });
 
