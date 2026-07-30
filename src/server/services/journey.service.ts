@@ -40,13 +40,31 @@ export async function getJourneyOverview(): Promise<JourneyOverview> {
     .maybeSingle();
   const localDate = getDateOnlyInTimeZone(new Date(), profile?.timezone || "America/Sao_Paulo");
 
+  // .eq("user_id", ...) is required even though RLS also applies: "Users
+  // can read own enrollments" is `user_id = auth.uid() OR is_admin()`, so
+  // for an admin viewer, RLS alone would return every user's enrollments,
+  // not just their own - the same class of bug that leaked another user's
+  // card onto Hoje (see member-area.service.ts).
   const { data: enrollments } = await supabase
     .from("challenge_enrollments")
     .select("id,status,current_day,completion_percent,challenge_id")
+    .eq("user_id", user.id)
     .in("status", ["active", "paused", "abandoned"])
     .order("joined_at", { ascending: false });
 
-  const enrollmentRows = enrollments ?? [];
+  // Defense in depth, not the fix itself: the real fix is the .eq("user_id",
+  // ...) filter above. This only guards the invariant that the SAME
+  // enrollment row must never produce two tabs - it dedupes strictly by
+  // enrollment.id, so it can never merge two distinct real enrollments
+  // (e.g. two different challenges, or two different users) into one.
+  const seenEnrollmentIds = new Set<string>();
+  const enrollmentRows = (enrollments ?? []).filter((enrollment) => {
+    if (seenEnrollmentIds.has(enrollment.id)) {
+      return false;
+    }
+    seenEnrollmentIds.add(enrollment.id);
+    return true;
+  });
   const challengeIds = Array.from(new Set(enrollmentRows.map((row) => row.challenge_id)));
   const { data: challenges } =
     challengeIds.length > 0

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 type ConfirmDialogProps = {
   cancelLabel?: string;
   children?: ReactNode;
+  confirmDisabled?: boolean;
   confirmLabel: string;
   description: string;
   formAction: (formData: FormData) => void | Promise<void>;
@@ -19,11 +20,17 @@ type ConfirmDialogProps = {
   title: string;
 };
 
-function SubmitButton({ confirmLabel }: { confirmLabel: string }) {
+function SubmitButton({
+  confirmDisabled,
+  confirmLabel,
+}: {
+  confirmDisabled?: boolean;
+  confirmLabel: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
-    <Button loading={pending} type="submit" variant="danger">
+    <Button disabled={confirmDisabled} loading={pending} type="submit" variant="danger">
       {confirmLabel}
     </Button>
   );
@@ -39,6 +46,7 @@ function SubmitButton({ confirmLabel }: { confirmLabel: string }) {
 export function ConfirmDialog({
   cancelLabel = "Cancelar",
   children,
+  confirmDisabled = false,
   confirmLabel,
   description,
   formAction,
@@ -104,7 +112,19 @@ export function ConfirmDialog({
       }}
       ref={dialogRef}
     >
-      <form action={formAction} className="p-5 sm:p-6">
+      <form
+        action={formAction}
+        className="p-5 sm:p-6"
+        onSubmit={(event) => {
+          // Belt-and-suspenders: a disabled submit button already blocks
+          // Enter-to-submit in every real browser, but this keeps the gate
+          // correct even if that submit button is momentarily re-enabled
+          // (e.g. a future caller changing confirmDisabled reactively).
+          if (confirmDisabled) {
+            event.preventDefault();
+          }
+        }}
+      >
         {Object.entries(hiddenFields).map(([name, value]) => (
           <input key={name} name={name} type="hidden" value={value} />
         ))}
@@ -122,7 +142,7 @@ export function ConfirmDialog({
           <Button onClick={() => onOpenChange(false)} type="button" variant="ghost">
             {cancelLabel}
           </Button>
-          <SubmitButton confirmLabel={confirmLabel} />
+          <SubmitButton confirmDisabled={confirmDisabled} confirmLabel={confirmLabel} />
         </div>
       </form>
     </dialog>

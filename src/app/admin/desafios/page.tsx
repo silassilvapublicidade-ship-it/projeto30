@@ -5,18 +5,10 @@ import { AdminPagination } from "@/components/admin/admin-pagination";
 import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
 import { buildAdminQuery } from "@/components/admin/admin-query-utils";
 import { AdminSortLink } from "@/components/admin/admin-sort-link";
-import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
-import { DeleteChallengeButton } from "@/components/admin/delete-challenge-button";
+import { ChallengeRowActions } from "@/components/admin/challenge-row-actions";
 import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
-import {
-  archiveChallengeAction,
-  deleteChallengeAction,
-  publishChallengeAction,
-  unpublishChallengeAction,
-} from "@/features/admin/admin-challenges.actions";
-import { duplicateChallengeAsDraftAction } from "@/features/admin/challenge-editor.actions";
 import {
   getTotalPages,
   parseChallengeListParams,
@@ -224,58 +216,13 @@ export default async function AdminChallengesPage({
                     </td>
                     <td className="px-4 py-3 text-muted">{formatDate(challenge.created_at)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          className="rounded-[var(--radius-pill)] border border-white/[0.08] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-white/[0.06]"
-                          href={`/admin/desafios/${challenge.id}`}
-                        >
-                          Ver detalhe
-                        </Link>
-                        {challenge.status === "draft" ? (
-                          <form action={publishChallengeAction}>
-                            <input name="challengeId" type="hidden" value={challenge.id} />
-                            <input name="redirectTo" type="hidden" value={redirectTo} />
-                            <Button size="sm" type="submit" variant="secondary">
-                              Publicar
-                            </Button>
-                          </form>
-                        ) : null}
-                        {challenge.status === "active" ? (
-                          <form action={unpublishChallengeAction}>
-                            <input name="challengeId" type="hidden" value={challenge.id} />
-                            <input name="redirectTo" type="hidden" value={redirectTo} />
-                            <Button size="sm" type="submit" variant="secondary">
-                              Despublicar
-                            </Button>
-                          </form>
-                        ) : null}
-                        {["draft", "paused", "ended"].includes(challenge.status) ? (
-                          <form action={archiveChallengeAction}>
-                            <input name="challengeId" type="hidden" value={challenge.id} />
-                            <input name="redirectTo" type="hidden" value={redirectTo} />
-                            <ConfirmSubmitButton
-                              confirmMessage="Arquivar este desafio? Ele deixa de aparecer como disponível para novos participantes."
-                              size="sm"
-                              variant="ghost"
-                            >
-                              Arquivar
-                            </ConfirmSubmitButton>
-                          </form>
-                        ) : null}
-                        <form action={duplicateChallengeAsDraftAction}>
-                          <input name="challengeId" type="hidden" value={challenge.id} />
-                          <Button size="sm" type="submit" variant="ghost">
-                            Duplicar
-                          </Button>
-                        </form>
-                        {challenge.participant_count === 0 ? (
-                          <form action={deleteChallengeAction}>
-                            <input name="challengeId" type="hidden" value={challenge.id} />
-                            <input name="redirectTo" type="hidden" value={redirectTo} />
-                            <DeleteChallengeButton challengeName={challenge.name} />
-                          </form>
-                        ) : null}
-                      </div>
+                      <ChallengeRowActions
+                        challengeId={challenge.id}
+                        challengeName={challenge.name}
+                        participantCount={challenge.participant_count}
+                        redirectTo={redirectTo}
+                        status={challenge.status}
+                      />
                     </td>
                   </tr>
                 );

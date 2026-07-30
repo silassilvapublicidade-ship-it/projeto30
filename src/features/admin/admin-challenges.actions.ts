@@ -14,7 +14,11 @@ type StatusTransition = {
 };
 
 const transitions = {
-  archive: { from: ["draft", "paused", "ended"], to: "archived" },
+  // "active" was added alongside the admin actions-menu refactor: the menu
+  // now offers Arquivar directly from an active challenge (no longer
+  // requiring Despublicar first), matching the per-status action set the
+  // dropdown menu exposes.
+  archive: { from: ["draft", "paused", "ended", "active"], to: "archived" },
   publish: { from: ["draft"], to: "active" },
   unpublish: { from: ["active"], to: "draft" },
 } as const satisfies Record<string, StatusTransition>;

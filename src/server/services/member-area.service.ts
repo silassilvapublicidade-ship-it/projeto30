@@ -591,9 +591,15 @@ export async function getMemberContext(
 
   const [{ data: enrollments }, { data: activeChallenges }, { data: preferences }] =
     await Promise.all([
+      // .eq("user_id", ...) is required here even though RLS also applies:
+      // "Users can read own enrollments" is `user_id = auth.uid() OR
+      // is_admin()`, so for an admin viewer, relying on RLS alone returns
+      // every user's active/paused enrollments, not just their own -
+      // exactly the bug that showed a second, other-user's card on Hoje.
       supabase
         .from("challenge_enrollments")
         .select("*")
+        .eq("user_id", user.id)
         .in("status", ["active", "paused"])
         .order("joined_at", { ascending: false }),
       supabase
@@ -605,7 +611,19 @@ export async function getMemberContext(
       supabase.from("user_preferences").select("*").eq("user_id", user.id).maybeSingle(),
     ]);
 
-  const enrollmentRows = enrollments ?? [];
+  // Defense in depth, not the fix itself: the real fix is the .eq("user_id",
+  // ...) filter above. This only guards the invariant that the SAME
+  // enrollment row must never produce two cards - it dedupes strictly by
+  // enrollment.id, so it can never merge two distinct real enrollments
+  // (e.g. two different challenges, or two different users) into one.
+  const seenEnrollmentIds = new Set<string>();
+  const enrollmentRows = (enrollments ?? []).filter((enrollment) => {
+    if (seenEnrollmentIds.has(enrollment.id)) {
+      return false;
+    }
+    seenEnrollmentIds.add(enrollment.id);
+    return true;
+  });
   const enrolledChallengeIds = new Set(enrollmentRows.map((enrollment) => enrollment.challenge_id));
   const availableChallenge =
     (activeChallenges ?? []).find((challenge) => !enrolledChallengeIds.has(challenge.id)) ?? null;
