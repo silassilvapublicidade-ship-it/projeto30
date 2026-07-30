@@ -3,12 +3,14 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/utils";
 
@@ -24,18 +26,34 @@ type DropdownMenuProps = {
   triggerClassName?: string;
 };
 
+type MenuPosition = {
+  left: number;
+  top: number;
+};
+
 function focusableMenuItems(root: HTMLElement | null) {
   return Array.from(
     root?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ?? [],
   );
 }
 
+const MENU_GAP = 8;
+const VIEWPORT_MARGIN = 8;
+const DEFAULT_MENU_WIDTH = 208;
+
 /**
  * Native, dependency-free dropdown/menu primitive (same philosophy as
- * ConfirmDialog: a real implementation of the ARIA menu pattern - roving
- * focus, arrow-key navigation, outside-click and ESC to close, focus
- * returned to the trigger - without pulling in a Radix-style library the
- * project doesn't otherwise have).
+ * ConfirmDialog: a real ARIA menu implementation, no Radix-style
+ * dependency). The menu content is rendered through a portal straight into
+ * document.body and positioned with `position: fixed` coordinates computed
+ * from the trigger's own getBoundingClientRect() - the same strategy
+ * Radix/Headless UI/Material UI use for exactly this reason: any admin
+ * table wrapped in `overflow-x-auto` (see /admin/desafios, /admin/dicas)
+ * would otherwise clip an absolutely-positioned menu that visually extends
+ * past the scroll container's bounds, no matter how high its z-index is -
+ * the clipping happens at the containing block, not the stacking order.
+ * Portaling out of that container is the only correct fix; increasing
+ * z-index never touches the actual cause.
  */
 export function DropdownMenu({
   align = "end",
@@ -45,8 +63,10 @@ export function DropdownMenu({
   triggerClassName,
 }: DropdownMenuProps) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
   const menuId = useId();
 
@@ -57,6 +77,53 @@ export function DropdownMenu({
   function close() {
     setOpen(false);
   }
+
+  function updatePosition() {
+    const trigger = triggerRef.current;
+
+    if (!trigger) {
+      return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = menuRef.current?.offsetWidth ?? DEFAULT_MENU_WIDTH;
+    const menuHeight = menuRef.current?.offsetHeight ?? 0;
+
+    let left = align === "end" ? rect.right - menuWidth : rect.left;
+    let top = rect.bottom + MENU_GAP;
+
+    // Flip above the trigger when there isn't enough room below it.
+    if (top + menuHeight > window.innerHeight - VIEWPORT_MARGIN) {
+      const above = rect.top - MENU_GAP - menuHeight;
+
+      if (above >= VIEWPORT_MARGIN) {
+        top = above;
+      }
+    }
+
+    // Clamp horizontally so the menu never runs off either edge of the
+    // viewport (e.g. a row near the right edge of a wide table).
+    const maxLeft = window.innerWidth - menuWidth - VIEWPORT_MARGIN;
+    left = Math.min(Math.max(left, VIEWPORT_MARGIN), Math.max(maxLeft, VIEWPORT_MARGIN));
+
+    setPosition({ left, top });
+  }
+
+  // Runs after the portaled menu is committed to the DOM (refs across a
+  // portal still attach in the same React commit) but before the browser
+  // paints, so the menu is measured and placed in one shot - no visible
+  // flash at the wrong position.
+  // `position` is only ever read while `open` is true (see the portal
+  // render below) - no need to reset it on close, it's simply inert until
+  // the menu opens again and this effect recomputes it fresh.
+  useLayoutEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    updatePosition();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, align]);
 
   useEffect(() => {
     if (wasOpenRef.current && !open) {
@@ -71,7 +138,11 @@ export function DropdownMenu({
     }
 
     function handlePointerDown(event: PointerEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideTrigger = Boolean(rootRef.current?.contains(target));
+      const insideMenu = Boolean(menuRef.current?.contains(target));
+
+      if (!insideTrigger && !insideMenu) {
         setOpen(false);
       }
     }
@@ -83,13 +154,25 @@ export function DropdownMenu({
       }
     }
 
+    function handleReposition() {
+      updatePosition();
+    }
+
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", handleReposition);
+    // capture: true - scroll events don't bubble, so this is the only way
+    // to react to a scroll on the table's own overflow-x-auto container
+    // (or any other nested scrollable ancestor), not just window scroll.
+    document.addEventListener("scroll", handleReposition, true);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", handleReposition);
+      document.removeEventListener("scroll", handleReposition, true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -97,11 +180,11 @@ export function DropdownMenu({
       return;
     }
 
-    focusableMenuItems(rootRef.current)[0]?.focus();
+    focusableMenuItems(menuRef.current)[0]?.focus();
   }, [open]);
 
   function handleMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    const items = focusableMenuItems(rootRef.current);
+    const items = focusableMenuItems(menuRef.current);
 
     if (items.length === 0) {
       return;
@@ -127,7 +210,7 @@ export function DropdownMenu({
   }
 
   return (
-    <div className={cn("relative inline-block text-left", className)} ref={rootRef}>
+    <div className={cn("inline-block text-left", className)} ref={rootRef}>
       <button
         aria-controls={menuId}
         aria-expanded={open}
@@ -144,19 +227,27 @@ export function DropdownMenu({
         <span aria-hidden="true">⋯</span>
       </button>
 
-      {open ? (
-        <div
-          className={cn(
-            "absolute z-20 mt-2 min-w-[208px] rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/98 p-1.5 shadow-[var(--shadow-lift)] outline-none",
-            align === "end" ? "right-0" : "left-0",
-          )}
-          id={menuId}
-          onKeyDown={handleMenuKeyDown}
-          role="menu"
-        >
-          {children({ close })}
-        </div>
-      ) : null}
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed z-50 min-w-[208px] rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/98 p-1.5 shadow-[var(--shadow-lift)] outline-none"
+              id={menuId}
+              onKeyDown={handleMenuKeyDown}
+              ref={menuRef}
+              role="menu"
+              style={{
+                left: position?.left ?? -9999,
+                top: position?.top ?? -9999,
+                // Hidden until the first real measurement lands, so it
+                // never flashes at the (0,0)-ish fallback position.
+                visibility: position ? "visible" : "hidden",
+              }}
+            >
+              {children({ close })}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
