@@ -43,7 +43,7 @@ export async function getJourneyOverview(): Promise<JourneyOverview> {
   const { data: enrollments } = await supabase
     .from("challenge_enrollments")
     .select("id,status,current_day,completion_percent,challenge_id")
-    .in("status", ["active", "paused"])
+    .in("status", ["active", "paused", "abandoned"])
     .order("joined_at", { ascending: false });
 
   const enrollmentRows = enrollments ?? [];
@@ -152,7 +152,7 @@ export async function getJourneyDetail({
     .select("*")
     .eq("id", enrollmentId)
     .eq("user_id", user.id)
-    .in("status", ["active", "paused"])
+    .in("status", ["active", "paused", "abandoned"])
     .maybeSingle();
 
   if (!enrollment) {

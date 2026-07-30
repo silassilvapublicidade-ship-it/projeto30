@@ -322,6 +322,7 @@ export type Database = {
       }
       challenge_enrollments: {
         Row: {
+          abandoned_at: string | null
           challenge_id: string
           completed_at: string | null
           completion_percent: number
@@ -340,6 +341,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          abandoned_at?: string | null
           challenge_id: string
           completed_at?: string | null
           completion_percent?: number
@@ -358,6 +360,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          abandoned_at?: string | null
           challenge_id?: string
           completed_at?: string | null
           completion_percent?: number
@@ -1285,6 +1288,10 @@ export type Database = {
       }
       admin_normalize_early_enrollment: {
         Args: { p_enrollment_id: string }
+        Returns: Json
+      }
+      abandon_challenge_enrollment: {
+        Args: { target_enrollment_id: string }
         Returns: Json
       }
       admin_list_challenges: {

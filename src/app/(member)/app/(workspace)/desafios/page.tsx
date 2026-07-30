@@ -2,15 +2,31 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Flag, Trophy } from "lucide-react";
 
+import { AbandonChallengeButton } from "@/components/member/abandon-challenge-button";
 import { ChallengeCard } from "@/components/member/challenge-card";
+import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/feedback";
 import { describeEnrollmentStatus } from "@/features/admin/admin-metrics.core";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getMemberChallengeCatalog } from "@/server/services/challenge-catalog.service";
 
 export const metadata: Metadata = {
   title: "Desafios",
+};
+
+const abandonFeedbackMessages: Record<string, { description: string; title: string }> = {
+  success: {
+    title: "Desafio abandonado",
+    description: "Seu histórico foi preservado.",
+  },
+  invalid: {
+    title: "Solicitação inválida",
+    description: "Identificador de inscrição ausente.",
+  },
+  error: {
+    title: "Não foi possível abandonar",
+    description: "Tente novamente em instantes.",
+  },
 };
 
 function formatDate(value: string | null) {
@@ -26,9 +42,15 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
-export default async function DesafiosPage() {
+type DesafiosPageProps = {
+  searchParams: Promise<{ abandonFeedback?: string }>;
+};
+
+export default async function DesafiosPage({ searchParams }: DesafiosPageProps) {
   await recordAnalyticsEvent({ eventName: "challenge_catalog_viewed" });
 
+  const { abandonFeedback } = await searchParams;
+  const feedback = abandonFeedback ? abandonFeedbackMessages[abandonFeedback] : undefined;
   const { activeEnrollments, catalog, history, localDate } = await getMemberChallengeCatalog();
 
   return (
@@ -45,6 +67,14 @@ export default async function DesafiosPage() {
           que já concluiu.
         </p>
       </section>
+
+      {feedback ? (
+        <StatusCard
+          description={feedback.description}
+          title={feedback.title}
+          tone={abandonFeedback === "success" ? "success" : "error"}
+        />
+      ) : null}
 
       {activeEnrollments.length > 0 ? (
         <section aria-labelledby="current-challenges" className="space-y-3">
@@ -86,6 +116,12 @@ export default async function DesafiosPage() {
                     {Math.round(enrollment.completion_percent)}% concluído · sequência atual de{" "}
                     {enrollment.streak_current} dias
                   </p>
+                  <div className="mt-4 flex justify-end">
+                    <AbandonChallengeButton
+                      challengeName={enrollment.challenge.name}
+                      enrollmentId={enrollment.id}
+                    />
+                  </div>
                 </div>
               ) : null,
             )}
@@ -118,6 +154,9 @@ export default async function DesafiosPage() {
                       {Math.round(enrollment.completion_percent)}% concluído
                       {enrollment.completed_at
                         ? ` · ${formatDate(enrollment.completed_at)}`
+                        : ""}
+                      {enrollment.abandoned_at
+                        ? ` · ${formatDate(enrollment.abandoned_at)}`
                         : ""}
                     </p>
                   </div>

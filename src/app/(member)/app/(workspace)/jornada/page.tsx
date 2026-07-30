@@ -121,8 +121,13 @@ async function JornadaContent({
                 <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-action-soft">
                   {detail.notStarted ? "Ainda não começou" : `Dia ${detail.summary.currentDay} de ${detail.summary.durationDays}`}
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold text-foreground">
+                <h2 className="mt-1 flex flex-wrap items-center gap-2 text-2xl font-semibold text-foreground">
                   {detail.summary.challengeName}
+                  {detail.summary.status === "abandoned" ? (
+                    <span className="rounded-full border border-white/[0.1] bg-white/[0.06] px-2.5 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted">
+                      Abandonado
+                    </span>
+                  ) : null}
                 </h2>
                 {detail.summary.startDate ? (
                   <p className="mt-1 text-xs text-muted-2">

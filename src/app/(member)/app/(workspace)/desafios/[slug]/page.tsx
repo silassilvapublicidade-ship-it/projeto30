@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, CalendarDays, Lightbulb, ListChecks, Trophy } from "lucide-react";
 
+import { AbandonChallengeButton } from "@/components/member/abandon-challenge-button";
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
 import { joinChallengeAction } from "@/features/member/challenge-catalog.actions";
@@ -186,9 +187,14 @@ export default async function DesafioDetailPage({
               ) : null}
             </div>
           ) : cta.kind === "continue" ? (
-            <Button as="a" href="/app/hoje" size="lg">
-              {cta.label}
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button as="a" href="/app/hoje" size="lg">
+                {cta.label}
+              </Button>
+              {ownEnrollment && (ownEnrollment.status === "active" || ownEnrollment.status === "paused") ? (
+                <AbandonChallengeButton challengeName={challenge.name} enrollmentId={ownEnrollment.id} />
+              ) : null}
+            </div>
           ) : (
             <StatusCard
               description="Este desafio não aceita novas inscrições no momento."

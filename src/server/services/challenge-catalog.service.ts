@@ -85,10 +85,26 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
   // A user may hold at most one open (active/paused) enrollment PER
   // challenge (enforced by challenge_enrollments_one_active_per_user_challenge),
   // but may hold several simultaneously across different challenges - so
-  // this is keyed by challenge_id, not a single "current" enrollment.
-  const enrollmentByChallengeId = new Map(
+  // this is keyed by challenge_id, not a single "current" enrollment. Used
+  // only to decide catalog VISIBILITY (see isChallengeVisibleInCatalog) -
+  // an abandoned/completed enrollment must never re-grant visibility to an
+  // otherwise-hidden draft/paused/archived challenge.
+  const activeEnrollmentByChallengeId = new Map(
     activeEnrollments.map((enrollment) => [enrollment.challenge_id, enrollment]),
   );
+
+  // Separate map, any status, most recent per challenge - used only for the
+  // DISPLAY badge on an already-visible card (e.g. so an abandoned
+  // challenge correctly shows "Abandonado" instead of falling back to
+  // "Disponível" just because it's missing from the active-only map above).
+  // typedEnrollments is already ordered joined_at desc, so the first entry
+  // encountered per challenge_id is the most recent one.
+  const latestEnrollmentByChallengeId = new Map<string, EnrollmentWithChallenge>();
+  for (const enrollment of typedEnrollments) {
+    if (!latestEnrollmentByChallengeId.has(enrollment.challenge_id)) {
+      latestEnrollmentByChallengeId.set(enrollment.challenge_id, enrollment);
+    }
+  }
 
   // The catalog ("Explorar") only ever shows what's meant to be publicly
   // browsable (active) or showcased as history (ended). A draft/paused/
@@ -101,11 +117,11 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
     .filter((challenge) =>
       isChallengeVisibleInCatalog({
         challengeStatus: challenge.status,
-        hasLiveEnrollment: enrollmentByChallengeId.has(challenge.id),
+        hasLiveEnrollment: activeEnrollmentByChallengeId.has(challenge.id),
       }),
     )
     .map((challenge) => {
-      const enrollment = enrollmentByChallengeId.get(challenge.id) ?? null;
+      const enrollment = latestEnrollmentByChallengeId.get(challenge.id) ?? null;
       return {
         ...challenge,
         enrollment: enrollment

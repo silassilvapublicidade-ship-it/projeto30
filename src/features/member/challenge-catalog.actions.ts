@@ -21,6 +21,10 @@ function getSafeErrorMessage(error: { code?: string; message: string } | null) {
     return "Este desafio não está disponível para inscrição agora.";
   }
 
+  if (error.code === "P0006") {
+    return "Você abandonou este desafio e não pode se inscrever novamente.";
+  }
+
   return "Não foi possível concluir a inscrição agora. Tente novamente em instantes.";
 }
 
