@@ -27,24 +27,29 @@ describe("member navigation content", () => {
     expect(source).toMatch(/label:\s*"Dicas"/);
   });
 
-  it("keeps exactly six items in the shared main navigation (desktop + mobile bar)", () => {
+  it("keeps exactly five items in the shared main navigation (desktop + mobile bar)", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     expect(mainItemsMatch).not.toBeNull();
 
     const entryMatches = (mainItemsMatch?.[1] ?? "").match(/\{ href:/g) ?? [];
-    expect(entryMatches).toHaveLength(6);
+    expect(entryMatches).toHaveLength(5);
   });
 
-  it("keeps Hoje, Desafios, Jornada, Conquistas and Perfil alongside Dicas", () => {
+  it("keeps Hoje, Desafios, Jornada and Conquistas alongside Dicas", () => {
     for (const href of [
       "/app/hoje",
       "/app/desafios",
       "/app/jornada",
       "/app/dicas",
       "/app/conquistas",
-      "/app/perfil",
     ]) {
       expect(source).toContain(href);
     }
+  });
+
+  it("removes Perfil from the main navigation - it stays reachable via the avatar block", () => {
+    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
+    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/perfil");
+    expect(source).not.toMatch(/label:\s*"Perfil"/);
   });
 });

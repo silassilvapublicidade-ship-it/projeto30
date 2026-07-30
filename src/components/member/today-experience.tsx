@@ -1,11 +1,13 @@
 import Link from "next/link";
 import {
   BookOpen,
+  CalendarClock,
   CheckCircle2,
   Droplets,
   Dumbbell,
   Flame,
   Heart,
+  MessageSquare,
   Moon,
   PenLine,
   Route,
@@ -39,26 +41,16 @@ function firstName(name: string) {
   return name.split(" ").filter(Boolean)[0] ?? name;
 }
 
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
 function clampPercent(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
-}
-
-function isJsonRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function getMissionValue(value: unknown) {
-  if (!isJsonRecord(value)) {
-    return "";
-  }
-
-  const storedValue = value.value;
-
-  if (typeof storedValue === "number" || typeof storedValue === "string") {
-    return String(storedValue);
-  }
-
-  return "";
 }
 
 function getCompletionEyebrow(progress: number) {
@@ -213,8 +205,6 @@ function MissionRow({
   mission: TodayMission;
 }) {
   const completed = mission.state === "completed";
-  const supportsValue =
-    mission.habitType === "quantity" || mission.habitType === "duration";
   const disabled = !dailyLogId || !editable;
   const isPeriodHabit = mission.frequencyType !== "daily";
   const frequencyBadgeLabel =
@@ -289,31 +279,21 @@ function MissionRow({
         >
           <input name="dailyLogId" type="hidden" value={dailyLogId ?? ""} />
           <input name="habitId" type="hidden" value={mission.habitId} />
-          <div className={cn("grid gap-1.5", supportsValue ? "grid-cols-2" : "grid-cols-1")}>
-            {supportsValue ? (
-              <input
-                aria-label="Valor"
-                className="min-h-8 w-full rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/60 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.1)] disabled:opacity-45"
-                defaultValue={getMissionValue(mission.valueJson)}
-                disabled={disabled}
-                inputMode="decimal"
-                min="0"
-                name="value"
-                placeholder={mission.habitType === "duration" ? "Minutos" : "Quantidade"}
-                step="0.01"
-                type="number"
-              />
-            ) : null}
-            <input
-              aria-label="Nota"
-              className="min-h-8 w-full rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2 text-sm text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/60 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.1)] disabled:opacity-45"
+          <details className="group" open={Boolean(mission.note)}>
+            <summary className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-muted-2 transition-colors hover:text-foreground">
+              <MessageSquare aria-hidden="true" size={12} />
+              {mission.note ? "Comentário adicionado · editar" : "Adicionar comentário"}
+            </summary>
+            <textarea
+              aria-label="Comentário opcional"
+              className="mt-1.5 min-h-14 w-full resize-none rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2 py-1.5 text-sm leading-5 text-foreground outline-none transition-[border-color,background,box-shadow] duration-[var(--motion-base)] placeholder:text-muted-2 focus:border-action/60 focus:shadow-[0_0_0_3px_rgba(255,106,0,0.1)] disabled:opacity-45"
               defaultValue={mission.note ?? ""}
               disabled={disabled}
+              maxLength={1200}
               name="note"
-              placeholder="Nota opcional"
-              type="text"
+              placeholder="Ex.: fiz 30 minutos de caminhada"
             />
-          </div>
+          </details>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Button
               disabled={disabled}
@@ -323,7 +303,7 @@ function MissionRow({
               type="submit"
               value="completed"
             >
-              {supportsValue ? "Registrar" : "Concluir"}
+              Marcar como realizado
             </Button>
             {completed ||
             mission.state === "in_progress" ||
@@ -667,7 +647,7 @@ function JourneyStatePanel({ enrollmentContext }: { enrollmentContext: Enrollmen
     cycle_not_started: {
       title: "Ciclo ainda não iniciado",
       description:
-        "Seu início pessoal está registrado para uma data futura. Volte no dia correto para abrir a jornada.",
+        "Este desafio ainda não chegou na sua data oficial de início. Volte nesse dia para abrir a jornada.",
       tone: "success",
     },
     day_available: {
@@ -772,6 +752,38 @@ export function TodayExperience({
   );
 }
 
+function NotStartedCard({ enrollmentContext }: { enrollmentContext: EnrollmentDayContext }) {
+  const { enrollment } = enrollmentContext;
+  const startDate = enrollment.challenge?.start_date ?? null;
+
+  return (
+    <section
+      aria-label={enrollment.challenge?.name ?? "Desafio"}
+      className="space-y-3 rounded-[1.75rem] border border-white/[0.06] bg-white/[0.015] p-3 sm:p-4"
+    >
+      <div className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-action-soft">
+            <CalendarClock aria-hidden="true" size={15} />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold leading-tight text-foreground sm:text-xl">
+              {enrollment.challenge?.name ?? "Desafio"}
+            </h2>
+            <p className="font-mono text-[0.66rem] uppercase tracking-[0.1em] text-action-soft">
+              {startDate ? `Começa em ${formatShortDate(startDate)}` : "Ainda não começou"}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Sua inscrição está garantida. As missões, o diário e a finalização deste desafio são
+          liberados assim que a data oficial de início chegar.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function EnrollmentSection({
   enrollmentContext,
   todayLabel,
@@ -780,6 +792,11 @@ function EnrollmentSection({
   todayLabel: string;
 }) {
   const { enrollment } = enrollmentContext;
+
+  if (enrollmentContext.journeyState === "cycle_not_started") {
+    return <NotStartedCard enrollmentContext={enrollmentContext} />;
+  }
+
   const dailyLogId = enrollment.todayLog?.id ?? null;
   const durationDays =
     enrollment.challenge?.duration_days ?? Math.max(1, enrollment.current_day);
@@ -845,8 +862,8 @@ function EnrollmentSection({
         editable={editable}
         missions={enrollmentContext.todayMissions}
       />
-      <FinalizeSection enrollmentContext={enrollmentContext} />
       <ReflectionSection enrollmentContext={enrollmentContext} />
+      <FinalizeSection enrollmentContext={enrollmentContext} />
     </section>
   );
 }

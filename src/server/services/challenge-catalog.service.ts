@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getDateOnlyInTimeZone } from "@/features/challenges/date.core";
+import { isChallengeVisibleInCatalog } from "@/features/member/challenge-catalog.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
@@ -89,22 +90,36 @@ export async function getMemberChallengeCatalog(): Promise<MemberChallengeCatalo
     activeEnrollments.map((enrollment) => [enrollment.challenge_id, enrollment]),
   );
 
-  const catalog: CatalogChallenge[] = (challenges ?? []).map((challenge) => {
-    const enrollment = enrollmentByChallengeId.get(challenge.id) ?? null;
-    return {
-      ...challenge,
-      enrollment: enrollment
-        ? {
-            completion_percent: enrollment.completion_percent,
-            current_day: enrollment.current_day,
-            id: enrollment.id,
-            status: enrollment.status,
-            streak_current: enrollment.streak_current,
-          }
-        : null,
-      habitCount: habitCountByChallengeId.get(challenge.id) ?? 0,
-    };
-  });
+  // The catalog ("Explorar") only ever shows what's meant to be publicly
+  // browsable (active) or showcased as history (ended). A draft/paused/
+  // archived challenge never belongs here - not even for an admin browsing
+  // their own member view, and not for someone who once had an unrelated
+  // historical enrollment - the one exception is a challenge the viewer is
+  // CURRENTLY (active/paused) enrolled in, which stays visible so they don't
+  // lose access to what they're actively doing when it gets unpublished.
+  const catalog: CatalogChallenge[] = (challenges ?? [])
+    .filter((challenge) =>
+      isChallengeVisibleInCatalog({
+        challengeStatus: challenge.status,
+        hasLiveEnrollment: enrollmentByChallengeId.has(challenge.id),
+      }),
+    )
+    .map((challenge) => {
+      const enrollment = enrollmentByChallengeId.get(challenge.id) ?? null;
+      return {
+        ...challenge,
+        enrollment: enrollment
+          ? {
+              completion_percent: enrollment.completion_percent,
+              current_day: enrollment.current_day,
+              id: enrollment.id,
+              status: enrollment.status,
+              streak_current: enrollment.streak_current,
+            }
+          : null,
+        habitCount: habitCountByChallengeId.get(challenge.id) ?? 0,
+      };
+    });
 
   return {
     activeEnrollments,
@@ -176,6 +191,21 @@ export async function getChallengeDetailBySlug(slug: string): Promise<ChallengeD
       .limit(1)
       .maybeSingle(),
   ]);
+
+  // Same visibility rule as the catalog grid: a draft/paused/archived
+  // challenge only resolves for someone currently (active/paused) enrolled
+  // in it - everyone else gets the same "not found" as a nonexistent slug,
+  // regardless of role or historical enrollment.
+  const isCurrentlyEnrolled =
+    ownEnrollment?.status === "active" || ownEnrollment?.status === "paused";
+  if (
+    !isChallengeVisibleInCatalog({
+      challengeStatus: challenge.status,
+      hasLiveEnrollment: isCurrentlyEnrolled,
+    })
+  ) {
+    return null;
+  }
 
   return {
     achievements: achievements ?? [],

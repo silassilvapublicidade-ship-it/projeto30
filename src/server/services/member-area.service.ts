@@ -190,11 +190,11 @@ function getMissionState(
 
 function getMissionStatusLabel(state: TodayMissionState) {
   const labels: Record<TodayMissionState, string> = {
-    completed: "Concluída",
+    completed: "Realizado",
     in_progress: "Em andamento",
     not_applicable: "Não se aplica",
-    pending: "Pendente",
-    skipped: "Pulada",
+    pending: "Não realizado",
+    skipped: "Pulado",
   };
 
   return labels[state];
@@ -205,7 +205,7 @@ function getMissionActionLabel(state: TodayMissionState) {
     completed: "Rever",
     in_progress: "Continuar",
     not_applicable: "Ver detalhe",
-    pending: "Começar",
+    pending: "Marcar como realizado",
     skipped: "Revisar",
   };
 
@@ -234,9 +234,9 @@ function getMissionTargetLabel(habit: HabitForMission, points: number) {
 
   const fallbackByType: Record<Tables<"habits">["habit_type"], string> = {
     boolean: "Confirmar com honestidade",
-    duration: "Registrar tempo dedicado",
+    duration: "Marcar quando dedicar o tempo combinado",
     multiple_choice: "Escolher as opcoes realizadas",
-    quantity: "Registrar quantidade",
+    quantity: "Marcar quando atingir a meta combinada",
     reading: "Concluir a leitura do dia",
     single_choice: "Escolher uma resposta",
     text: "Registrar uma resposta breve",
@@ -479,10 +479,21 @@ async function buildEnrollmentDayContext({
   let journeyState: JourneyState = "day_available";
   let journeyError: string | null = null;
   let ensuredDailyLogId: string | null = null;
+  // start_date is the challenge's official kickoff, distinct from
+  // personal_start_date (when THIS user joined - always <= today, so
+  // dayResult's own "not_started" never fires for it in practice). Early
+  // enrollment windows (enrollment_start before start_date) are a valid
+  // product decision, but execution - opening a day, marking habits,
+  // finalizing, earning points - must wait for start_date itself.
+  const notYetOfficiallyStarted = Boolean(
+    challenge?.start_date && today < challenge.start_date,
+  );
 
   if (!challenge) {
     journeyState = "error";
     journeyError = "O ciclo desta inscricao nao foi encontrado.";
+  } else if (notYetOfficiallyStarted) {
+    journeyState = "cycle_not_started";
   } else if (dayResult?.status === "not_started") {
     journeyState = "cycle_not_started";
   } else if (dayResult?.status === "completed") {

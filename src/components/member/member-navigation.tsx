@@ -10,18 +10,20 @@ import {
   NotebookPen,
   Route,
   Settings,
-  UserRound,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Perfil intentionally left out of the main navigation - it stays reachable
+// through the avatar/user block instead (member-shell.tsx), which already
+// linked to /app/perfil, so removing it here just drops the duplicate entry
+// point rather than losing access to the route.
 const mainItems = [
   { href: "/app/hoje", icon: Home, label: "Hoje" },
   { href: "/app/desafios", icon: Flag, label: "Desafios" },
   { href: "/app/jornada", icon: Route, label: "Jornada" },
   { href: "/app/dicas", icon: Lightbulb, label: "Dicas" },
   { href: "/app/conquistas", icon: Medal, label: "Conquistas", mobileLabel: "Marcos" },
-  { href: "/app/perfil", icon: UserRound, label: "Perfil" },
 ];
 
 const secondaryItems = [

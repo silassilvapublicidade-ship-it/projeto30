@@ -1,204 +1,173 @@
+import Link from "next/link";
 import { Route } from "lucide-react";
 
-import { RhythmRail, type RhythmRailDay } from "@/components/brand/rhythm-rail";
+import { JourneyCalendar } from "@/components/member/journey-calendar";
+import { JourneyDayDetailPanel } from "@/components/member/journey-day-detail";
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getMemberContext } from "@/server/services/member-area.service";
-import type { ActiveEnrollment } from "@/server/services/member-area.service";
-import type { Tables } from "@/types/database";
+import { StatusCard } from "@/components/ui/feedback";
+import { cn } from "@/lib/utils";
+import { getJourneyDetail, getJourneyOverview } from "@/server/services/journey.service";
 
-type JourneyDay = Pick<Tables<"challenge_days">, "day_number" | "id" | "theme" | "title">;
+type JornadaPageProps = {
+  searchParams: Promise<{ desafio?: string; dia?: string }>;
+};
 
-type JourneyLog = Pick<
-  Tables<"daily_logs">,
-  | "challenge_day_id"
-  | "completion_percent"
-  | "finalized_at"
-  | "id"
-  | "points_earned"
-  | "status"
->;
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(value));
+}
 
-function buildRailDays({
-  currentDay,
-  days,
-  logsByDayId,
+function buildHref({
+  dayNumber,
+  enrollmentId,
 }: {
-  currentDay: number;
-  days: JourneyDay[];
-  logsByDayId: Map<string, JourneyLog>;
-}): RhythmRailDay[] {
-  return days.map((item) => {
-    const log = logsByDayId.get(item.id);
+  dayNumber?: number;
+  enrollmentId: string;
+}) {
+  const params = new URLSearchParams({ desafio: enrollmentId });
 
-    return {
-      day: item.day_number,
-      state:
-        item.day_number === currentDay
-          ? "today"
-          : log?.status === "finalized" && Number(log.completion_percent) >= 70
-            ? "done"
-            : log
-              ? "rest"
-              : "next",
-    };
-  });
-}
-
-function getDayStatusLabel(
-  log: JourneyLog | undefined,
-  dayNumber: number,
-  currentDay: number,
-) {
-  if (log?.status === "finalized") {
-    return Number(log.completion_percent) >= 100 ? "Completo" : "Finalizado parcial";
+  if (dayNumber !== undefined) {
+    params.set("dia", String(dayNumber));
   }
 
-  if (log) {
-    return "Em andamento";
-  }
-
-  if (dayNumber === currentDay) {
-    return "Hoje";
-  }
-
-  return dayNumber < currentDay ? "Não registrado" : "Futuro";
+  return `/app/jornada?${params.toString()}`;
 }
 
-async function JourneyCard({ enrollment }: { enrollment: ActiveEnrollment }) {
-  const supabase = await createSupabaseServerClient();
-  const [{ data: days }, { data: logs }] = await Promise.all([
-    supabase
-      .from("challenge_days")
-      .select("id,day_number,title,theme")
-      .eq("challenge_id", enrollment.challenge_id)
-      .order("day_number", { ascending: true }),
-    supabase
-      .from("daily_logs")
-      .select("id,challenge_day_id,status,completion_percent,points_earned,finalized_at")
-      .eq("enrollment_id", enrollment.id)
-      .order("log_date", { ascending: true }),
-  ]);
-
-  const journeyDays = days ?? [];
-  const journeyLogs = logs ?? [];
-  const logsByDayId = new Map(journeyLogs.map((log) => [log.challenge_day_id, log]));
-  const finalizedDays = journeyLogs.filter((log) => log.status === "finalized").length;
-  const partialDays = journeyLogs.filter(
-    (log) =>
-      log.status === "finalized" &&
-      Number(log.completion_percent) > 0 &&
-      Number(log.completion_percent) < 100,
-  ).length;
-
-  return (
-    <Card tone="glass" className="overflow-hidden p-0">
-      <div className="border-b border-white/[0.08] p-5 sm:p-7">
-        <p className="font-mono text-[0.68rem] uppercase tracking-[0.18em] text-action-soft">
-          Mapa do ciclo
-        </p>
-        <h2 className="mt-3 text-3xl font-semibold text-foreground">
-          {enrollment.challenge?.name ?? "Ciclo ativo"}
-        </h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Dia {enrollment.current_day} desde {enrollment.personal_start_date}. O calendário
-          completo saiu da tela Hoje para manter o foco no dia atual.
-        </p>
-      </div>
-      <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
-        <Progress label="Conclusão do ciclo" value={Math.round(enrollment.completion_percent)} />
-        <RhythmRail
-          days={buildRailDays({
-            currentDay: enrollment.current_day,
-            days: journeyDays,
-            logsByDayId,
-          })}
-          label="Calendário completo da jornada"
-        />
-      </div>
-      <div className="grid gap-3 border-t border-white/[0.08] p-5 sm:grid-cols-3 sm:p-7">
-        <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-            Dias finalizados
-          </p>
-          <p className="mt-2 text-sm font-semibold text-foreground">{finalizedDays}</p>
-        </div>
-        <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-            Dias parciais
-          </p>
-          <p className="mt-2 text-sm font-semibold text-foreground">{partialDays}</p>
-        </div>
-        <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/22 p-4">
-          <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
-            Sequência
-          </p>
-          <p className="mt-2 text-sm font-semibold text-foreground">
-            {enrollment.streak_current} dias
-          </p>
-        </div>
-      </div>
-      <div className="border-t border-white/[0.08] p-5 sm:p-7">
-        <div className="grid gap-3 md:grid-cols-2">
-          {journeyDays.map((day) => {
-            const log = logsByDayId.get(day.id);
-
-            return (
-              <div
-                className="rounded-[1.25rem] border border-white/[0.08] bg-black/20 p-4"
-                key={day.id}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-action-soft">
-                      Dia {day.day_number}
-                    </p>
-                    <h3 className="mt-2 text-base font-semibold text-foreground">
-                      {day.title ?? day.theme ?? "Jornada do dia"}
-                    </h3>
-                  </div>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.055] px-3 py-1 text-xs text-muted">
-                    {getDayStatusLabel(log, day.day_number, enrollment.current_day)}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-2">
-                  <span>
-                    Progresso:{" "}
-                    <strong className="text-foreground">
-                      {log ? Math.round(Number(log.completion_percent)) : 0}%
-                    </strong>
-                  </span>
-                  <span>
-                    Pontos: <strong className="text-foreground">{log?.points_earned ?? 0}</strong>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-export default async function JornadaPage() {
-  const context = await getMemberContext();
+export default async function JornadaPage({ searchParams }: JornadaPageProps) {
+  const params = await searchParams;
+  const overview = await getJourneyOverview();
 
   return (
     <MemberEmptyPage
-      description="Aqui fica o mapa completo de cada desafio ativo: dias vividos, dia atual e próximos passos, sempre sem misturar o progresso de um desafio com o de outro."
+      description="Seu histórico por desafio: dias vividos, dia atual e o que ainda vem pela frente - cada desafio com seu próprio calendário, sem misturar um com o outro."
       icon={Route}
       title="Minha jornada"
     >
-      {context.enrollments.length > 0 ? (
-        <div className="space-y-6">
-          {context.enrollments.map(({ enrollment }) => (
-            <JourneyCard enrollment={enrollment} key={enrollment.id} />
-          ))}
-        </div>
+      {overview.enrollments.length > 0 ? (
+        <JornadaContent overview={overview} searchParams={params} />
       ) : undefined}
     </MemberEmptyPage>
+  );
+}
+
+async function JornadaContent({
+  overview,
+  searchParams,
+}: {
+  overview: Awaited<ReturnType<typeof getJourneyOverview>>;
+  searchParams: { desafio?: string; dia?: string };
+}) {
+  const selectedEnrollmentId =
+    overview.enrollments.find((enrollment) => enrollment.enrollmentId === searchParams.desafio)
+      ?.enrollmentId ?? overview.enrollments[0]?.enrollmentId;
+
+  if (!selectedEnrollmentId) {
+    return null;
+  }
+
+  const requestedDay = searchParams.dia ? Number(searchParams.dia) : undefined;
+  const validRequestedDay =
+    requestedDay !== undefined && Number.isInteger(requestedDay) && requestedDay > 0
+      ? requestedDay
+      : undefined;
+  const detail = await getJourneyDetail({
+    enrollmentId: selectedEnrollmentId,
+    ...(validRequestedDay !== undefined ? { selectedDayNumber: validRequestedDay } : {}),
+  });
+
+  return (
+    <div className="space-y-5">
+      {overview.enrollments.length > 1 ? (
+        <div className="flex flex-wrap gap-2" role="tablist">
+          {overview.enrollments.map((enrollment) => {
+            const isSelected = enrollment.enrollmentId === selectedEnrollmentId;
+            return (
+              <Link
+                aria-selected={isSelected}
+                className={cn(
+                  "rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors",
+                  isSelected
+                    ? "border-action/40 bg-action/14 text-action-soft"
+                    : "border-white/[0.08] bg-white/[0.03] text-muted hover:border-white/16 hover:text-foreground",
+                )}
+                href={buildHref({ enrollmentId: enrollment.enrollmentId })}
+                key={enrollment.enrollmentId}
+                role="tab"
+              >
+                {enrollment.challengeName}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {!detail ? (
+        <StatusCard
+          description="Não foi possível carregar este desafio agora."
+          title="Algo deu errado"
+          tone="error"
+        />
+      ) : (
+        <>
+          <Card className="space-y-4" tone="glass">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-action-soft">
+                  {detail.notStarted ? "Ainda não começou" : `Dia ${detail.summary.currentDay} de ${detail.summary.durationDays}`}
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold text-foreground">
+                  {detail.summary.challengeName}
+                </h2>
+                {detail.summary.startDate ? (
+                  <p className="mt-1 text-xs text-muted-2">
+                    {formatShortDate(detail.summary.startDate)}
+                    {detail.summary.endDate ? ` — ${formatShortDate(detail.summary.endDate)}` : ""}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex gap-4 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-muted-2">
+                <span>{detail.summary.daysRemaining} dias restantes</span>
+                <span>{detail.summary.streakCurrent}d sequência</span>
+                <span>{detail.summary.pointsTotal} pts</span>
+              </div>
+            </div>
+
+            {detail.notStarted ? (
+              <StatusCard
+                description={
+                  detail.officialStartDate
+                    ? `Este desafio começa oficialmente em ${formatShortDate(detail.officialStartDate)}.`
+                    : "Este desafio ainda não começou oficialmente."
+                }
+                title="Aguardando início"
+                tone="success"
+              />
+            ) : (
+              <Progress label="Conclusão do ciclo" value={Math.round(detail.summary.completionPercent)} />
+            )}
+          </Card>
+
+          {detail.calendarDays.length > 0 ? (
+            <Card tone="glass">
+              <JourneyCalendar
+                days={detail.calendarDays}
+                detailHrefForDay={(dayNumber) =>
+                  buildHref({ dayNumber, enrollmentId: selectedEnrollmentId })
+                }
+                selectedDayNumber={detail.selectedDay?.dayNumber ?? 0}
+              />
+            </Card>
+          ) : null}
+
+          <JourneyDayDetailPanel day={detail.selectedDay} />
+        </>
+      )}
+    </div>
   );
 }

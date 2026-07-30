@@ -6,9 +6,45 @@ import {
   describeHabitGoal,
   getChallengeCta,
   getChallengeDisplayStatus,
+  isChallengeVisibleInCatalog,
   parseChallengeThemeConfig,
   parseHabitGoalConfig,
 } from "./challenge-catalog.core";
+
+describe("isChallengeVisibleInCatalog", () => {
+  it("shows active challenges to everyone", () => {
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "active", hasLiveEnrollment: false }),
+    ).toBe(true);
+  });
+
+  it("shows ended challenges to everyone (history showcase)", () => {
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "ended", hasLiveEnrollment: false }),
+    ).toBe(true);
+  });
+
+  it("hides a draft challenge from someone with no live enrollment", () => {
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "draft", hasLiveEnrollment: false }),
+    ).toBe(false);
+  });
+
+  it("hides a paused/archived challenge from someone with no live enrollment", () => {
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "paused", hasLiveEnrollment: false }),
+    ).toBe(false);
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "archived", hasLiveEnrollment: false }),
+    ).toBe(false);
+  });
+
+  it("keeps a draft challenge visible for someone currently (active/paused) enrolled in it", () => {
+    expect(
+      isChallengeVisibleInCatalog({ challengeStatus: "draft", hasLiveEnrollment: true }),
+    ).toBe(true);
+  });
+});
 
 describe("getChallengeDisplayStatus", () => {
   it("returns joined for an active or paused enrollment, regardless of challenge status", () => {

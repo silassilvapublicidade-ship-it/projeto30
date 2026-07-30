@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { resolveHabitLogValueJson } from "@/features/journey/habit-log-value.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/server/services/auth-session.service";
 import {
@@ -20,7 +21,6 @@ const habitFormSchema = z.object({
   habitId: uuidSchema,
   note: z.string().trim().max(1200).optional(),
   status: habitStatusSchema,
-  value: z.string().trim().optional(),
 });
 
 const journalFormSchema = z.object({
@@ -61,21 +61,6 @@ function redirectWithJourneyNotice(
   redirect(`/app/hoje?${params.toString()}`);
 }
 
-function normalizeNumericValue(value: string | undefined) {
-  if (!value) {
-    return {};
-  }
-
-  const normalized = value.replace(",", ".");
-  const numericValue = Number(normalized);
-
-  if (!Number.isFinite(numericValue) || numericValue < 0) {
-    throw new Error("Valor invalido.");
-  }
-
-  return { value: numericValue };
-}
-
 export async function updateHabitLogAction(formData: FormData) {
   await requireAuthUser("/app/hoje");
 
@@ -84,20 +69,13 @@ export async function updateHabitLogAction(formData: FormData) {
     habitId: getString(formData, "habitId"),
     note: optionalString(formData, "note"),
     status: getString(formData, "status"),
-    value: optionalString(formData, "value"),
   });
 
   if (!parsed.success) {
     redirectWithJourneyNotice("error", "Revise o habito antes de salvar novamente.");
   }
 
-  let valueJson: Record<string, unknown>;
-
-  try {
-    valueJson = normalizeNumericValue(parsed.data.value);
-  } catch {
-    redirectWithJourneyNotice("error", "Informe um valor numerico valido.");
-  }
+  const valueJson = resolveHabitLogValueJson(parsed.data.status);
 
   const supabase = await createSupabaseServerClient();
   const rpc = getJourneyRpcClient(supabase);

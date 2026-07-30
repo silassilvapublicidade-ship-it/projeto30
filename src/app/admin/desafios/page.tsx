@@ -6,11 +6,13 @@ import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
 import { buildAdminQuery } from "@/components/admin/admin-query-utils";
 import { AdminSortLink } from "@/components/admin/admin-sort-link";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { DeleteChallengeButton } from "@/components/admin/delete-challenge-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import {
   archiveChallengeAction,
+  deleteChallengeAction,
   publishChallengeAction,
   unpublishChallengeAction,
 } from "@/features/admin/admin-challenges.actions";
@@ -53,6 +55,15 @@ const feedbackMessages: Record<string, { description: string; title: string }> =
     title: "Desafio despublicado",
     description: "Ele voltou para rascunho.",
   },
+  "delete-success": {
+    title: "Desafio excluído",
+    description: "O desafio e sua configuração foram removidos definitivamente.",
+  },
+  "delete-blocked": {
+    title: "Não é possível excluir",
+    description:
+      "Este desafio já tem participantes ou histórico. Arquive-o em vez de excluir.",
+  },
 };
 
 type AdminChallengesPageProps = {
@@ -89,7 +100,11 @@ export default async function AdminChallengesPage({
         <StatusCard
           description={feedback.description}
           title={feedback.title}
-          tone={feedbackKey === "error" || feedbackKey === "invalid" ? "error" : "success"}
+          tone={
+            feedbackKey === "error" || feedbackKey === "invalid" || feedbackKey === "delete-blocked"
+              ? "error"
+              : "success"
+          }
         />
       ) : null}
 
@@ -253,6 +268,13 @@ export default async function AdminChallengesPage({
                             Duplicar
                           </Button>
                         </form>
+                        {challenge.participant_count === 0 ? (
+                          <form action={deleteChallengeAction}>
+                            <input name="challengeId" type="hidden" value={challenge.id} />
+                            <input name="redirectTo" type="hidden" value={redirectTo} />
+                            <DeleteChallengeButton challengeName={challenge.name} />
+                          </form>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

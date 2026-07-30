@@ -113,3 +113,32 @@ export async function unpublishChallengeAction(formData: FormData) {
 export async function archiveChallengeAction(formData: FormData) {
   await transitionChallengeStatus(formData, "archive");
 }
+
+/**
+ * Physical deletion, only for challenges with zero participants. Relies on
+ * challenge_enrollments.challenge_id being ON DELETE RESTRICT (0001) to make
+ * this safe even under a race: if an enrollment slipped in between the admin
+ * loading the list and clicking Excluir, Postgres rejects the delete with
+ * 23503 instead of silently cascading away real user history. A challenge
+ * with any history must be archived instead - never deleted.
+ */
+export async function deleteChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("challenges").delete().eq("id", parsedId.data);
+
+  if (error) {
+    const feedback = error.code === "23503" ? "delete-blocked" : "error";
+    redirect(`${target}${separator}feedback=${feedback}`);
+  }
+
+  redirect(`${target}${separator}feedback=delete-success`);
+}

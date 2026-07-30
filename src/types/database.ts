@@ -1283,6 +1283,10 @@ export type Database = {
         Args: { p_challenge_id: string }
         Returns: Json
       }
+      admin_normalize_early_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: Json
+      }
       admin_list_challenges: {
         Args: {
           p_limit?: number | undefined

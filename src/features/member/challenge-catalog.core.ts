@@ -118,6 +118,27 @@ export function describeHabitGoal(params: {
   return `${target} ${unit} ${frequencyPeriodSuffix[frequencyType]}`;
 }
 
+/**
+ * Whether a challenge belongs in the member-facing catalog/detail view at
+ * all - regardless of who's asking (including admins browsing their own
+ * member experience). A draft/paused/archived challenge is only visible to
+ * someone CURRENTLY (active/paused) enrolled in it, so unpublishing never
+ * strands an in-progress participant, but never leaks to anyone else -
+ * not a regular user with an unrelated historical enrollment, and not an
+ * admin's own member view (that's a separate concern from /admin, which
+ * always shows everything).
+ */
+export function isChallengeVisibleInCatalog(params: {
+  challengeStatus: ChallengeStatus;
+  hasLiveEnrollment: boolean;
+}): boolean {
+  return (
+    params.challengeStatus === "active" ||
+    params.challengeStatus === "ended" ||
+    params.hasLiveEnrollment
+  );
+}
+
 export type ChallengeDisplayStatus =
   | "abandoned"
   | "available"
