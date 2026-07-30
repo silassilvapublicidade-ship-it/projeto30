@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
         ]
       : [],
   },
+  experimental: {
+    serverActions: {
+      // Next's own default (1MB) is well under the app's validated tip-card
+      // image limit (MAX_TIP_IMAGE_SIZE_BYTES, 10MB) - any real photo upload
+      // above 1MB was being rejected by the framework itself, before the
+      // action or its own file-size validation ever ran. 11mb leaves room
+      // for multipart overhead plus the form's other text fields.
+      bodySizeLimit: "11mb",
+    },
+  },
 };
 
 export default nextConfig;
