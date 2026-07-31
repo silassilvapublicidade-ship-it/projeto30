@@ -103,6 +103,37 @@ export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
   return data ?? null;
 }
 
+export type TipDownload = Pick<
+  Tables<"content_items">,
+  "id" | "image_storage_path" | "image_url" | "slug" | "title"
+>;
+
+const downloadColumns = "id,title,slug,image_url,image_storage_path";
+
+/**
+ * Backs the /api/dicas/[id]/download route. Deliberately mirrors
+ * getTipBySlug's published+window filter rather than trusting the id alone -
+ * a card that's draft, archived, or outside its display window must not be
+ * downloadable even by a signed-in member who guesses/remembers its id.
+ */
+export async function getDownloadableTip(id: string): Promise<TipDownload | null> {
+  await requireAuthUser("/app/dicas");
+  const supabase = await createSupabaseServerClient();
+  const { endsFilter, startsFilter } = displayWindowFilters();
+
+  const { data } = await supabase
+    .from("content_items")
+    .select(downloadColumns)
+    .eq("content_type", TIP_CONTENT_TYPE)
+    .eq("status", "published")
+    .or(startsFilter)
+    .or(endsFilter)
+    .eq("id", id)
+    .maybeSingle();
+
+  return data ?? null;
+}
+
 /**
  * Used by the challenge detail page for its "Dicas para este desafio"
  * section - only rendered when this returns at least one tip.

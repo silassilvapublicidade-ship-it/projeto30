@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -6,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { getTipBySlug } from "@/server/services/tips.service";
 import { ScrollToTopOnMount } from "@/components/member/scroll-to-top-on-mount";
+import { TipImageViewer } from "@/components/member/tip-image-viewer";
 
 type DicaDetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -26,7 +26,7 @@ export default async function DicaDetailPage({ params }: DicaDetailPageProps) {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <ScrollToTopOnMount />
       <Link
         className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground"
@@ -37,15 +37,12 @@ export default async function DicaDetailPage({ params }: DicaDetailPageProps) {
       </Link>
 
       {tip.image_url ? (
-        <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[1.5rem] border border-white/[0.08] bg-black sm:aspect-[16/9]">
-          <Image
-            alt={tip.alt_text || tip.title}
-            className="object-contain"
-            fill
-            sizes="100vw"
-            src={tip.image_url}
-          />
-        </div>
+        <TipImageViewer
+          alt={tip.alt_text || tip.title}
+          downloadUrl={`/api/dicas/${tip.id}/download`}
+          imageUrl={tip.image_url}
+          title={tip.title}
+        />
       ) : null}
 
       {tip.category ? (
