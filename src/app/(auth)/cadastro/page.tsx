@@ -35,13 +35,13 @@ export default async function CadastroPage({ searchParams }: CadastroPageProps) 
 
   return (
     <AuthShell
-      eyebrow="Comecar"
+      cardDescription="Crie sua conta gratuita e comece quando estiver pronto."
+      cardTitle="Prepare seu Dia 1"
       footer={
         <>
-          Ja tem conta? <AuthLink href="/login">Entrar no Projeto 30</AuthLink>.
+          Já tem conta? <AuthLink href="/login">Entrar no Projeto 30</AuthLink>.
         </>
       }
-      title="Prepare seu Dia 1."
     >
       <SignupForm nextPath={nextPath} />
     </AuthShell>

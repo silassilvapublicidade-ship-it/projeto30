@@ -214,6 +214,21 @@ summary {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* `color-scheme: dark` above nudges Chrome's autofill toward a dark
+   default, but that's inconsistent across versions - this box-shadow inset
+   is the standard bulletproof override (background-color itself can't be
+   reliably overridden on an autofilled input, but box-shadow can visually
+   replace it) so saved credentials never flash the native yellow/white. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--p30-white);
+  -webkit-box-shadow: 0 0 0 1000px var(--p30-graphite-2) inset;
+  box-shadow: 0 0 0 1000px var(--p30-graphite-2) inset;
+  caret-color: var(--p30-white);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--p30-orange) 78%, transparent);
   color: var(--p30-black);
@@ -253,5 +268,28 @@ summary {
 
   to {
     transform: translateX(120%);
+  }
+}
+
+@keyframes p30-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes p30-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

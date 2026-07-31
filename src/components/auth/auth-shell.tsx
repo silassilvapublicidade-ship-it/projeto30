@@ -1,48 +1,61 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { AuthBackdrop } from "@/components/auth/auth-backdrop";
+import { AuthVisualPanel } from "@/components/auth/auth-visual-panel";
 import { BrandLogo } from "@/components/brand/brand-logo";
-import { RhythmRail } from "@/components/brand/rhythm-rail";
-import { Card } from "@/components/ui/card";
+
+const MOBILE_HEADLINE = "Continue o que você começou.";
 
 export function AuthShell({
+  cardDescription,
+  cardTitle,
   children,
-  eyebrow,
   footer,
-  title,
 }: {
+  cardDescription: string;
+  cardTitle: string;
   children: ReactNode;
-  eyebrow: string;
   footer: ReactNode;
-  title: string;
 }) {
   return (
-    <main className="overflow-x-hidden px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-      <div className="mx-auto grid w-full max-w-6xl min-w-0 gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-        <div className="w-full min-w-0 max-w-xl">
-          <BrandLogo label="Projeto 30" preload size={44} />
-          <p className="mt-6 font-mono text-xs uppercase tracking-[0.18em] text-action-soft">
-            {eyebrow}
-          </p>
-          <h1 className="mt-5 font-display text-5xl leading-[1.02] text-foreground sm:text-6xl">
-            {title}
-          </h1>
-          <p className="mt-5 text-base leading-8 text-muted">
-            Entre com calma. O acesso existe para guardar a jornada, não para criar
-            pressa.
-          </p>
-          <div className="mt-8 w-full max-w-md min-w-0">
-            <RhythmRail compact />
-          </div>
+    <main className="relative isolate flex min-h-dvh flex-col overflow-hidden">
+      <AuthBackdrop />
+
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 gap-10 px-4 py-[max(2rem,env(safe-area-inset-top))] sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-16 lg:px-8">
+        <div className="hidden lg:flex lg:items-center">
+          <AuthVisualPanel />
         </div>
 
-        <Card tone="glass" className="min-w-0 p-5 sm:p-7">
-          {children}
-          <div className="mt-6 border-t border-white/[0.08] pt-5 text-sm leading-6 text-muted">
-            {footer}
+        <div className="flex flex-1 flex-col items-center justify-center lg:items-stretch">
+          <div className="mb-8 text-center lg:hidden">
+            <BrandLogo className="mx-auto" label="Projeto 30" preload size={40} />
+            <p className="font-display mt-5 text-2xl leading-[1.15] text-foreground">
+              {MOBILE_HEADLINE}
+            </p>
           </div>
-        </Card>
+
+          <div className="w-full max-w-md min-w-0 rounded-[var(--radius-panel)] border border-white/[0.10] bg-white/[0.05] p-6 shadow-[var(--shadow-lift)] backdrop-blur-xl [animation:p30-fade-up_var(--motion-base)_var(--ease-premium)] sm:p-8">
+            <BrandLogo className="hidden lg:block" label="Projeto 30" preload size={36} />
+            <h2 className="font-display mt-5 text-2xl leading-[1.15] text-foreground lg:mt-6">
+              {cardTitle}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">{cardDescription}</p>
+
+            <div className="mt-7">{children}</div>
+
+            <div className="mt-6 border-t border-white/[0.08] pt-5 text-sm leading-6 text-muted">
+              {footer}
+            </div>
+          </div>
+        </div>
       </div>
+
+      <p className="relative z-10 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center font-mono text-[0.65rem] uppercase tracking-[0.14em] text-muted-2">
+        <Link className="hover:text-muted focus-visible:outline-action-soft" href="/">
+          Projeto 30
+        </Link>
+      </p>
     </main>
   );
 }

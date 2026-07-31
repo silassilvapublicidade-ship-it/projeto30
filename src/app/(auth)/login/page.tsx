@@ -53,16 +53,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <AuthShell
-      eyebrow="Acesso"
+      cardDescription="Entre para continuar sua evolução."
+      cardTitle="Bem-vindo de volta"
       footer={
         <>
-          Ainda nao tem conta? <AuthLink href="/cadastro">Comece gratuitamente</AuthLink>.
-          <br />
-          Esqueceu a senha?{" "}
-          <AuthLink href="/recuperar-senha">Receba um link seguro</AuthLink>.
+          Ainda não tem conta? <AuthLink href="/cadastro">Comece gratuitamente</AuthLink>.
         </>
       }
-      title="Entre para continuar sua jornada."
     >
       <div className="space-y-5">
         {notice ? (

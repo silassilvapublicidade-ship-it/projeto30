@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
-import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
@@ -65,7 +67,57 @@ function SubmitButton({
   );
 }
 
+function PasswordInput({
+  autoComplete,
+  error,
+  hint,
+  label,
+  name,
+  placeholder,
+}: {
+  autoComplete: string;
+  error?: string | undefined;
+  hint?: string | undefined;
+  label: string;
+  name: string;
+  placeholder: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+
+  function handleKeyEvent(event: KeyboardEvent<HTMLInputElement>) {
+    setCapsLockOn(event.getModifierState("CapsLock"));
+  }
+
+  return (
+    <Field error={error} hint={capsLockOn ? "Caps Lock está ativado." : hint} label={label}>
+      <div className="relative">
+        <Input
+          autoComplete={autoComplete}
+          className="pr-12"
+          name={name}
+          onKeyDown={handleKeyEvent}
+          onKeyUp={handleKeyEvent}
+          placeholder={placeholder}
+          required
+          type={visible ? "text" : "password"}
+        />
+        <button
+          aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+          aria-pressed={visible}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-2 transition-colors hover:text-foreground focus-visible:outline-action-soft"
+          onClick={() => setVisible((current) => !current)}
+          type="button"
+        >
+          {visible ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+        </button>
+      </div>
+    </Field>
+  );
+}
+
 export function LoginForm({ nextPath = "/app" }: { nextPath?: string }) {
+  const [mode, setMode] = useState<"password" | "magic">("password");
   const [passwordState, passwordAction] = useActionState(
     signInWithPasswordFormAction,
     initialState,
@@ -74,29 +126,64 @@ export function LoginForm({ nextPath = "/app" }: { nextPath?: string }) {
 
   return (
     <div className="space-y-5">
-      <form action={passwordAction} className="space-y-4">
-        <input name="next" type="hidden" value={nextPath} />
-        <Field error={getFieldError(passwordState, "email")} label="E-mail">
-          <Input
-            autoComplete="email"
-            name="email"
-            placeholder="voce@email.com"
-            required
-            type="email"
-          />
-        </Field>
-        <Field error={getFieldError(passwordState, "password")} label="Senha">
-          <Input
+      {mode === "password" ? (
+        <form
+          action={passwordAction}
+          className="space-y-4 [animation:p30-fade-up_var(--motion-base)_var(--ease-premium)]"
+          key="password"
+        >
+          <input name="next" type="hidden" value={nextPath} />
+          <Field error={getFieldError(passwordState, "email")} label="E-mail">
+            <Input
+              autoComplete="email"
+              name="email"
+              placeholder="voce@email.com"
+              required
+              type="email"
+            />
+          </Field>
+          <PasswordInput
             autoComplete="current-password"
+            error={getFieldError(passwordState, "password")}
+            label="Senha"
             name="password"
             placeholder="Sua senha"
-            required
-            type="password"
           />
-        </Field>
-        <SubmitButton>Entrar</SubmitButton>
-        <FormStatus state={passwordState} />
-      </form>
+          <div className="flex justify-end">
+            <Link
+              className="text-xs font-semibold text-action-soft transition-colors hover:text-action focus-visible:outline-action-soft"
+              href="/recuperar-senha"
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
+          <SubmitButton>Entrar</SubmitButton>
+          <FormStatus state={passwordState} />
+        </form>
+      ) : (
+        <form
+          action={magicAction}
+          className="space-y-4 [animation:p30-fade-up_var(--motion-base)_var(--ease-premium)]"
+          key="magic"
+        >
+          <input name="next" type="hidden" value={nextPath} />
+          <Field
+            error={getFieldError(magicState, "email")}
+            hint="Enviaremos um link seguro para o seu e-mail."
+            label="E-mail"
+          >
+            <Input
+              autoComplete="email"
+              name="email"
+              placeholder="voce@email.com"
+              required
+              type="email"
+            />
+          </Field>
+          <SubmitButton variant="secondary">Receber link de acesso</SubmitButton>
+          <FormStatus state={magicState} />
+        </form>
+      )}
 
       <div className="flex items-center gap-3">
         <span className="h-px flex-1 bg-white/[0.08]" />
@@ -106,24 +193,13 @@ export function LoginForm({ nextPath = "/app" }: { nextPath?: string }) {
         <span className="h-px flex-1 bg-white/[0.08]" />
       </div>
 
-      <form action={magicAction} className="space-y-4">
-        <input name="next" type="hidden" value={nextPath} />
-        <Field
-          error={getFieldError(magicState, "email")}
-          hint="Enviaremos um link de acesso para o seu e-mail."
-          label="Entrar com link"
-        >
-          <Input
-            autoComplete="email"
-            name="email"
-            placeholder="voce@email.com"
-            required
-            type="email"
-          />
-        </Field>
-        <SubmitButton variant="secondary">Receber link de acesso</SubmitButton>
-        <FormStatus state={magicState} />
-      </form>
+      <button
+        className="w-full text-center text-sm font-semibold text-action-soft transition-colors hover:text-action focus-visible:outline-action-soft"
+        onClick={() => setMode((current) => (current === "password" ? "magic" : "password"))}
+        type="button"
+      >
+        {mode === "password" ? "Entrar com link por e-mail" : "Entrar com senha"}
+      </button>
     </div>
   );
 }
@@ -148,19 +224,14 @@ export function SignupForm({ nextPath = "/app" }: { nextPath?: string }) {
             type="email"
           />
         </Field>
-        <Field
+        <PasswordInput
+          autoComplete="new-password"
           error={getFieldError(signupState, "password")}
           hint="Use pelo menos 8 caracteres."
           label="Senha"
-        >
-          <Input
-            autoComplete="new-password"
-            name="password"
-            placeholder="Crie uma senha segura"
-            required
-            type="password"
-          />
-        </Field>
+          name="password"
+          placeholder="Crie uma senha segura"
+        />
         <SubmitButton>Criar conta gratuita</SubmitButton>
         <FormStatus state={signupState} />
       </form>
@@ -221,19 +292,14 @@ export function NewPasswordForm() {
 
   return (
     <form action={formAction} className="space-y-4">
-      <Field
+      <PasswordInput
+        autoComplete="new-password"
         error={getFieldError(state, "password")}
         hint="Use pelo menos 8 caracteres."
         label="Nova senha"
-      >
-        <Input
-          autoComplete="new-password"
-          name="password"
-          placeholder="Crie uma nova senha"
-          required
-          type="password"
-        />
-      </Field>
+        name="password"
+        placeholder="Crie uma nova senha"
+      />
       <SubmitButton>Salvar nova senha</SubmitButton>
       <FormStatus state={state} />
     </form>

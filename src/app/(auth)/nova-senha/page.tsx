@@ -25,13 +25,13 @@ export default async function NovaSenhaPage() {
 
   return (
     <AuthShell
-      eyebrow="Nova senha"
+      cardDescription="Defina uma nova senha para continuar no Projeto 30."
+      cardTitle="Nova senha"
       footer={
         <>
           Prefere entrar com link? <AuthLink href="/login">Voltar para o login</AuthLink>.
         </>
       }
-      title="Defina uma nova senha."
     >
       <NewPasswordForm />
     </AuthShell>

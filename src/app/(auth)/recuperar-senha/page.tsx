@@ -16,13 +16,13 @@ export const metadata: Metadata = {
 export default function RecuperarSenhaPage() {
   return (
     <AuthShell
-      eyebrow="Recuperar acesso"
+      cardDescription="Enviaremos um link seguro para o seu e-mail."
+      cardTitle="Recuperar acesso"
       footer={
         <>
           Lembrou a senha? <AuthLink href="/login">Voltar para o login</AuthLink>.
         </>
       }
-      title="Volte sem transformar acesso em atrito."
     >
       <PasswordRecoveryForm />
     </AuthShell>
