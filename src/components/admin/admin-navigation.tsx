@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Lightbulb, Settings, Trophy, UserCog, Users } from "lucide-react";
+import { LayoutDashboard, Lightbulb, Settings, Trophy, UserCog } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+// Participant management lives entirely inside each challenge now (Admin ->
+// Desafios -> selecionar desafio -> Ver participantes) - metrics like
+// progress/points/streak only make sense in that context, so there's no
+// standalone "Participantes" destination anymore. See
+// admin/desafios/[challengeId]/participantes for the real flow.
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Visão geral" },
   { href: "/admin/desafios", icon: Trophy, label: "Desafios" },
   { href: "/admin/dicas", icon: Lightbulb, label: "Dicas" },
-  { href: "/admin/participantes", icon: Users, label: "Participantes" },
   { href: "/admin/usuarios", icon: UserCog, label: "Usuários" },
   { href: "/admin/configuracoes", icon: Settings, label: "Configurações" },
 ];

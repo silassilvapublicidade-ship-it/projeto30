@@ -1251,6 +1251,7 @@ export type Database = {
           display_name: string | null
           email: string
           id: string
+          must_change_password: boolean
           name: string | null
           onboarding_completed: boolean
           role: Database["public"]["Enums"]["user_role"]
@@ -1266,6 +1267,7 @@ export type Database = {
           display_name?: string | null
           email: string
           id: string
+          must_change_password?: boolean
           name?: string | null
           onboarding_completed?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -1281,6 +1283,7 @@ export type Database = {
           display_name?: string | null
           email?: string
           id?: string
+          must_change_password?: boolean
           name?: string | null
           onboarding_completed?: boolean
           role?: Database["public"]["Enums"]["user_role"]
@@ -1315,6 +1318,10 @@ export type Database = {
           target_challenge_id: string
         }
         Returns: Json
+      }
+      admin_enroll_user_in_challenge: {
+        Args: { p_challenge_id: string; p_user_id: string }
+        Returns: string
       }
       admin_generate_challenge_days: {
         Args: { p_challenge_id: string }
