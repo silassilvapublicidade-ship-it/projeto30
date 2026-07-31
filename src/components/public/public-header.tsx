@@ -12,7 +12,7 @@ const anchorLinks = [
 
 export function PublicHeader() {
   return (
-    <header className="relative px-4 py-4 sm:px-6 lg:px-8">
+    <header className="safe-pt relative px-4 pb-4 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
         <Link
           aria-label="Projeto 30, ir para a página inicial"

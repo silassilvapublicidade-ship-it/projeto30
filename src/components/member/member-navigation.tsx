@@ -128,7 +128,7 @@ export function MemberMobileNavigation() {
   return (
     <nav
       aria-label="Navegacao principal"
-      className="fixed inset-x-3 bottom-3 z-40 rounded-[1.55rem] border border-white/[0.10] bg-background/84 p-1.5 shadow-[0_22px_70px_rgba(0,0,0,0.44)] backdrop-blur-2xl md:hidden"
+      className="safe-fixed-bottom fixed inset-x-3 z-40 rounded-[1.55rem] border border-white/[0.10] bg-background/84 p-1.5 shadow-[0_22px_70px_rgba(0,0,0,0.44)] backdrop-blur-2xl md:hidden"
     >
       <div className="flex gap-1">
         {mainItems.map((item) => (

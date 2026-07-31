@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 sm:py-10 lg:px-8">
+    <main className="min-h-dvh bg-background px-4 py-6 text-foreground sm:px-6 sm:py-10 lg:px-8">
       <OnboardingFlow
         initialData={{
           avatarUrl: context.profile.avatar_url ?? "",

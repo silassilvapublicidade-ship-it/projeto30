@@ -70,7 +70,7 @@ export function ServiceWorkerManager() {
   return (
     <div
       aria-live="polite"
-      className="fixed inset-x-4 bottom-4 z-[300] mx-auto flex max-w-md flex-col gap-3 rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-4 shadow-[var(--shadow-lift)] backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+      className="safe-fixed-bottom fixed inset-x-4 z-[300] mx-auto flex max-w-md flex-col gap-3 rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-4 shadow-[var(--shadow-lift)] backdrop-blur sm:flex-row sm:items-center sm:justify-between"
       role="status"
     >
       <p className="text-sm leading-6 text-foreground">Uma nova versão do Projeto 30 está disponível.</p>

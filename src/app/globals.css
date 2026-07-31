@@ -96,7 +96,10 @@
   --space-mobile-margin: 1rem;
   --space-desktop-margin: 2rem;
   --nav-bottom-height: 4.75rem;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
   --z-header: 40;
   --z-nav: 40;
   --z-dropdown: 20;
@@ -170,6 +173,74 @@
   --text-numeric-display--line-height: 1;
   --text-mono-data: 0.875rem;
   --text-mono-data--line-height: 1.4;
+}
+
+/* Safe-area utilities - iOS Dynamic Island / Home Indicator / notch support.
+   viewportFit: "cover" (app/layout.tsx) makes every page render edge-to-edge
+   on iOS, so every piece of fixed/sticky chrome touching a physical edge has
+   to reserve these insets itself; nothing does this for free. Every value
+   below falls back to 0px, so Android and desktop (which never set these
+   env() vars to anything but 0) render pixel-identical to before - this is
+   additive insurance for notched/gesture-bar iOS devices, not a redesign.
+
+   Two families:
+   - safe-top/bottom/left/right/x/y/all: the raw inset as padding, meant to
+     be composed freely (e.g. stacked with a parent's own padding).
+   - safe-padding/safe-pt/safe-fixed-top/safe-fixed-bottom: "at least the
+     spacing this component already used, or the device's inset if that's
+     bigger" - the pattern every sticky header and fixed bottom bar in this
+     app actually needs. The 0.75rem/1rem minimums match the exact spacing
+     (py-3, bottom-3, p-4) those components already had, so nothing shifts
+     on a device reporting 0px insets. */
+@utility safe-top {
+  padding-top: var(--safe-area-top);
+}
+@utility safe-bottom {
+  padding-bottom: var(--safe-area-bottom);
+}
+@utility safe-left {
+  padding-left: var(--safe-area-left);
+}
+@utility safe-right {
+  padding-right: var(--safe-area-right);
+}
+@utility safe-x {
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+@utility safe-y {
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+}
+@utility safe-all {
+  padding-top: var(--safe-area-top);
+  padding-right: var(--safe-area-right);
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: var(--safe-area-left);
+}
+@utility safe-padding {
+  padding-top: max(1rem, var(--safe-area-top));
+  padding-right: max(1rem, var(--safe-area-right));
+  padding-bottom: max(1rem, var(--safe-area-bottom));
+  padding-left: max(1rem, var(--safe-area-left));
+}
+@utility safe-pt {
+  padding-top: max(0.75rem, var(--safe-area-top));
+}
+@utility safe-fixed-top {
+  top: max(0.75rem, var(--safe-area-top));
+}
+@utility safe-fixed-bottom {
+  bottom: max(0.75rem, var(--safe-area-bottom));
+}
+/* Scroll clearance for content sitting behind the floating bottom nav - the
+   nav's own footprint from the true bottom edge is its safe-area offset
+   (safe-fixed-bottom) plus its height, so the padding has to grow by that
+   same inset on top of the base clearance, not just take whichever is
+   larger. Uses the --nav-bottom-height token (already defined, previously
+   unused) instead of the pb-24 guess this replaces. */
+@utility safe-scroll-pb {
+  padding-bottom: calc(var(--nav-bottom-height) + 1.5rem + var(--safe-area-bottom));
 }
 
 * {
