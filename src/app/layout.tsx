@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
+import { ServiceWorkerManager } from "@/components/pwa/service-worker-manager";
+
 const display = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
@@ -52,11 +54,18 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Projeto 30",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
   colorScheme: "dark",
   themeColor: "#050505",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -69,7 +78,10 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${display.variable} ${body.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-background text-foreground">{children}</body>
+      <body className="min-h-full bg-background text-foreground">
+        {children}
+        <ServiceWorkerManager />
+      </body>
     </html>
   );
 }

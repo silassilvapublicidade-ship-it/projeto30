@@ -4,6 +4,7 @@ import { ShieldCheck, UserRound } from "lucide-react";
 import { ProfileDetailsForm } from "@/components/member/profile-details-form";
 import { ProfilePhotoForm } from "@/components/member/profile-photo-form";
 import { ProfileSecurityForm } from "@/components/member/profile-security-form";
+import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isAdminRole } from "@/features/admin/admin-access.core";
@@ -76,6 +77,13 @@ export default async function PerfilPage() {
         title="Segurança"
       >
         <ProfileSecurityForm />
+      </ProfileSection>
+
+      <ProfileSection
+        description="Abra o Projeto 30 direto da tela inicial, em tela cheia, como um aplicativo."
+        title="Instalar aplicativo"
+      >
+        <InstallAppPrompt />
       </ProfileSection>
 
       {isAdminRole(profile.role) ? (

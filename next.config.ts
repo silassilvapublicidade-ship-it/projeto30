@@ -26,6 +26,20 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "11mb",
     },
   },
+  async headers() {
+    return [
+      {
+        // Browsers/CDNs must always revalidate the service worker file, or
+        // a stale cached copy can pin users to an old version indefinitely.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache" },
+          { key: "Content-Type", value: "text/javascript; charset=utf-8" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
