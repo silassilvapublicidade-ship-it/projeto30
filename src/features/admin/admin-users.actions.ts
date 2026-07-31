@@ -17,6 +17,11 @@ function getFormValue(formData: FormData, key: string): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
 
+function withFeedback(path: string, feedback: string): string {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}feedback=${feedback}`;
+}
+
 /**
  * Creates the account via Supabase Auth's admin API (service_role, only
  * ever touched here on the server - never sent to the client) and lets the
@@ -108,11 +113,11 @@ export async function deleteUserAction(formData: FormData) {
   const parsedId = userIdSchema.safeParse(formData.get("userId"));
 
   if (!parsedId.success) {
-    redirect(`${redirectTo}?feedback=invalid`);
+    redirect(withFeedback(redirectTo, "invalid"));
   }
 
   if (parsedId.data === admin.id) {
-    redirect(`${redirectTo}?feedback=delete-self-blocked`);
+    redirect(withFeedback(redirectTo, "delete-self-blocked"));
   }
 
   let adminClient;
@@ -120,14 +125,14 @@ export async function deleteUserAction(formData: FormData) {
   try {
     adminClient = createSupabaseAdminClient();
   } catch {
-    redirect(`${redirectTo}?feedback=error`);
+    redirect(withFeedback(redirectTo, "error"));
   }
 
   const { error } = await adminClient.auth.admin.deleteUser(parsedId.data);
 
   if (error) {
-    redirect(`${redirectTo}?feedback=error`);
+    redirect(withFeedback(redirectTo, "error"));
   }
 
-  redirect(`${redirectTo}?feedback=delete-success`);
+  redirect(withFeedback(redirectTo, "delete-success"));
 }

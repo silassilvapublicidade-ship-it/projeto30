@@ -183,6 +183,13 @@ describe("Admin users actions - Server Actions, service_role only ever touched o
     expect(body).toContain("delete-self-blocked");
   });
 
+  it("appends feedback with & instead of a second ? when redirectTo already carries a query string (e.g. an active search/page filter) - a bare `${redirectTo}?feedback=...` template would silently break the banner there", () => {
+    const start = source.indexOf("export async function deleteUserAction");
+    const body = source.slice(start);
+    expect(body).not.toMatch(/`\$\{redirectTo\}\?feedback=/);
+    expect(source).toContain('const separator = path.includes("?") ? "&" : "?";');
+  });
+
   it("never imports the admin client into a client component - server-only guards this at build time", () => {
     const adminClientSource = readSource("src", "lib", "supabase", "admin.ts");
     expect(adminClientSource.trimStart().startsWith('import "server-only";')).toBe(true);
