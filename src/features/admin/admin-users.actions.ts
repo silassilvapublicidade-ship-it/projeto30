@@ -1,5 +1,7 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { redirect } from "next/navigation";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -135,4 +137,71 @@ export async function deleteUserAction(formData: FormData) {
   }
 
   redirect(withFeedback(redirectTo, "delete-success"));
+}
+
+export type ResetPasswordActionResult =
+  | { message: string; ok: false }
+  | { message: string; ok: true; temporaryPassword: string };
+
+/**
+ * Deliberately does not redirect: the generated password can only be shown
+ * once, so it has to come back as action state and render inline instead of
+ * ever touching a URL (query params end up in browser history / server
+ * logs).
+ */
+export async function resetUserPasswordAction(
+  _previousState: ResetPasswordActionResult,
+  formData: FormData,
+): Promise<ResetPasswordActionResult> {
+  const admin = await requireAdminUser();
+  const parsedId = userIdSchema.safeParse(formData.get("userId"));
+
+  if (!parsedId.success) {
+    return { message: "Identificador de usuário inválido.", ok: false };
+  }
+
+  let adminClient;
+
+  try {
+    adminClient = createSupabaseAdminClient();
+  } catch {
+    return {
+      message: "A configuração segura do servidor não permite redefinir senhas agora.",
+      ok: false,
+    };
+  }
+
+  const temporaryPassword = randomBytes(12).toString("base64url");
+
+  const { error: updateError } = await adminClient.auth.admin.updateUserById(parsedId.data, {
+    password: temporaryPassword,
+  });
+
+  if (updateError) {
+    return { message: "Não foi possível redefinir a senha agora.", ok: false };
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  // "Admins can manage users" RLS already permits this - no need for
+  // service_role beyond the auth.admin.updateUserById call above.
+  await supabase
+    .from("users")
+    .update({ must_change_password: true, updated_at: new Date().toISOString() })
+    .eq("id", parsedId.data);
+
+  // Never logs the password itself - only that a reset happened, by whom,
+  // and for which account.
+  await supabase.from("admin_audit_logs").insert({
+    action: "admin_reset_user_password",
+    admin_user_id: admin.id,
+    entity_id: parsedId.data,
+    entity_type: "user",
+  });
+
+  return {
+    message: "Senha temporária gerada. Compartilhe com segurança - ela não será exibida novamente.",
+    ok: true,
+    temporaryPassword,
+  };
 }

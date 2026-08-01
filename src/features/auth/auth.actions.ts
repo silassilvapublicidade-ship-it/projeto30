@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getSafeNextPath, withNextParam } from "@/lib/auth/redirects";
 import { getServerEnv } from "@/lib/env/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import {
@@ -236,7 +237,7 @@ export async function updatePasswordAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.updateUser({
+  const { data: userData, error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
 
@@ -245,6 +246,24 @@ export async function updatePasswordAction(
       ok: false,
       message: "Nao foi possivel atualizar sua senha agora.",
     };
+  }
+
+  // Recovery is a legitimate way to satisfy a pending forced password
+  // change too - without this, a user with must_change_password=true who
+  // uses "Esqueci minha senha" would set a new password here and still get
+  // bounced back to /primeiro-acesso by the /app gate right after. Best
+  // effort: a failure here just means the /app gate asks again, not a
+  // security gap.
+  if (userData.user) {
+    try {
+      const admin = createSupabaseAdminClient();
+      await admin
+        .from("users")
+        .update({ must_change_password: false, updated_at: new Date().toISOString() })
+        .eq("id", userData.user.id);
+    } catch {
+      // Same best-effort reasoning as above - swallow and let the gate retry.
+    }
   }
 
   redirect("/app");

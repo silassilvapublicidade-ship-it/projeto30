@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 
-import { requireAuthUser } from "@/server/services/auth-session.service";
+import { getMustChangePasswordFlag, requireAuthUser } from "@/server/services/auth-session.service";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,14 @@ export const metadata: Metadata = {
 };
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  await requireAuthUser("/app");
+  const user = await requireAuthUser("/app");
+
+  // Checked on every request to /app/* (Server Component, no client-side
+  // trust): /primeiro-acesso itself lives outside this route tree
+  // ((auth) route group), so there's no loop to guard against here.
+  if (await getMustChangePasswordFlag(user.id)) {
+    redirect("/primeiro-acesso");
+  }
 
   return children;
 }
