@@ -4,8 +4,10 @@ import type { Metadata } from "next";
 import { ArrowLeft, Lock, Trophy } from "lucide-react";
 
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
+import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { enrollmentIdSchema } from "@/features/admin/admin-analytics.schemas";
+import { pauseEnrollmentAction, resumeEnrollmentAction } from "@/features/admin/admin-challenges.actions";
 import {
   describeActivity,
   describeEnrollmentStatus,
@@ -15,18 +17,54 @@ import {
 } from "@/features/admin/admin-metrics.core";
 import { getAdminParticipantDetail } from "@/server/services/admin-analytics.service";
 
+const enrollmentFeedbackMessages: Record<string, { description: string; title: string; tone: "error" | "success" }> = {
+  "pause-success": {
+    title: "Inscrição pausada",
+    description: "A execução deste participante fica bloqueada até a retomada. Progresso preservado.",
+    tone: "success",
+  },
+  "pause-blocked": {
+    title: "Não foi possível pausar",
+    description: "Apenas inscrições ativas podem ser pausadas.",
+    tone: "error",
+  },
+  "resume-success": {
+    title: "Inscrição retomada",
+    description: "Os dias em que ficou pausada foram creditados de volta.",
+    tone: "success",
+  },
+  "resume-blocked": {
+    title: "Não foi possível retomar",
+    description: "Apenas inscrições pausadas podem ser retomadas.",
+    tone: "error",
+  },
+  error: {
+    title: "Não foi possível concluir",
+    description: "A ação falhou. Tente novamente.",
+    tone: "error",
+  },
+  invalid: {
+    title: "Solicitação inválida",
+    description: "Identificador de inscrição ausente.",
+    tone: "error",
+  },
+};
+
 export const metadata: Metadata = {
   title: "Detalhe do participante · Administração",
 };
 
 type AdminParticipantDetailPageProps = {
   params: Promise<{ challengeId: string; enrollmentId: string }>;
+  searchParams: Promise<{ feedback?: string }>;
 };
 
 export default async function AdminParticipantDetailPage({
   params,
+  searchParams,
 }: AdminParticipantDetailPageProps) {
   const { challengeId, enrollmentId } = await params;
+  const { feedback: feedbackKey } = await searchParams;
   const parsedId = enrollmentIdSchema.safeParse(enrollmentId);
 
   if (!parsedId.success) {
@@ -50,6 +88,8 @@ export default async function AdminParticipantDetailPage({
   }
 
   const backHref = `/admin/desafios/${challengeId}/participantes`;
+  const selfHref = `/admin/desafios/${challengeId}/participantes/${enrollmentId}`;
+  const feedback = feedbackKey ? enrollmentFeedbackMessages[feedbackKey] : undefined;
   const reflectionsWithContent = (data.reflections ?? []).filter((entry) =>
     [
       entry.content,
@@ -71,13 +111,28 @@ export default async function AdminParticipantDetailPage({
           <ArrowLeft aria-hidden="true" size={14} />
           Voltar para participantes
         </Link>
-        <h1 className="mt-3 text-2xl font-semibold text-foreground">
-          {data.name || "Sem nome"}
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          {data.email} · {data.challenge_name} · inscrito em {formatDate(data.joined_at)}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">{data.name || "Sem nome"}</h1>
+            <p className="mt-1 text-sm text-muted">
+              {data.email} · {data.challenge_name} · inscrito em {formatDate(data.joined_at)}
+            </p>
+          </div>
+          {data.status === "active" || data.status === "paused" ? (
+            <form action={data.status === "active" ? pauseEnrollmentAction : resumeEnrollmentAction}>
+              <input name="enrollmentId" type="hidden" value={enrollmentId} />
+              <input name="redirectTo" type="hidden" value={selfHref} />
+              <Button size="md" type="submit" variant={data.status === "active" ? "secondary" : "primary"}>
+                {data.status === "active" ? "Pausar inscrição" : "Retomar inscrição"}
+              </Button>
+            </form>
+          ) : null}
+        </div>
       </div>
+
+      {feedback ? (
+        <StatusCard description={feedback.description} title={feedback.title} tone={feedback.tone} />
+      ) : null}
 
       <section aria-labelledby="participant-kpis" className="space-y-3">
         <h2

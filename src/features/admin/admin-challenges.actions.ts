@@ -9,7 +9,7 @@ import {
 } from "@/server/services/admin-analytics.service";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 
-import { challengeIdSchema } from "./admin-analytics.schemas";
+import { challengeIdSchema, enrollmentIdSchema } from "./admin-analytics.schemas";
 import { validateChallengeForPublish } from "./challenge-editor.core";
 
 type StatusTransition = {
@@ -193,6 +193,157 @@ export async function purgeTestChallengeAction(formData: FormData) {
   }
 
   redirect(`${target}${separator}feedback=purge-success`);
+}
+
+function feedbackForLifecycleError(code: string | undefined, fallback: string): string {
+  if (code === "P0002") {
+    return "invalid";
+  }
+
+  if (code === "P0003") {
+    return fallback;
+  }
+
+  return "error";
+}
+
+/**
+ * Pauses the whole challenge: blocks new enrollments and new/ongoing
+ * execution for every participant (RLS + the journey RPCs already enforce
+ * this once status = 'paused'), without touching any enrollment row here -
+ * admin_pause_challenge only flips challenges.status and stamps paused_at.
+ */
+export async function pauseChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_pause_challenge", {
+    p_challenge_id: parsedId.data,
+  });
+
+  if (error) {
+    redirect(`${target}${separator}feedback=${feedbackForLifecycleError(error.code, "pause-blocked")}`);
+  }
+
+  redirect(`${target}${separator}feedback=pause-success`);
+}
+
+/**
+ * Resumes a paused challenge and credits every active/paused enrollment's
+ * paused_days_offset with the elapsed pause duration in one transaction
+ * (admin_resume_challenge) - nobody's calendar loses the paused days.
+ */
+export async function resumeChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_resume_challenge", {
+    p_challenge_id: parsedId.data,
+  });
+
+  if (error) {
+    redirect(`${target}${separator}feedback=${feedbackForLifecycleError(error.code, "resume-blocked")}`);
+  }
+
+  redirect(`${target}${separator}feedback=resume-success`);
+}
+
+/**
+ * Ends a challenge for good (one-way from this UI - no "resume an ended
+ * challenge" action exists by design). Requires typing the exact challenge
+ * name, validated server-side inside admin_end_challenge, same confirm-by-
+ * name pattern as purgeTestChallengeAction.
+ */
+export async function endChallengeAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
+  const confirmationName = formData.get("confirmationName");
+
+  if (!parsedId.success || typeof confirmationName !== "string") {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_end_challenge", {
+    p_challenge_id: parsedId.data,
+    p_confirmation_name: confirmationName,
+  });
+
+  if (error) {
+    const feedback =
+      error.code === "P0008"
+        ? "end-name-mismatch"
+        : feedbackForLifecycleError(error.code, "end-blocked");
+    redirect(`${target}${separator}feedback=${feedback}`);
+  }
+
+  redirect(`${target}${separator}feedback=end-success`);
+}
+
+/**
+ * Individual enrollment pause/resume - admin-only this round (the brief is
+ * explicit: members keep only "Abandonar" for now). Orthogonal to the
+ * whole-challenge actions above: pausing one participant never touches
+ * challenges.status, and vice versa.
+ */
+export async function pauseEnrollmentAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = enrollmentIdSchema.safeParse(formData.get("enrollmentId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_pause_enrollment", {
+    p_enrollment_id: parsedId.data,
+  });
+
+  if (error) {
+    redirect(`${target}${separator}feedback=${feedbackForLifecycleError(error.code, "pause-blocked")}`);
+  }
+
+  redirect(`${target}${separator}feedback=pause-success`);
+}
+
+export async function resumeEnrollmentAction(formData: FormData) {
+  await requireAdminUser();
+
+  const { separator, target } = resolveRedirectTarget(formData);
+  const parsedId = enrollmentIdSchema.safeParse(formData.get("enrollmentId"));
+
+  if (!parsedId.success) {
+    redirect(`${target}${separator}feedback=invalid`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_resume_enrollment", {
+    p_enrollment_id: parsedId.data,
+  });
+
+  if (error) {
+    redirect(`${target}${separator}feedback=${feedbackForLifecycleError(error.code, "resume-blocked")}`);
+  }
+
+  redirect(`${target}${separator}feedback=resume-success`);
 }
 
 export type PurgePreviewResult =

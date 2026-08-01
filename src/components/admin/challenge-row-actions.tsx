@@ -3,11 +3,14 @@
 import { useState } from "react";
 
 import { DeleteChallengeDialog } from "@/components/admin/delete-challenge-dialog";
+import { EndChallengeDialog } from "@/components/admin/end-challenge-dialog";
 import { PurgeTestChallengeDialog } from "@/components/admin/purge-test-challenge-dialog";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import {
   archiveChallengeAction,
+  pauseChallengeAction,
   publishChallengeAction,
+  resumeChallengeAction,
   unpublishChallengeAction,
 } from "@/features/admin/admin-challenges.actions";
 import { duplicateChallengeAsDraftAction } from "@/features/admin/challenge-editor.actions";
@@ -68,6 +71,7 @@ export function ChallengeRowActions({
 }: ChallengeRowActionsProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
+  const [endOpen, setEndOpen] = useState(false);
 
   // A challenge can be deleted (physically) in ANY status as long as it has
   // zero participants/history - the earlier version of this component only
@@ -118,7 +122,40 @@ export function ChallengeRowActions({
               </ActionForm>
             ) : null}
 
-            {status === "active" || status === "ended" ? (
+            {status === "active" ? (
+              <ActionForm
+                action={pauseChallengeAction}
+                close={close}
+                hiddenChallengeId={challengeId}
+                redirectTo={redirectTo}
+              >
+                Pausar
+              </ActionForm>
+            ) : null}
+
+            {status === "paused" ? (
+              <ActionForm
+                action={resumeChallengeAction}
+                close={close}
+                hiddenChallengeId={challengeId}
+                redirectTo={redirectTo}
+              >
+                Retomar
+              </ActionForm>
+            ) : null}
+
+            {status === "active" || status === "paused" ? (
+              <DropdownMenuItem
+                onSelect={() => {
+                  close();
+                  setEndOpen(true);
+                }}
+              >
+                Encerrar
+              </DropdownMenuItem>
+            ) : null}
+
+            {status === "active" || status === "paused" || status === "ended" ? (
               <ActionForm
                 action={archiveChallengeAction}
                 close={close}
@@ -186,6 +223,14 @@ export function ChallengeRowActions({
           redirectTo={redirectTo}
         />
       ) : null}
+
+      <EndChallengeDialog
+        challengeId={challengeId}
+        challengeName={challengeName}
+        onOpenChange={setEndOpen}
+        open={endOpen}
+        redirectTo={redirectTo}
+      />
     </>
   );
 }

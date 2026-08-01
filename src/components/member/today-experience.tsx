@@ -9,6 +9,7 @@ import {
   Heart,
   MessageSquare,
   Moon,
+  PauseCircle,
   PenLine,
   Route,
   Save,
@@ -650,6 +651,12 @@ function JourneyStatePanel({ enrollmentContext }: { enrollmentContext: Enrollmen
         "Este desafio ainda não chegou na sua data oficial de início. Volte nesse dia para abrir a jornada.",
       tone: "success",
     },
+    cycle_paused: {
+      title: "Desafio pausado",
+      description:
+        "Este desafio está pausado no momento. Seu progresso, pontos e sequência estão preservados - a contagem de dias retoma de onde parou assim que ele voltar.",
+      tone: "success",
+    },
     day_available: {
       title: "Dia aberto",
       description: "As missões de hoje estão prontas para registro.",
@@ -784,6 +791,37 @@ function NotStartedCard({ enrollmentContext }: { enrollmentContext: EnrollmentDa
   );
 }
 
+function PausedCard({ enrollmentContext }: { enrollmentContext: EnrollmentDayContext }) {
+  const { enrollment } = enrollmentContext;
+
+  return (
+    <section
+      aria-label={enrollment.challenge?.name ?? "Desafio"}
+      className="space-y-3 rounded-[1.75rem] border border-white/[0.06] bg-white/[0.015] p-3 sm:p-4"
+    >
+      <div className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-action-soft">
+            <PauseCircle aria-hidden="true" size={15} />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold leading-tight text-foreground sm:text-xl">
+              {enrollment.challenge?.name ?? "Desafio"}
+            </h2>
+            <p className="font-mono text-[0.66rem] uppercase tracking-[0.1em] text-action-soft">
+              Pausado
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Suas missões, diário e pontuação continuam guardados. Eles voltam a ficar disponíveis
+          assim que o desafio for retomado - nenhum dia é perdido durante a pausa.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function EnrollmentSection({
   enrollmentContext,
   todayLabel,
@@ -795,6 +833,10 @@ function EnrollmentSection({
 
   if (enrollmentContext.journeyState === "cycle_not_started") {
     return <NotStartedCard enrollmentContext={enrollmentContext} />;
+  }
+
+  if (enrollmentContext.journeyState === "cycle_paused") {
+    return <PausedCard enrollmentContext={enrollmentContext} />;
   }
 
   const dailyLogId = enrollment.todayLog?.id ?? null;

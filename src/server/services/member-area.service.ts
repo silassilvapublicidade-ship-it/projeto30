@@ -79,6 +79,7 @@ type HabitForMission = Pick<
 export type JourneyState =
   | "cycle_ended"
   | "cycle_not_started"
+  | "cycle_paused"
   | "day_available"
   | "day_finalized"
   | "error"
@@ -471,6 +472,7 @@ async function buildEnrollmentDayContext({
   const dayResult = challenge
     ? calculateChallengeDay({
         durationDays: challenge.duration_days,
+        pausedDaysOffset: enrollment.paused_days_offset,
         personalStartDate: enrollment.personal_start_date,
         targetDate: today,
       })
@@ -488,10 +490,20 @@ async function buildEnrollmentDayContext({
   const notYetOfficiallyStarted = Boolean(
     challenge?.start_date && today < challenge.start_date,
   );
+  // Either the whole challenge or just this participant's own enrollment
+  // can be paused (Module C) - both read as "paused" here. Checked before
+  // ensureTodayLog: the RPC would just reject with a generic error since it
+  // requires both statuses = 'active', so this short-circuits into a real
+  // "Pausado" message instead of the member seeing journeyState "error".
+  const isPaused = enrollment.status === "paused" || challenge?.status === "paused";
 
   if (!challenge) {
     journeyState = "error";
     journeyError = "O ciclo desta inscricao nao foi encontrado.";
+  } else if (challenge.status === "ended") {
+    journeyState = "cycle_ended";
+  } else if (isPaused) {
+    journeyState = "cycle_paused";
   } else if (notYetOfficiallyStarted) {
     journeyState = "cycle_not_started";
   } else if (dayResult?.status === "not_started") {

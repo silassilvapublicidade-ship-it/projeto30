@@ -331,6 +331,7 @@ export type Database = {
           id: string
           joined_at: string
           paused_at: string | null
+          paused_days_offset: number
           personal_start_date: string
           points_total: number
           restarted_from_enrollment_id: string | null
@@ -350,6 +351,7 @@ export type Database = {
           id?: string
           joined_at?: string
           paused_at?: string | null
+          paused_days_offset?: number
           personal_start_date: string
           points_total?: number
           restarted_from_enrollment_id?: string | null
@@ -369,6 +371,7 @@ export type Database = {
           id?: string
           joined_at?: string
           paused_at?: string | null
+          paused_days_offset?: number
           personal_start_date?: string
           points_total?: number
           restarted_from_enrollment_id?: string | null
@@ -411,11 +414,13 @@ export type Database = {
           description: string | null
           duration_days: number
           end_date: string | null
+          ended_at: string | null
           enrollment_end: string | null
           enrollment_start: string | null
           id: string
           is_test: boolean
           name: string
+          paused_at: string | null
           rules_config: Json
           slug: string
           start_date: string | null
@@ -431,11 +436,13 @@ export type Database = {
           description?: string | null
           duration_days: number
           end_date?: string | null
+          ended_at?: string | null
           enrollment_end?: string | null
           enrollment_start?: string | null
           id?: string
           is_test?: boolean
           name: string
+          paused_at?: string | null
           rules_config?: Json
           slug: string
           start_date?: string | null
@@ -451,11 +458,13 @@ export type Database = {
           description?: string | null
           duration_days?: number
           end_date?: string | null
+          ended_at?: string | null
           enrollment_end?: string | null
           enrollment_start?: string | null
           id?: string
           is_test?: boolean
           name?: string
+          paused_at?: string | null
           rules_config?: Json
           slug?: string
           start_date?: string | null
@@ -1327,6 +1336,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_end_challenge: {
+        Args: { p_challenge_id: string; p_confirmation_name: string }
+        Returns: undefined
+      }
       admin_enroll_user_in_challenge: {
         Args: { p_challenge_id: string; p_user_id: string }
         Returns: string
@@ -1425,6 +1438,14 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: Json
       }
+      admin_pause_challenge: {
+        Args: { p_challenge_id: string }
+        Returns: undefined
+      }
+      admin_pause_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: undefined
+      }
       admin_require_admin: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1432,6 +1453,14 @@ export type Database = {
       admin_require_super_admin: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      admin_resume_challenge: {
+        Args: { p_challenge_id: string }
+        Returns: undefined
+      }
+      admin_resume_enrollment: {
+        Args: { p_enrollment_id: string }
+        Returns: undefined
       }
       admin_test_challenge_purge_preview: {
         Args: { target_challenge_id: string }
@@ -1480,7 +1509,11 @@ export type Database = {
         Returns: string
       }
       journey_calculate_day: {
-        Args: { target_local_date: string; target_start_date: string }
+        Args: {
+          p_paused_days_offset?: number
+          target_local_date: string
+          target_start_date: string
+        }
         Returns: number
       }
       journey_get_local_date: {

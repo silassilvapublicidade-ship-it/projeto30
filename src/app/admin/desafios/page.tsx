@@ -70,6 +70,35 @@ const feedbackMessages: Record<string, { description: string; title: string }> =
     description:
       "A confirmação não conferiu ou este desafio não está marcado como desafio de teste.",
   },
+  "pause-success": {
+    title: "Desafio pausado",
+    description:
+      "Novas inscrições e execução (marcar hábitos, finalizar dias) ficam bloqueadas até a retomada.",
+  },
+  "pause-blocked": {
+    title: "Não foi possível pausar",
+    description: "Apenas desafios ativos podem ser pausados.",
+  },
+  "resume-success": {
+    title: "Desafio retomado",
+    description: "Os dias em que ficou pausado foram creditados de volta para cada participante.",
+  },
+  "resume-blocked": {
+    title: "Não foi possível retomar",
+    description: "Apenas desafios pausados podem ser retomados.",
+  },
+  "end-success": {
+    title: "Desafio encerrado",
+    description: "O histórico continua preservado. Não é possível retomar por aqui.",
+  },
+  "end-blocked": {
+    title: "Não foi possível encerrar",
+    description: "Apenas desafios ativos ou pausados podem ser encerrados.",
+  },
+  "end-name-mismatch": {
+    title: "Confirmação incorreta",
+    description: "O nome digitado não confere com o nome do desafio.",
+  },
 };
 
 type AdminChallengesPageProps = {
@@ -115,7 +144,11 @@ export default async function AdminChallengesPage({
             feedbackKey === "invalid" ||
             feedbackKey === "delete-blocked" ||
             feedbackKey === "purge-forbidden" ||
-            feedbackKey === "purge-blocked"
+            feedbackKey === "purge-blocked" ||
+            feedbackKey === "pause-blocked" ||
+            feedbackKey === "resume-blocked" ||
+            feedbackKey === "end-blocked" ||
+            feedbackKey === "end-name-mismatch"
               ? "error"
               : "success"
           }

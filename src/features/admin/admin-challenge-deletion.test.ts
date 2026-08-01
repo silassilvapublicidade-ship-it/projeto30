@@ -83,9 +83,9 @@ describe("admin challenge deletion - row action gating (ChallengeRowActions)", (
     );
   });
 
-  it("renders Editar only for draft/active, and Arquivar only for active/ended", () => {
+  it("renders Editar only for draft/active, and Arquivar for active/paused/ended (Modulo C: a paused challenge can also be archived directly)", () => {
     expect(source).toContain('status === "draft" || status === "active" ?');
-    expect(source).toContain('status === "active" || status === "ended" ?');
+    expect(source).toContain('status === "active" || status === "paused" || status === "ended" ?');
   });
 
   it("always renders Duplicar regardless of status", () => {

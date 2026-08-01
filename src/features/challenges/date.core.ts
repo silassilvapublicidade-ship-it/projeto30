@@ -7,6 +7,12 @@ export type ChallengeDayInput = {
   personalStartDate: string;
   targetDate: string;
   durationDays: number;
+  /** Cumulative whole days credited back by a pause (whole-challenge or
+   * this specific enrollment), mirroring journey_calculate_day's SQL
+   * counterpart exactly so the UI's day number never disagrees with what
+   * the RPC actually computed/enforced. Defaults to 0 - a no-op, so every
+   * existing (never-paused) caller is unaffected. */
+  pausedDaysOffset?: number;
 };
 
 export type ChallengeDayResult = {
@@ -56,7 +62,7 @@ export function calculateChallengeDay(input: ChallengeDayInput): ChallengeDayRes
   const start = parseDateOnly(input.personalStartDate);
   const target = parseDateOnly(input.targetDate);
   const daysElapsed = Math.floor((target - start) / millisecondsPerDay);
-  const dayNumber = daysElapsed + 1;
+  const dayNumber = daysElapsed + 1 - (input.pausedDaysOffset ?? 0);
 
   if (dayNumber < 1) {
     return {
