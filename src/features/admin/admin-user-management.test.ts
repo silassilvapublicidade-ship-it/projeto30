@@ -282,4 +282,9 @@ describe("Admin usuario detail page", () => {
     expect(source).toContain("break-words text-2xl font-semibold text-foreground");
     expect(source).toContain("break-all font-mono text-xs text-muted-2");
   });
+
+  it("the two-column grid and its left column both allow shrinking below content width, so the enrollments table's overflow-x-auto actually contains its own scroll instead of blowing out the page - a bare CSS grid item defaults to min-width: auto", () => {
+    expect(source).toContain('className="grid min-w-0 gap-6 lg:grid-cols-[1.1fr_0.9fr]"');
+    expect(source).toContain('className="min-w-0 space-y-6"');
+  });
 });

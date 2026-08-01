@@ -118,8 +118,8 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
         <UserEditForm city={profile.city} displayName={profile.display_name} name={profile.name} userId={profile.id} />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-6">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="min-w-0 space-y-6">
           <section className="space-y-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4">
             <h2 className="text-sm font-semibold text-foreground">Desafios (atuais e histórico)</h2>
             {enrollments.length === 0 ? (
