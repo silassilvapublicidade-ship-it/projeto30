@@ -49,7 +49,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             description: "Sua sessao expirou ou nao foi encontrada neste dispositivo.",
             tone: "error" as const,
           }
-        : null;
+        : params.reason === "blocked"
+          ? {
+              title: "Acesso bloqueado",
+              description: "Esta conta foi bloqueada. Entre em contato com o suporte.",
+              tone: "error" as const,
+            }
+          : null;
 
   return (
     <AuthShell

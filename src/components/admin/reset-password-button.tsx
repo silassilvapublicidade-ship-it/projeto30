@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Check, Copy, KeyRound } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
@@ -105,8 +105,20 @@ function ResetPasswordDialogContent({
   );
 }
 
-export function ResetPasswordButton({ userEmail, userId }: { userEmail: string; userId: string }) {
-  const [open, setOpen] = useState(false);
+/** Controlled dialog (no trigger of its own) so it can be opened from
+ * anywhere - a row's icon button, a dropdown menu item, a detail page
+ * action. */
+export function ResetPasswordDialog({
+  onOpenChange,
+  open,
+  userEmail,
+  userId,
+}: {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  userEmail: string;
+  userId: string;
+}) {
   const [instanceKey, setInstanceKey] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -126,7 +138,7 @@ export function ResetPasswordButton({ userEmail, userId }: { userEmail: string; 
   }, [open]);
 
   function closeAndReset(nextOpen: boolean) {
-    setOpen(nextOpen);
+    onOpenChange(nextOpen);
 
     if (!nextOpen) {
       // Forces the inner useActionState to remount fresh next time it
@@ -136,35 +148,24 @@ export function ResetPasswordButton({ userEmail, userId }: { userEmail: string; 
   }
 
   return (
-    <>
-      <button
-        aria-label={`Redefinir senha de ${userEmail}`}
-        className="flex size-9 items-center justify-center rounded-[var(--radius-control)] border border-white/[0.08] text-muted transition-colors hover:border-action/40 hover:bg-action/10 hover:text-foreground focus-visible:outline-action-soft"
-        onClick={() => setOpen(true)}
-        type="button"
-      >
-        <KeyRound aria-hidden="true" size={15} />
-      </button>
-
-      <dialog
-        aria-labelledby={titleId}
-        className="m-auto max-w-sm rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-0 text-foreground shadow-[var(--shadow-lift)] backdrop:bg-black/60"
-        onClick={(event) => {
-          if (event.target === dialogRef.current) {
-            closeAndReset(false);
-          }
-        }}
-        onClose={() => closeAndReset(false)}
-        ref={dialogRef}
-      >
-        <ResetPasswordDialogContent
-          key={instanceKey}
-          onOpenChange={closeAndReset}
-          titleId={titleId}
-          userEmail={userEmail}
-          userId={userId}
-        />
-      </dialog>
-    </>
+    <dialog
+      aria-labelledby={titleId}
+      className="m-auto max-w-sm rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-0 text-foreground shadow-[var(--shadow-lift)] backdrop:bg-black/60"
+      onClick={(event) => {
+        if (event.target === dialogRef.current) {
+          closeAndReset(false);
+        }
+      }}
+      onClose={() => closeAndReset(false)}
+      ref={dialogRef}
+    >
+      <ResetPasswordDialogContent
+        key={instanceKey}
+        onOpenChange={closeAndReset}
+        titleId={titleId}
+        userEmail={userEmail}
+        userId={userId}
+      />
+    </dialog>
   );
 }

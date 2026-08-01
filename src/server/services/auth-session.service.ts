@@ -26,6 +26,26 @@ export async function requireAuthUser(nextPath = "/app") {
     redirect(`/login?next=${safeNext}&reason=session`);
   }
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  // "suspended" (Bloquear) fully blocks access, everywhere - this is the
+  // single chokepoint nearly every Server Action and page already calls, so
+  // it's the only place a block can be enforced without missing Server
+  // Actions invoked directly (they never pass through a layout). "inactive"
+  // (Desativar) deliberately does NOT block here: it only stops *new*
+  // enrollments, already enforced by the existing status = 'active' guards
+  // inside join_available_challenge/join_specific_challenge/
+  // admin_enroll_user_in_challenge. A missing profile row fails open rather
+  // than locking someone out over an infrastructure hiccup.
+  if (profile?.status === "suspended" || profile?.status === "deleted") {
+    await supabase.auth.signOut();
+    redirect("/login?reason=blocked");
+  }
+
   return user;
 }
 

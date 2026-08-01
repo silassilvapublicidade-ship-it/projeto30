@@ -1,0 +1,13 @@
+-- Adds the "inactive" status ("Desativado" in the admin UI), distinct from
+-- "suspended" ("Bloqueado"). Both preserve all data, but only "suspended"
+-- blocks login; "inactive" keeps the account usable (history, existing
+-- enrollments) while the *existing* status = 'active' guards already present
+-- in join_available_challenge/join_specific_challenge/
+-- admin_enroll_user_in_challenge (0002/0008/0010/0021/0026) block joining
+-- *new* challenges - no changes needed there, they already read status off
+-- public.users at call time.
+--
+-- Kept in its own migration/transaction and not referenced by any function
+-- here: Postgres does not allow a new enum value to be used in the same
+-- transaction that adds it.
+alter type public.user_status add value if not exists 'inactive';

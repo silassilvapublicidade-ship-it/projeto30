@@ -121,10 +121,17 @@ describe("createUserSchema - only account fields, nothing profile-related", () =
 describe("Admin users service", () => {
   const source = readSource("src", "server", "services", "admin-users.service.ts");
 
-  it("listAdminUsers excludes soft-deleted accounts", () => {
+  it("listAdminUsers delegates search/filter/sort/pagination to the admin_list_users RPC (Modulo B)", () => {
     const start = source.indexOf("export async function listAdminUsers");
     const body = source.slice(start, source.indexOf("\n}\n", start));
-    expect(body).toContain('.is("deleted_at", null)');
+    expect(body).toContain('supabase.rpc("admin_list_users"');
+  });
+
+  it("the admin_list_users RPC excludes soft-deleted accounts at the source", () => {
+    const migration = readSource("supabase", "migrations", "0028_admin_user_management.sql");
+    const start = migration.indexOf("create or replace function public.admin_list_users");
+    const body = migration.slice(start, migration.indexOf("create or replace function public.admin_user_detail", start));
+    expect(body).toContain("where u.deleted_at is null");
   });
 
   it("the enroll picker only returns published (status=active) challenges, never draft/paused/ended/archived", () => {

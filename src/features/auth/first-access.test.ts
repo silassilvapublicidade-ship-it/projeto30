@@ -220,7 +220,8 @@ describe("Admin: resetUserPasswordAction", () => {
 
   it("does not redirect - the generated password must never end up in a URL", () => {
     const start = source.indexOf("export async function resetUserPasswordAction");
-    const body = source.slice(start);
+    const end = source.indexOf("\nfunction getRedirectTo", start);
+    const body = source.slice(start, end);
     expect(body).not.toContain("redirect(");
   });
 });

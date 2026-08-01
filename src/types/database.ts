@@ -1302,6 +1302,14 @@ export type Database = {
         Args: { target_enrollment_id: string }
         Returns: Json
       }
+      admin_assert_not_sole_super_admin: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      admin_assert_user_deletable: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       admin_challenge_detail: {
         Args: { p_challenge_id: string }
         Returns: Json
@@ -1381,6 +1389,34 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_list_users: {
+        Args: {
+          p_has_active_challenge?: boolean | undefined
+          p_limit?: number | undefined
+          p_must_change_password?: boolean | undefined
+          p_offset?: number | undefined
+          p_profile_complete?: boolean | undefined
+          p_role?: Database["public"]["Enums"]["user_role"] | undefined
+          p_search?: string | undefined
+          p_sort_by?: string | undefined
+          p_sort_dir?: string | undefined
+          p_status?: Database["public"]["Enums"]["user_status"] | undefined
+        }
+        Returns: {
+          active_challenge_count: number
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          must_change_password: boolean
+          name: string
+          onboarding_completed: boolean
+          role: Database["public"]["Enums"]["user_role"]
+          status: Database["public"]["Enums"]["user_status"]
+          total_count: number
+        }[]
+      }
       admin_normalize_early_enrollment: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -1401,6 +1437,30 @@ export type Database = {
         Args: { target_challenge_id: string }
         Returns: Json
       }
+      admin_update_user_profile: {
+        Args: {
+          p_city: string
+          p_display_name: string
+          p_name: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_update_user_role: {
+        Args: {
+          p_new_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_update_user_status: {
+        Args: {
+          p_new_status: Database["public"]["Enums"]["user_status"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_user_detail: { Args: { p_user_id: string }; Returns: Json }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1510,7 +1570,7 @@ export type Database = {
         | "failed"
         | "cancelled"
       user_role: "user" | "moderator" | "admin" | "super_admin"
-      user_status: "active" | "suspended" | "deleted"
+      user_status: "active" | "suspended" | "deleted" | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1664,7 +1724,7 @@ export const Constants = {
       ],
       notification_status: ["scheduled", "sent", "read", "failed", "cancelled"],
       user_role: ["user", "moderator", "admin", "super_admin"],
-      user_status: ["active", "suspended", "deleted"],
+      user_status: ["active", "suspended", "deleted", "inactive"],
     },
   },
 } as const

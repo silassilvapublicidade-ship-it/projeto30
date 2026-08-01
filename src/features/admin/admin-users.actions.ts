@@ -8,7 +8,13 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 
-import { createUserSchema, userIdSchema } from "./admin-users.schemas";
+import {
+  createUserSchema,
+  updateUserProfileSchema,
+  updateUserRoleSchema,
+  updateUserStatusSchema,
+  userIdSchema,
+} from "./admin-users.schemas";
 
 export type AdminUserActionResult =
   | { fieldErrors?: Record<string, string[]>; message: string; ok: false }
@@ -36,7 +42,7 @@ export async function createUserAction(
   _previousState: AdminUserActionResult,
   formData: FormData,
 ): Promise<AdminUserActionResult> {
-  await requireAdminUser();
+  const admin = await requireAdminUser();
 
   const parsed = createUserSchema.safeParse({
     name: getFormValue(formData, "name"),
@@ -89,6 +95,14 @@ export async function createUserAction(
     await supabase.from("users").update({ must_change_password: true }).eq("id", newUserId);
   }
 
+  await supabase.from("admin_audit_logs").insert({
+    action: "admin_create_user",
+    admin_user_id: admin.id,
+    entity_id: newUserId,
+    entity_type: "user",
+    after_json: { email: parsed.data.email },
+  });
+
   if (parsed.data.enrollChallengeId) {
     const { error: enrollError } = await supabase.rpc("admin_enroll_user_in_challenge", {
       p_challenge_id: parsed.data.enrollChallengeId,
@@ -122,6 +136,27 @@ export async function deleteUserAction(formData: FormData) {
     redirect(withFeedback(redirectTo, "delete-self-blocked"));
   }
 
+  const supabase = await createSupabaseServerClient();
+
+  // Authoritative server-side guard (also blocks self-deletion and the sole
+  // super_admin case) - the check above is just a fast-fail for the common
+  // case, this is what actually can't be bypassed.
+  const { error: guardError } = await supabase.rpc("admin_assert_user_deletable", {
+    p_user_id: parsedId.data,
+  });
+
+  if (guardError) {
+    redirect(
+      withFeedback(redirectTo, guardError.code === "P0007" ? "delete-blocked" : "error"),
+    );
+  }
+
+  const { data: targetProfile } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+
   let adminClient;
 
   try {
@@ -135,6 +170,14 @@ export async function deleteUserAction(formData: FormData) {
   if (error) {
     redirect(withFeedback(redirectTo, "error"));
   }
+
+  await supabase.from("admin_audit_logs").insert({
+    action: "admin_delete_user",
+    admin_user_id: admin.id,
+    entity_id: parsedId.data,
+    entity_type: "user",
+    before_json: { email: targetProfile?.email ?? null },
+  });
 
   redirect(withFeedback(redirectTo, "delete-success"));
 }
@@ -204,4 +247,157 @@ export async function resetUserPasswordAction(
     ok: true,
     temporaryPassword,
   };
+}
+
+function getRedirectTo(formData: FormData): string {
+  const value = formData.get("redirectTo");
+  return typeof value === "string" && value.startsWith("/admin/usuarios") ? value : "/admin/usuarios";
+}
+
+const RPC_ERROR_FEEDBACK: Record<string, string> = {
+  P0002: "not-found",
+  P0007: "action-blocked",
+};
+
+function feedbackForRpcError(code: string | undefined): string {
+  return (code && RPC_ERROR_FEEDBACK[code]) || "error";
+}
+
+/** Flips must_change_password without rotating the password itself - for
+ * when the policy reason is "we want a change" rather than "this password
+ * may be compromised" (that case is resetUserPasswordAction). */
+export async function requirePasswordChangeAction(formData: FormData) {
+  await requireAdminUser();
+  const redirectTo = getRedirectTo(formData);
+  const parsedId = userIdSchema.safeParse(formData.get("userId"));
+
+  if (!parsedId.success) {
+    redirect(withFeedback(redirectTo, "invalid"));
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ must_change_password: true, updated_at: new Date().toISOString() })
+    .eq("id", parsedId.data);
+
+  if (error) {
+    redirect(withFeedback(redirectTo, "error"));
+  }
+
+  redirect(withFeedback(redirectTo, "require-password-change-success"));
+}
+
+export async function updateUserStatusAction(formData: FormData) {
+  await requireAdminUser();
+  const redirectTo = getRedirectTo(formData);
+
+  const parsed = updateUserStatusSchema.safeParse({
+    status: formData.get("status"),
+    userId: formData.get("userId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withFeedback(redirectTo, "invalid"));
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_update_user_status", {
+    p_new_status: parsed.data.status,
+    p_user_id: parsed.data.userId,
+  });
+
+  if (error) {
+    redirect(withFeedback(redirectTo, feedbackForRpcError(error.code)));
+  }
+
+  redirect(withFeedback(redirectTo, "status-updated"));
+}
+
+export async function updateUserRoleAction(formData: FormData) {
+  await requireAdminUser();
+  const redirectTo = getRedirectTo(formData);
+
+  const parsed = updateUserRoleSchema.safeParse({
+    role: formData.get("role"),
+    userId: formData.get("userId"),
+  });
+
+  if (!parsed.success) {
+    redirect(withFeedback(redirectTo, "invalid"));
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_update_user_role", {
+    p_new_role: parsed.data.role,
+    p_user_id: parsed.data.userId,
+  });
+
+  if (error) {
+    redirect(
+      withFeedback(redirectTo, error.code === "42501" ? "role-forbidden" : feedbackForRpcError(error.code)),
+    );
+  }
+
+  redirect(withFeedback(redirectTo, "role-updated"));
+}
+
+export async function updateUserProfileAction(
+  _previousState: AdminUserActionResult,
+  formData: FormData,
+): Promise<AdminUserActionResult> {
+  await requireAdminUser();
+
+  const parsed = updateUserProfileSchema.safeParse({
+    city: getFormValue(formData, "city"),
+    displayName: getFormValue(formData, "displayName"),
+    name: getFormValue(formData, "name"),
+    userId: formData.get("userId"),
+  });
+
+  if (!parsed.success) {
+    return {
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "Revise os campos destacados.",
+      ok: false,
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_update_user_profile", {
+    p_city: parsed.data.city ?? "",
+    p_display_name: parsed.data.displayName,
+    p_name: parsed.data.name,
+    p_user_id: parsed.data.userId,
+  });
+
+  if (error) {
+    return { message: "Não foi possível salvar as alterações agora.", ok: false };
+  }
+
+  return { message: "Perfil atualizado.", ok: true };
+}
+
+export async function enrollUserInChallengeAction(formData: FormData) {
+  await requireAdminUser();
+  const redirectTo = getRedirectTo(formData);
+
+  const parsedUserId = userIdSchema.safeParse(formData.get("userId"));
+  const parsedChallengeId = userIdSchema.safeParse(formData.get("challengeId"));
+
+  if (!parsedUserId.success || !parsedChallengeId.success) {
+    redirect(withFeedback(redirectTo, "invalid"));
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("admin_enroll_user_in_challenge", {
+    p_challenge_id: parsedChallengeId.data,
+    p_user_id: parsedUserId.data,
+  });
+
+  if (error) {
+    redirect(withFeedback(redirectTo, "enroll-failed"));
+  }
+
+  redirect(withFeedback(redirectTo, "enroll-success"));
 }

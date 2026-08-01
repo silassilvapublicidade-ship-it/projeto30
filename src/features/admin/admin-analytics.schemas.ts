@@ -37,6 +37,11 @@ const participantSortValues = [
 
 const sortDirValues = ["asc", "desc"] as const;
 
+const userRoleValues = ["user", "moderator", "admin", "super_admin"] as const;
+const userStatusValues = ["active", "suspended", "inactive", "deleted"] as const;
+const userSortValues = ["created_at", "name", "status"] as const;
+const booleanFilterValues = ["true", "false"] as const;
+
 function toPage(value: string | undefined) {
   const parsed = Number.parseInt(value ?? "1", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
@@ -111,6 +116,44 @@ export function parseParticipantListParams(
     sortBy: toOptionalEnum(participantSortValues, get("sortBy")) ?? "joined_at",
     sortDir: toOptionalEnum(sortDirValues, get("sortDir")) ?? "desc",
     status: toOptionalEnum(enrollmentStatusValues, get("status")),
+  };
+}
+
+export type UserListParams = {
+  hasActiveChallenge?: boolean | undefined;
+  mustChangePassword?: boolean | undefined;
+  page: number;
+  profileComplete?: boolean | undefined;
+  role?: (typeof userRoleValues)[number] | undefined;
+  search?: string | undefined;
+  sortBy: (typeof userSortValues)[number];
+  sortDir: (typeof sortDirValues)[number];
+  status?: (typeof userStatusValues)[number] | undefined;
+};
+
+function toOptionalBoolean(value: string | undefined): boolean | undefined {
+  const parsed = toOptionalEnum(booleanFilterValues, value);
+  return parsed === undefined ? undefined : parsed === "true";
+}
+
+export function parseUserListParams(
+  searchParams: Record<string, string | string[] | undefined>,
+): UserListParams {
+  const get = (key: string) => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+
+  return {
+    hasActiveChallenge: toOptionalBoolean(get("hasActiveChallenge")),
+    mustChangePassword: toOptionalBoolean(get("mustChangePassword")),
+    page: toPage(get("page")),
+    profileComplete: toOptionalBoolean(get("profileComplete")),
+    role: toOptionalEnum(userRoleValues, get("role")),
+    search: get("search")?.trim() || undefined,
+    sortBy: toOptionalEnum(userSortValues, get("sortBy")) ?? "created_at",
+    sortDir: toOptionalEnum(sortDirValues, get("sortDir")) ?? "desc",
+    status: toOptionalEnum(userStatusValues, get("status")),
   };
 }
 
