@@ -278,8 +278,8 @@ describe("Admin usuario detail page", () => {
     expect(source.toLowerCase()).toContain("área de membros");
   });
 
-  it("wraps the name/email header instead of overflowing on narrow viewports - a user with no name falls back to their email as the h1, which has no spaces to naturally break on", () => {
-    expect(source).toContain("break-words text-2xl font-semibold text-foreground");
+  it("wraps the name/email header instead of overflowing on narrow viewports - a user with no name falls back to their email as the h1, which has no spaces to naturally break on. min-w-0 is required alongside break-words: as a flex-wrap item the h1 otherwise defaults to min-width: auto and never shrinks enough for break-words to have anywhere to break", () => {
+    expect(source).toContain("min-w-0 break-words text-2xl font-semibold text-foreground");
     expect(source).toContain("break-all font-mono text-xs text-muted-2");
   });
 
