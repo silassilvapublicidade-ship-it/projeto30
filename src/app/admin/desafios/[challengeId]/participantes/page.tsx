@@ -4,8 +4,9 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 
 import { AdminPagination } from "@/components/admin/admin-pagination";
-import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
+import { buildAdminQuery, type AdminSearchParams } from "@/components/admin/admin-query-utils";
 import { AdminSortLink } from "@/components/admin/admin-sort-link";
+import { ExportParticipantsCsv } from "@/components/admin/export-participants-csv";
 import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
@@ -23,6 +24,7 @@ import {
 } from "@/features/admin/admin-metrics.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listAdminParticipants } from "@/server/services/admin-analytics.service";
+import { requireAdminUser } from "@/server/services/admin-session.service";
 
 export const metadata: Metadata = {
   title: "Participantes · Administração",
@@ -74,25 +76,35 @@ export default async function AdminParticipantsPage({
 
   const rawParams = await searchParams;
   const filters = parseParticipantListParams(rawParams);
-  const { data, error } = await listAdminParticipants(parsedId.data, filters);
+  const [{ data, error }, admin] = await Promise.all([
+    listAdminParticipants(parsedId.data, filters),
+    requireAdminUser(),
+  ]);
   const basePath = `/admin/desafios/${parsedId.data}/participantes`;
+  const exportBaseHref = `${basePath}/export${buildAdminQuery(rawParams, {})}`;
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground"
-          href={`/admin/desafios/${parsedId.data}`}
-        >
-          <ArrowLeft aria-hidden="true" size={14} />
-          Voltar para o desafio
-        </Link>
-        <h1 className="mt-3 text-2xl font-semibold text-foreground">
-          Participantes · {challenge.name}
-        </h1>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          Consulta paginada no servidor. Nenhuma lista completa é carregada de uma vez.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground"
+            href={`/admin/desafios/${parsedId.data}`}
+          >
+            <ArrowLeft aria-hidden="true" size={14} />
+            Voltar para o desafio
+          </Link>
+          <h1 className="mt-3 text-2xl font-semibold text-foreground">
+            Participantes · {challenge.name}
+          </h1>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Consulta paginada no servidor. Nenhuma lista completa é carregada de uma vez.
+          </p>
+        </div>
+        <ExportParticipantsCsv
+          canIncludePersonalData={admin.role === "super_admin"}
+          exportBaseHref={exportBaseHref}
+        />
       </div>
 
       <form

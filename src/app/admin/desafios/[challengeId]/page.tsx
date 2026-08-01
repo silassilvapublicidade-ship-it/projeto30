@@ -10,12 +10,18 @@ import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { challengeIdSchema } from "@/features/admin/admin-analytics.schemas";
 import {
   describeChallengeStatus,
+  describeInstrumentationWindow,
   formatChallengePeriod,
   formatCount,
   formatDate,
   formatPercent,
+  formatRetentionRate,
 } from "@/features/admin/admin-metrics.core";
-import { getAdminChallengeDetail, getAdminChallengeFunnel } from "@/server/services/admin-analytics.service";
+import {
+  getAdminChallengeDetail,
+  getAdminChallengeFunnel,
+  getAdminChallengeRetention,
+} from "@/server/services/admin-analytics.service";
 
 export const metadata: Metadata = {
   title: "Detalhe do desafio · Administração",
@@ -35,9 +41,10 @@ export default async function AdminChallengeDetailPage({
     notFound();
   }
 
-  const [{ data, error }, { data: funnel }] = await Promise.all([
+  const [{ data, error }, { data: funnel }, { data: retention }] = await Promise.all([
     getAdminChallengeDetail(parsedId.data),
     getAdminChallengeFunnel(parsedId.data),
+    getAdminChallengeRetention(parsedId.data),
   ]);
 
   if (error === "Registro não encontrado.") {
@@ -112,8 +119,66 @@ export default async function AdminChallengeDetailPage({
             />
           </div>
           <p className="font-mono text-[0.65rem] text-muted-2">
-            &quot;Abandonou&quot; ainda não é instrumentado nesta fase (nenhum fluxo do produto
-            transiciona uma inscrição para esse status).
+            {describeInstrumentationWindow(funnel.earliest_event_at)}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminMetricCard
+              hint="Contagem real de inscrições, não eventos"
+              label="Inscrições reais"
+              value={formatCount(funnel.joins_completed_real)}
+            />
+            <AdminMetricCard label="Concluíram (real)" value={formatCount(funnel.completed_real)} />
+            <AdminMetricCard label="Abandonaram (real)" value={formatCount(funnel.abandoned_real)} />
+            <AdminMetricCard label="Pausados agora" value={formatCount(funnel.currently_paused)} />
+            <AdminMetricCard label="Dia 1 concluído" value={formatCount(funnel.day1_completed)} />
+            <AdminMetricCard label="Dia 3 concluído" value={formatCount(funnel.day3_completed)} />
+            <AdminMetricCard
+              hint={`Dia ${funnel.halfway_day}`}
+              label="Metade concluída"
+              value={formatCount(funnel.halfway_completed_real)}
+            />
+            <AdminMetricCard
+              hint="Pausas / retomadas registradas"
+              label="Pausas · Retomadas"
+              value={`${formatCount(funnel.pause_events)} · ${formatCount(funnel.resume_events)}`}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {retention ? (
+        <section aria-labelledby="challenge-retention" className="space-y-3">
+          <h2
+            className="font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
+            id="challenge-retention"
+          >
+            Retenção
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminMetricCard
+              hint={`${formatCount(retention.d1.retained)}/${formatCount(retention.d1.eligible)} elegíveis`}
+              label="Retenção D1"
+              value={formatRetentionRate(retention.d1.eligible, retention.d1.retained)}
+            />
+            <AdminMetricCard
+              hint={`${formatCount(retention.d3.retained)}/${formatCount(retention.d3.eligible)} elegíveis`}
+              label="Retenção D3"
+              value={formatRetentionRate(retention.d3.eligible, retention.d3.retained)}
+            />
+            <AdminMetricCard
+              hint={`${formatCount(retention.d7.retained)}/${formatCount(retention.d7.eligible)} elegíveis`}
+              label="Retenção D7"
+              value={formatRetentionRate(retention.d7.eligible, retention.d7.retained)}
+            />
+            <AdminMetricCard
+              hint={`Dia ${retention.halfway.day} · ${formatCount(retention.halfway.retained)}/${formatCount(retention.halfway.eligible)} elegíveis`}
+              label="Retenção na metade"
+              value={formatRetentionRate(retention.halfway.eligible, retention.halfway.retained)}
+            />
+          </div>
+          <p className="font-mono text-[0.65rem] text-muted-2">
+            &quot;Elegíveis&quot; conta apenas inscrições cujo tempo de jornada já alcançou aquele
+            dia (considerando pausas) - nunca inferido para quem ainda não chegou lá.
           </p>
         </section>
       ) : null}
@@ -213,7 +278,7 @@ export default async function AdminChallengeDetailPage({
             ) : (
               <AdminBarList
                 items={mostCompleted.map((habit) => ({
-                  label: habit.title,
+                  label: `${habit.title}${habit.required ? "" : " (opcional)"}`,
                   trailingLabel: formatPercent(habit.adherence_percent),
                   value: habit.adherence_percent,
                 }))}
@@ -231,7 +296,7 @@ export default async function AdminChallengeDetailPage({
             ) : (
               <AdminBarList
                 items={leastCompleted.map((habit) => ({
-                  label: habit.title,
+                  label: `${habit.title}${habit.required ? "" : " (opcional)"}`,
                   trailingLabel: formatPercent(habit.adherence_percent),
                   value: habit.adherence_percent,
                 }))}

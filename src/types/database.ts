@@ -155,6 +155,7 @@ export type Database = {
         Row: {
           anonymous_id: string | null
           challenge_id: string | null
+          content_item_id: string | null
           created_at: string
           enrollment_id: string | null
           event_name: string
@@ -168,6 +169,7 @@ export type Database = {
         Insert: {
           anonymous_id?: string | null
           challenge_id?: string | null
+          content_item_id?: string | null
           created_at?: string
           enrollment_id?: string | null
           event_name: string
@@ -181,6 +183,7 @@ export type Database = {
         Update: {
           anonymous_id?: string | null
           challenge_id?: string | null
+          content_item_id?: string | null
           created_at?: string
           enrollment_id?: string | null
           event_name?: string
@@ -197,6 +200,13 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
             referencedColumns: ["id"]
           },
           {
@@ -1311,6 +1321,7 @@ export type Database = {
         Args: { target_enrollment_id: string }
         Returns: Json
       }
+      admin_achievements_analytics: { Args: never; Returns: Json }
       admin_assert_not_sole_super_admin: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -1324,6 +1335,10 @@ export type Database = {
         Returns: Json
       }
       admin_challenge_funnel: {
+        Args: { p_challenge_id: string }
+        Returns: Json
+      }
+      admin_challenge_retention: {
         Args: { p_challenge_id: string }
         Returns: Json
       }
@@ -1462,10 +1477,15 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
+      admin_retention_for_day: {
+        Args: { p_challenge_id: string; p_day: number }
+        Returns: Json
+      }
       admin_test_challenge_purge_preview: {
         Args: { target_challenge_id: string }
         Returns: Json
       }
+      admin_tips_analytics: { Args: never; Returns: Json }
       admin_update_user_profile: {
         Args: {
           p_city: string
@@ -1490,6 +1510,7 @@ export type Database = {
         Returns: undefined
       }
       admin_user_detail: { Args: { p_user_id: string }; Returns: Json }
+      admin_users_analytics: { Args: never; Returns: Json }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1544,12 +1565,13 @@ export type Database = {
       }
       record_analytics_event: {
         Args: {
-          p_challenge_id?: string
-          p_enrollment_id?: string
+          p_challenge_id?: string | undefined
+          p_content_item_id?: string | undefined
+          p_enrollment_id?: string | undefined
           p_event_name: string
-          p_metadata?: Json
-          p_session_id?: string
-          p_source?: string
+          p_metadata?: Json | undefined
+          p_session_id?: string | undefined
+          p_source?: string | undefined
         }
         Returns: string
       }

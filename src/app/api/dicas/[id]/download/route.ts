@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { tipIdSchema } from "@/features/admin/admin-tips.schemas";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getDownloadableTip } from "@/server/services/tips.service";
 
 export const runtime = "nodejs";
@@ -53,6 +54,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const contentType = CONTENT_TYPE_BY_EXTENSION[extension] ?? (blob.type || "application/octet-stream");
   const filename = `dica-${sanitizeSlugForFilename(tip.slug)}.${extension}`;
   const bytes = new Uint8Array(await blob.arrayBuffer());
+
+  await recordAnalyticsEvent({ contentItemId: tip.id, eventName: "tip_card_downloaded" });
 
   return new NextResponse(bytes, {
     headers: {

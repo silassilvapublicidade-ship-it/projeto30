@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { AdminBarList } from "@/components/admin/admin-bar-list";
+import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
 import { TipRowActions } from "@/components/admin/tip-row-actions";
@@ -10,6 +12,8 @@ import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import { TIP_CATEGORIES } from "@/features/admin/admin-tips.schemas";
 import { getTotalPages } from "@/features/admin/admin-analytics.schemas";
+import { describeInstrumentationWindow, formatCount } from "@/features/admin/admin-metrics.core";
+import { getAdminTipsAnalytics } from "@/server/services/admin-analytics.service";
 import {
   ADMIN_TIP_PAGE_SIZE,
   listAdminTips,
@@ -66,7 +70,10 @@ export default async function AdminDicasPage({ searchParams }: AdminDicasPagePro
     status: status === "draft" || status === "published" || status === "archived" ? status : undefined,
   };
 
-  const { data, error } = await listAdminTips(params);
+  const [{ data, error }, { data: analytics }] = await Promise.all([
+    listAdminTips(params),
+    getAdminTipsAnalytics(),
+  ]);
   const redirectTo = `/admin/dicas${
     (() => {
       const query = new URLSearchParams();
@@ -104,6 +111,36 @@ export default async function AdminDicasPage({ searchParams }: AdminDicasPagePro
               : "success"
           }
         />
+      ) : null}
+
+      {analytics ? (
+        <section aria-labelledby="tips-analytics" className="space-y-3">
+          <h2
+            className="font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
+            id="tips-analytics"
+          >
+            Analytics de dicas
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <AdminMetricCard label="Visualizações" value={formatCount(analytics.total_views)} />
+            <AdminMetricCard label="Aberturas" value={formatCount(analytics.total_opens)} />
+            <AdminMetricCard label="Downloads" value={formatCount(analytics.total_downloads)} />
+          </div>
+          <p className="font-mono text-[0.65rem] text-muted-2">
+            {describeInstrumentationWindow(analytics.earliest_event_at)}
+          </p>
+          {analytics.cards.length > 0 ? (
+            <div className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4">
+              <AdminBarList
+                items={analytics.cards.slice(0, 8).map((card) => ({
+                  label: card.title,
+                  trailingLabel: formatCount(card.views),
+                  value: card.views,
+                }))}
+              />
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       <form

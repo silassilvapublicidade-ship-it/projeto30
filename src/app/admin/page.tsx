@@ -6,14 +6,20 @@ import {
   formatCount,
   formatPercent,
 } from "@/features/admin/admin-metrics.core";
-import { getAdminDashboardOverview } from "@/server/services/admin-analytics.service";
+import {
+  getAdminDashboardOverview,
+  getAdminUsersAnalytics,
+} from "@/server/services/admin-analytics.service";
 
 export const metadata: Metadata = {
   title: "Visão geral · Administração",
 };
 
 export default async function AdminOverviewPage() {
-  const { data, error } = await getAdminDashboardOverview();
+  const [{ data, error }, { data: usersAnalytics }] = await Promise.all([
+    getAdminDashboardOverview(),
+    getAdminUsersAnalytics(),
+  ]);
 
   if (error || !data) {
     return (
@@ -103,6 +109,39 @@ export default async function AdminOverviewPage() {
           />
         </div>
       </section>
+
+      {usersAnalytics ? (
+        <section aria-labelledby="users-overview" className="space-y-3">
+          <h2
+            className="font-mono text-xs uppercase tracking-[0.16em] text-muted-2"
+            id="users-overview"
+          >
+            Usuários
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AdminMetricCard label="Total de usuários" value={formatCount(usersAnalytics.total)} />
+            <AdminMetricCard label="Ativos" value={formatCount(usersAnalytics.active)} />
+            <AdminMetricCard label="Suspensos" value={formatCount(usersAnalytics.suspended)} />
+            <AdminMetricCard label="Inativos" value={formatCount(usersAnalytics.inactive_status)} />
+            <AdminMetricCard
+              label="Onboarding incompleto"
+              value={formatCount(usersAnalytics.onboarding_incomplete)}
+            />
+            <AdminMetricCard
+              label="Troca de senha pendente"
+              value={formatCount(usersAnalytics.must_change_password_pending)}
+            />
+            <AdminMetricCard
+              label="Com desafio ativo"
+              value={formatCount(usersAnalytics.with_active_challenge)}
+            />
+            <AdminMetricCard
+              label="Sem desafio ativo"
+              value={formatCount(usersAnalytics.without_active_challenge)}
+            />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

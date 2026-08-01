@@ -76,6 +76,7 @@ export type AdminChallengeDetail = {
     completed_count: number;
     habit_id: string;
     opportunity_count: number;
+    required: boolean;
     title: string;
   }>;
   inactive_participants: number;
@@ -95,6 +96,81 @@ export type AdminChallengeFunnelStage = {
 
 export type AdminChallengeFunnel = {
   stages: AdminChallengeFunnelStage[];
+  abandoned_real: number;
+  challenge_id: string;
+  challenge_name: string;
+  completed_real: number;
+  currently_paused: number;
+  day1_completed: number;
+  day3_completed: number;
+  earliest_event_at: string | null;
+  global_catalog_views: number;
+  halfway_completed_real: number;
+  halfway_day: number;
+  joins_completed_real: number;
+  pause_events: number;
+  resume_events: number;
+};
+
+export type AdminRetentionDay = {
+  day: number;
+  eligible: number;
+  retained: number;
+};
+
+export type AdminChallengeRetention = {
+  challenge_id: string;
+  d1: AdminRetentionDay;
+  d3: AdminRetentionDay;
+  d7: AdminRetentionDay;
+  halfway: AdminRetentionDay;
+};
+
+export type AdminTipsAnalytics = {
+  cards: Array<{
+    category: string | null;
+    content_item_id: string;
+    downloads: number;
+    opens: number;
+    title: string;
+    views: number;
+  }>;
+  categories: Array<{ category: string; views: number }>;
+  earliest_event_at: string | null;
+  total_downloads: number;
+  total_opens: number;
+  total_views: number;
+};
+
+export type AdminAchievementsAnalytics = {
+  achievements: Array<{
+    achievement_id: string;
+    active: boolean;
+    challenge_enrollment_count: number;
+    challenge_id: string;
+    challenge_name: string;
+    download_count: number;
+    feed_count: number;
+    name: string;
+    rarity: string | null;
+    share_completed_count: number;
+    share_generated_count: number;
+    story_count: number;
+    unlocked_count: number;
+  }>;
+  global_share_completed: number;
+  global_share_started: number;
+};
+
+export type AdminUsersAnalytics = {
+  active: number;
+  inactive_status: number;
+  must_change_password_pending: number;
+  onboarding_incomplete: number;
+  suspended: number;
+  total: number;
+  with_active_challenge: number;
+  without_active_challenge: number;
 };
 
 export type AdminParticipantListRow = {
@@ -272,6 +348,60 @@ export async function getAdminChallengeFunnel(
   }
 
   return { data: data as unknown as AdminChallengeFunnel, error: null };
+}
+
+export async function getAdminChallengeRetention(
+  challengeId: string,
+): Promise<AdminServiceResult<AdminChallengeRetention>> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_challenge_retention", {
+    p_challenge_id: challengeId,
+  });
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminChallengeRetention, error: null };
+}
+
+export async function getAdminTipsAnalytics(): Promise<
+  AdminServiceResult<AdminTipsAnalytics>
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_tips_analytics");
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminTipsAnalytics, error: null };
+}
+
+export async function getAdminAchievementsAnalytics(): Promise<
+  AdminServiceResult<AdminAchievementsAnalytics>
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_achievements_analytics");
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminAchievementsAnalytics, error: null };
+}
+
+export async function getAdminUsersAnalytics(): Promise<
+  AdminServiceResult<AdminUsersAnalytics>
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_users_analytics");
+
+  if (error || !data) {
+    return { data: null, error: toErrorMessage(error) };
+  }
+
+  return { data: data as unknown as AdminUsersAnalytics, error: null };
 }
 
 export async function listAdminParticipants(

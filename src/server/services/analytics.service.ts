@@ -7,10 +7,14 @@ export type AnalyticsEventName =
   | "challenge_detail_viewed"
   | "challenge_join_clicked"
   | "share_achievement_started"
-  | "share_achievement_completed";
+  | "share_achievement_completed"
+  | "tip_card_viewed"
+  | "tip_card_opened"
+  | "tip_card_downloaded";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;
+  contentItemId?: string | null;
   enrollmentId?: string | null;
   eventName: AnalyticsEventName;
   metadata?: Record<string, string | number | boolean | null>;
@@ -34,6 +38,7 @@ export async function recordAnalyticsEvent(input: RecordAnalyticsEventInput): Pr
       p_source: input.source ?? "server",
       ...(input.challengeId ? { p_challenge_id: input.challengeId } : {}),
       ...(input.enrollmentId ? { p_enrollment_id: input.enrollmentId } : {}),
+      ...(input.contentItemId ? { p_content_item_id: input.contentItemId } : {}),
     });
   } catch {
     // Silenciosamente ignorado - eventos nunca podem quebrar a experiencia.

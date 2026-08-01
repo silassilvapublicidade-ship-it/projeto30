@@ -92,3 +92,40 @@ export function formatChallengePeriod(
 
   return `${formatDate(startDate)} — ${formatDate(endDate)}`;
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "2-digit",
+  timeZone: "UTC",
+  year: "numeric",
+});
+
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "—" : dateTimeFormatter.format(parsed);
+}
+
+/**
+ * "Não inferir visitas retroativas inexistentes": earliest_event_at null
+ * means analytics_events has zero rows for this scope, not that the rate
+ * below is genuinely 0% - the UI must say so instead of showing a bare 0%.
+ */
+export function describeInstrumentationWindow(earliestEventAt: string | null): string {
+  return earliestEventAt
+    ? `Dados de eventos desde ${formatDateTime(earliestEventAt)}.`
+    : "Ainda sem eventos registrados para este período.";
+}
+
+export function formatRetentionRate(eligible: number, retained: number): string {
+  if (eligible === 0) {
+    return "—";
+  }
+
+  return formatPercent((retained / eligible) * 100);
+}

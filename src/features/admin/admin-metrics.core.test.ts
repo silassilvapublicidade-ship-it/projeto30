@@ -5,11 +5,14 @@ import {
   describeActivity,
   describeChallengeStatus,
   describeEnrollmentStatus,
+  describeInstrumentationWindow,
   formatChallengePeriod,
   formatCount,
   formatDate,
+  formatDateTime,
   formatPercent,
   formatPoints,
+  formatRetentionRate,
 } from "./admin-metrics.core";
 
 describe("canViewReflections", () => {
@@ -83,5 +86,40 @@ describe("date formatting", () => {
 
   it("reports when no period is configured", () => {
     expect(formatChallengePeriod(null, null)).toBe("Sem data definida");
+  });
+
+  it("formats an ISO timestamp with date and time", () => {
+    expect(formatDateTime("2026-08-01T14:30:00.000Z")).toBe("01/08/2026, 14:30");
+  });
+
+  it("returns an em dash for missing or invalid timestamps", () => {
+    expect(formatDateTime(null)).toBe("—");
+    expect(formatDateTime(undefined)).toBe("—");
+    expect(formatDateTime("not-a-date")).toBe("—");
+  });
+});
+
+describe("describeInstrumentationWindow", () => {
+  it("reports the earliest event date when instrumentation data exists", () => {
+    expect(describeInstrumentationWindow("2026-08-01T14:30:00.000Z")).toBe(
+      "Dados de eventos desde 01/08/2026, 14:30.",
+    );
+  });
+
+  it("never fabricates a window when there are zero events - null must read as 'no data yet', not '0%'", () => {
+    expect(describeInstrumentationWindow(null)).toBe(
+      "Ainda sem eventos registrados para este período.",
+    );
+  });
+});
+
+describe("formatRetentionRate", () => {
+  it("computes retained/eligible as a rounded percentage", () => {
+    expect(formatRetentionRate(4, 2)).toBe("50%");
+    expect(formatRetentionRate(3, 1)).toBe("33%");
+  });
+
+  it("never divides by zero - returns an em dash when nobody is eligible yet", () => {
+    expect(formatRetentionRate(0, 0)).toBe("—");
   });
 });

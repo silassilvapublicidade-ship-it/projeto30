@@ -3,6 +3,7 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
+import { recordAnalyticsEvent } from "./analytics.service";
 import { requireAuthUser } from "./auth-session.service";
 
 const TIP_CONTENT_TYPE = "tip_card";
@@ -82,7 +83,26 @@ export async function getPublishedTips(filters: {
   }
 
   const { data } = await query;
-  return data ?? [];
+  const tips = data ?? [];
+
+  // One event per card actually returned in this gallery response - the
+  // same "record on render" philosophy as challenge_catalog_viewed/
+  // challenge_detail_viewed, just once per item instead of once per page,
+  // since "cards mais acessados" needs a per-card signal. Best-effort and
+  // non-blocking (recordAnalyticsEvent never throws), so a slow/failed
+  // event insert never delays the gallery render.
+  await Promise.all(
+    tips.map((tip) =>
+      recordAnalyticsEvent({
+        challengeId: tip.challenge_id,
+        contentItemId: tip.id,
+        eventName: "tip_card_viewed",
+        metadata: tip.category ? { category: tip.category } : {},
+      }),
+    ),
+  );
+
+  return tips;
 }
 
 export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
@@ -99,6 +119,15 @@ export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
     .or(endsFilter)
     .eq("slug", slug)
     .maybeSingle();
+
+  if (data) {
+    await recordAnalyticsEvent({
+      challengeId: data.challenge_id,
+      contentItemId: data.id,
+      eventName: "tip_card_opened",
+      metadata: data.category ? { category: data.category } : {},
+    });
+  }
 
   return data ?? null;
 }
