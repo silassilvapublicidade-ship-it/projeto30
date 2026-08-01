@@ -1321,6 +1321,10 @@ export type Database = {
         Args: { target_enrollment_id: string }
         Returns: Json
       }
+      admin_achievement_delete_preview: {
+        Args: { p_achievement_id: string }
+        Returns: Json
+      }
       admin_achievements_analytics: { Args: never; Returns: Json }
       admin_assert_not_sole_super_admin: {
         Args: { p_user_id: string }
@@ -1343,6 +1347,10 @@ export type Database = {
         Returns: Json
       }
       admin_dashboard_overview: { Args: never; Returns: Json }
+      admin_delete_achievement: {
+        Args: { p_achievement_id: string }
+        Returns: undefined
+      }
       admin_delete_test_challenge_permanently: {
         Args: {
           confirmation_name: string
