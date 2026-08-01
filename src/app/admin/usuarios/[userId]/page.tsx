@@ -85,7 +85,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
           Voltar para usuários
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold text-foreground">
+          <h1 className="break-words text-2xl font-semibold text-foreground">
             {profile.display_name || profile.name || profile.email}
           </h1>
           <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs font-semibold text-muted">
@@ -100,7 +100,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
             </span>
           ) : null}
         </div>
-        <p className="mt-1 font-mono text-xs text-muted-2">{profile.email}</p>
+        <p className="mt-1 break-all font-mono text-xs text-muted-2">{profile.email}</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

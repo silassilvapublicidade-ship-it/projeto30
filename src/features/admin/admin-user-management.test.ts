@@ -277,4 +277,9 @@ describe("Admin usuario detail page", () => {
   it("never asks for photo/goals/weight/height here - that stays in the member area", () => {
     expect(source.toLowerCase()).toContain("área de membros");
   });
+
+  it("wraps the name/email header instead of overflowing on narrow viewports - a user with no name falls back to their email as the h1, which has no spaces to naturally break on", () => {
+    expect(source).toContain("break-words text-2xl font-semibold text-foreground");
+    expect(source).toContain("break-all font-mono text-xs text-muted-2");
+  });
 });
