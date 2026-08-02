@@ -11,6 +11,10 @@ describe("finalizeDayWithResponsesAction", () => {
   const start = source.indexOf("export async function finalizeDayWithResponsesAction");
   const body = source.slice(start);
 
+  it("maps user_achievement_id from the RPC into userAchievementId - required by the share-card endpoint, which keys off user_achievements.id, not achievement.id", () => {
+    expect(source).toContain("userAchievementId: achievement.user_achievement_id,");
+  });
+
   it("requires an authenticated session before touching anything", () => {
     expect(body).toContain('await requireAuthUser("/app/hoje")');
   });

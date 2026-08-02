@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { CheckCircle2, Flame, MessageSquare, Save, XCircle } from "lucide-react";
 
+import { AchievementUnlockModal } from "@/components/member/achievement-unlock-modal";
 import { useUnsavedChangesGuard } from "@/components/member/use-unsaved-changes-guard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/field";
@@ -335,6 +336,7 @@ export function TodayInteractiveSection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
 
   const editable = Boolean(dailyLogId) && !finalized;
   const unsaved = editable && hasUnsavedChanges(habitsState, baseline);
@@ -405,6 +407,13 @@ export function TodayInteractiveSection({
     setSummary(result.summary);
     setFinalized(true);
     setPendingModalOpen(false);
+
+    // Feedback imediato: qualquer conquista nova sempre abre o modal de
+    // desbloqueio automaticamente - nunca fica escondida atras de um resumo
+    // em texto que o membro pode nem rolar ate ver.
+    if (result.summary.unlockedAchievements.length > 0) {
+      setUnlockModalOpen(true);
+    }
   }
 
   function handleFinalizeSubmit(event: FormEvent<HTMLFormElement>) {
@@ -562,6 +571,12 @@ export function TodayInteractiveSection({
         onOpenChange={setPendingModalOpen}
         open={pendingModalOpen}
         title="Finalizar com hábitos pendentes?"
+      />
+
+      <AchievementUnlockModal
+        achievements={summary?.unlockedAchievements ?? []}
+        onOpenChange={setUnlockModalOpen}
+        open={unlockModalOpen}
       />
     </>
   );

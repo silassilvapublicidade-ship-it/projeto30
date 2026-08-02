@@ -364,3 +364,20 @@ input:-webkit-autofill:focus {
     transform: translateY(0);
   }
 }
+
+@keyframes p30-celebrate-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.86) translateY(10px);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.03) translateY(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

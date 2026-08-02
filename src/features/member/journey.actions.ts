@@ -126,6 +126,7 @@ export type FinalizeDaySummary = {
     name: string;
     pointsBonus: number;
     slug: string;
+    userAchievementId: string;
   }>;
 };
 
@@ -149,6 +150,7 @@ type RawFinalizeSummary = {
     name: string;
     points_bonus: number;
     slug: string;
+    user_achievement_id: string;
   }>;
 };
 
@@ -169,6 +171,7 @@ function mapFinalizeSummary(raw: RawFinalizeSummary): FinalizeDaySummary {
       name: achievement.name,
       pointsBonus: achievement.points_bonus,
       slug: achievement.slug,
+      userAchievementId: achievement.user_achievement_id,
     })),
   };
 }
