@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { resolveHabitLogValueJson } from "@/features/journey/habit-log-value.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAuthUser } from "@/server/services/auth-session.service";
 import {
@@ -13,15 +12,6 @@ import {
 } from "@/server/services/journey-rpc.service";
 
 const uuidSchema = z.uuid();
-
-const habitStatusSchema = z.enum(["pending", "completed", "not_applicable", "skipped"]);
-
-const habitFormSchema = z.object({
-  dailyLogId: uuidSchema,
-  habitId: uuidSchema,
-  note: z.string().trim().max(1200).optional(),
-  status: habitStatusSchema,
-});
 
 const journalFormSchema = z.object({
   content: z.string().trim().max(2800).optional(),
@@ -33,10 +23,18 @@ const journalFormSchema = z.object({
   victory: z.string().trim().max(1200).optional(),
 });
 
-const finalizeFormSchema = z.object({
-  confirm: z.literal("on"),
-  dailyLogId: uuidSchema,
+const finalizeResponseItemSchema = z.object({
+  habit_id: uuidSchema,
+  note: z.string().trim().max(1200).nullable().optional(),
+  status: z.enum(["completed", "not_applicable", "pending"]),
 });
+
+const finalizeWithResponsesSchema = z.object({
+  dailyLogId: uuidSchema,
+  responses: z.array(finalizeResponseItemSchema).max(200),
+});
+
+export type FinalizeResponseInput = z.infer<typeof finalizeResponseItemSchema>;
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -71,42 +69,6 @@ function redirectWithJourneyNotice(
  */
 function logJourneyRpcFailure(rpcName: string, error: { code?: string; message: string }) {
   console.error(`[journey-rpc-failed] ${rpcName} code=${error.code ?? "unknown"}: ${error.message}`);
-}
-
-export async function updateHabitLogAction(formData: FormData) {
-  await requireAuthUser("/app/hoje");
-
-  const parsed = habitFormSchema.safeParse({
-    dailyLogId: getString(formData, "dailyLogId"),
-    habitId: getString(formData, "habitId"),
-    note: optionalString(formData, "note"),
-    status: getString(formData, "status"),
-  });
-
-  if (!parsed.success) {
-    redirectWithJourneyNotice("error", "Revise o habito antes de salvar novamente.");
-  }
-
-  const valueJson = resolveHabitLogValueJson(parsed.data.status);
-
-  const supabase = await createSupabaseServerClient();
-  const rpc = getJourneyRpcClient(supabase);
-  const { error } = await rpc.rpc("update_habit_log", {
-    target_daily_log_id: parsed.data.dailyLogId,
-    target_habit_id: parsed.data.habitId,
-    target_note: parsed.data.note ?? null,
-    target_status: parsed.data.status,
-    target_value_json: valueJson,
-  });
-
-  if (error) {
-    logJourneyRpcFailure("update_habit_log", error);
-    redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
-  }
-
-  revalidatePath("/app/hoje");
-  revalidatePath("/app/jornada");
-  redirectWithJourneyNotice("habit");
 }
 
 export async function saveJournalEntryAction(formData: FormData) {
@@ -148,31 +110,124 @@ export async function saveJournalEntryAction(formData: FormData) {
   redirectWithJourneyNotice("journal");
 }
 
-export async function finalizeDailyLogAction(formData: FormData) {
+export type FinalizeDaySummary = {
+  alreadyFinalized: boolean;
+  applicableHabits: number;
+  completedHabits: number;
+  completionPercent: number;
+  dailyLogId: string;
+  habitResults: Array<{ habitId: string; status: "completed" | "not_applicable" | "pending" }>;
+  pointsEarned: number;
+  streakBest: number;
+  streakCurrent: number;
+  unlockedAchievements: Array<{
+    icon: string | null;
+    id: string;
+    name: string;
+    pointsBonus: number;
+    slug: string;
+  }>;
+};
+
+export type FinalizeDayActionResult =
+  | { message: string; ok: false }
+  | { ok: true; summary: FinalizeDaySummary };
+
+type RawFinalizeSummary = {
+  already_finalized: boolean;
+  applicable_habits: number;
+  completed_habits: number;
+  completion_percent: number;
+  daily_log_id: string;
+  habit_results: Array<{ habit_id: string; status: "completed" | "not_applicable" | "pending" }>;
+  points_earned: number;
+  streak_best: number;
+  streak_current: number;
+  unlocked_achievements: Array<{
+    icon: string | null;
+    id: string;
+    name: string;
+    points_bonus: number;
+    slug: string;
+  }>;
+};
+
+function mapFinalizeSummary(raw: RawFinalizeSummary): FinalizeDaySummary {
+  return {
+    alreadyFinalized: raw.already_finalized,
+    applicableHabits: raw.applicable_habits,
+    completedHabits: raw.completed_habits,
+    completionPercent: raw.completion_percent,
+    dailyLogId: raw.daily_log_id,
+    habitResults: raw.habit_results.map((item) => ({ habitId: item.habit_id, status: item.status })),
+    pointsEarned: raw.points_earned,
+    streakBest: raw.streak_best,
+    streakCurrent: raw.streak_current,
+    unlockedAchievements: raw.unlocked_achievements.map((achievement) => ({
+      icon: achievement.icon,
+      id: achievement.id,
+      name: achievement.name,
+      pointsBonus: achievement.points_bonus,
+      slug: achievement.slug,
+    })),
+  };
+}
+
+/**
+ * The single save point for the whole day: called only when the member taps
+ * "Finalizar o dia" (optionally after confirming the pending-habits modal),
+ * never per tap. Every habit response and comment collected in local state
+ * (today-local-state.core.ts) is sent together and upserted inside one
+ * transactional RPC (finalize_daily_log_with_responses, 0037) - there is no
+ * per-habit round trip anywhere in this flow anymore.
+ *
+ * Deliberately NOT a `(formData: FormData) => void` action bound to
+ * `<form action>` like the rest of this file - the caller needs the rich
+ * JSON summary (points, habit-by-habit results, unlocked achievements) to
+ * render the post-finalize summary, and a redirect-based action can't
+ * return that. Still fully a Server Action (`"use server"` file, real
+ * auth/ownership checks inside) - just invoked directly from a client event
+ * handler instead of a form submission.
+ */
+export async function finalizeDayWithResponsesAction(
+  dailyLogId: string,
+  responses: FinalizeResponseInput[],
+): Promise<FinalizeDayActionResult> {
   await requireAuthUser("/app/hoje");
 
-  const parsed = finalizeFormSchema.safeParse({
-    confirm: getString(formData, "confirm"),
-    dailyLogId: getString(formData, "dailyLogId"),
-  });
+  const parsed = finalizeWithResponsesSchema.safeParse({ dailyLogId, responses });
 
   if (!parsed.success) {
-    redirectWithJourneyNotice("error", "Confirme a finalizacao antes de fechar o dia.");
+    return { ok: false, message: "Revise suas respostas antes de finalizar novamente." };
   }
 
   const supabase = await createSupabaseServerClient();
   const rpc = getJourneyRpcClient(supabase);
-  const { error } = await rpc.rpc("finalize_daily_log", {
+  const { data, error } = await rpc.rpc<RawFinalizeSummary>("finalize_daily_log_with_responses", {
+    responses: parsed.data.responses,
     target_daily_log_id: parsed.data.dailyLogId,
   });
 
-  if (error) {
-    logJourneyRpcFailure("finalize_daily_log", error);
-    redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
+  if (error || !data) {
+    logJourneyRpcFailure(
+      "finalize_daily_log_with_responses",
+      error ?? { message: "RPC returned no data" },
+    );
+
+    // Deliberately always this exact copy, not the per-error-code messages
+    // getSafeJourneyErrorMessage produces elsewhere - the request is
+    // explicit that a failed finalize must always reassure the member their
+    // local answers are intact and safe to retry, regardless of which
+    // Postgres error caused it.
+    return {
+      ok: false,
+      message: "Não foi possível finalizar o dia. Suas respostas foram mantidas. Tente novamente.",
+    };
   }
 
   revalidatePath("/app/hoje");
   revalidatePath("/app/jornada");
   revalidatePath("/app/conquistas");
-  redirectWithJourneyNotice("finalized");
+
+  return { ok: true, summary: mapFinalizeSummary(data) };
 }

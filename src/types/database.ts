@@ -1534,6 +1534,10 @@ export type Database = {
         Args: { target_daily_log_id: string }
         Returns: Json
       }
+      finalize_daily_log_with_responses: {
+        Args: { responses?: Json | undefined; target_daily_log_id: string }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
       join_available_challenge: { Args: never; Returns: string }
       join_specific_challenge: {
