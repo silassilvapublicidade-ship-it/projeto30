@@ -235,7 +235,7 @@ function MissionRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <h3 className="text-sm font-semibold leading-5 text-foreground">
-                {mission.title}
+                {mission.dailyPrompt}
               </h3>
               <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5 font-mono text-[0.56rem] uppercase tracking-[0.1em] text-muted-2">
                 {mission.required ? "Essencial" : "Opcional"}
@@ -259,7 +259,7 @@ function MissionRow({
               >
                 {mission.statusLabel}
               </span>{" "}
-              · {mission.targetLabel}
+              · {mission.goalLabel ?? mission.targetLabel}
             </p>
             {isPeriodHabit && mission.periodProgress ? (
               <p className="mt-0.5 text-xs leading-4 text-muted-2">

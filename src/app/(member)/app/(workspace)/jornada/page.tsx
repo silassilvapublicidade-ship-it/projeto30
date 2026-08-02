@@ -3,6 +3,7 @@ import { Route } from "lucide-react";
 
 import { JourneyCalendar } from "@/components/member/journey-calendar";
 import { JourneyDayDetailPanel } from "@/components/member/journey-day-detail";
+import { JourneyRecurringHabits } from "@/components/member/journey-recurring-habits";
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -169,6 +170,8 @@ async function JornadaContent({
               />
             </Card>
           ) : null}
+
+          <JourneyRecurringHabits habits={detail.recurringHabits} />
 
           <JourneyDayDetailPanel day={detail.selectedDay} />
         </>

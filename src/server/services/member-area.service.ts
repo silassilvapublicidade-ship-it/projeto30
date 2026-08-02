@@ -6,6 +6,7 @@ import {
   calculateChallengeDay,
   getDateOnlyInTimeZone,
 } from "@/features/challenges/date.core";
+import { resolveDailyPrompt, resolveGoalLabel } from "@/features/journey/habit-daily-prompt.core";
 import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
 import { calculateDailyProgress } from "@/features/journey/progress.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -45,8 +46,10 @@ export type MissionPeriodProgress = {
 export type TodayMission = {
   actionLabel: string;
   category: string | null;
+  dailyPrompt: string;
   description: string | null;
   frequencyType: Tables<"habits">["frequency_type"];
+  goalLabel: string | null;
   habitId: string;
   habitLogId: string | null;
   habitType: Tables<"habits">["habit_type"];
@@ -66,6 +69,7 @@ export type TodayMission = {
 type HabitForMission = Pick<
   Tables<"habits">,
   | "category"
+  | "daily_prompt"
   | "description"
   | "frequency_type"
   | "habit_type"
@@ -376,7 +380,7 @@ async function getTodayMissionData({
   const { data: habits } = await supabase
     .from("habits")
     .select(
-      "id,title,description,category,habit_type,icon,points,validation_config,sort_order,frequency_type",
+      "id,title,description,category,habit_type,icon,points,validation_config,sort_order,frequency_type,daily_prompt",
     )
     .eq("challenge_id", challengeId)
     .in("id", habitIds);
@@ -404,8 +408,10 @@ async function getTodayMissionData({
       {
         actionLabel: getMissionActionLabel(state),
         category: habit.category,
+        dailyPrompt: resolveDailyPrompt(habit),
         description: item.override_description ?? habit.description,
         frequencyType: habit.frequency_type,
+        goalLabel: resolveGoalLabel(habit),
         habitId: habit.id,
         habitLogId: logsByHabitId.get(item.habit_id)?.id ?? null,
         habitType: habit.habit_type,

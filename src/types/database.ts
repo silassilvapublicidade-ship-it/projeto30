@@ -706,6 +706,7 @@ export type Database = {
           category: string | null
           challenge_id: string
           created_at: string
+          daily_prompt: string | null
           description: string | null
           frequency_config: Json
           frequency_type: Database["public"]["Enums"]["habit_frequency_type"]
@@ -724,6 +725,7 @@ export type Database = {
           category?: string | null
           challenge_id: string
           created_at?: string
+          daily_prompt?: string | null
           description?: string | null
           frequency_config?: Json
           frequency_type?: Database["public"]["Enums"]["habit_frequency_type"]
@@ -742,6 +744,7 @@ export type Database = {
           category?: string | null
           challenge_id?: string
           created_at?: string
+          daily_prompt?: string | null
           description?: string | null
           frequency_config?: Json
           frequency_type?: Database["public"]["Enums"]["habit_frequency_type"]

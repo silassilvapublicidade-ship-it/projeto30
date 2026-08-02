@@ -1,6 +1,8 @@
 import "server-only";
 
 import { calculateChallengeDay, getDateOnlyInTimeZone } from "@/features/challenges/date.core";
+import { resolveDailyPrompt } from "@/features/journey/habit-daily-prompt.core";
+import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
 import { getJourneyDayState } from "@/features/journey/journey-day-state.core";
 import type { JourneyDayState } from "@/features/journey/journey-day-state.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -102,6 +104,7 @@ export type JourneyCalendarDay = {
 };
 
 export type JourneyHabitDetail = {
+  dailyPrompt: string;
   habitId: string;
   note: string | null;
   points: number;
@@ -140,13 +143,146 @@ export type JourneySummary = {
   streakCurrent: number;
 };
 
+export type JourneyRecurringHabitProgress = {
+  completed: number;
+  frequencyType: Tables<"habits">["frequency_type"];
+  habitId: string;
+  label: string;
+  target: number | null;
+};
+
 export type JourneyDetail = {
   calendarDays: JourneyCalendarDay[];
   notStarted: boolean;
   officialStartDate: string | null;
+  recurringHabits: JourneyRecurringHabitProgress[];
   selectedDay: JourneyDayDetail | null;
   summary: JourneySummary;
 };
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function readShortTitle(habit: { title: string; validation_config: unknown }): string {
+  const config = isJsonRecord(habit.validation_config) ? habit.validation_config : undefined;
+  const shortTitle = config?.short_title;
+  return typeof shortTitle === "string" && shortTitle.trim() ? shortTitle.trim() : habit.title;
+}
+
+function readTarget(validationConfig: unknown): number | null {
+  const config = isJsonRecord(validationConfig) ? validationConfig : undefined;
+  const target = config?.target;
+  return typeof target === "number" && Number.isFinite(target) ? target : null;
+}
+
+/**
+ * The "meta vs execução" split the member actually sees on Jornada: every
+ * daily-frequency habit's ADESÃO NO CICLO (completed days / days lived so
+ * far in this enrollment - never the full duration, so day 1 correctly
+ * reads "0 de 1" instead of a misleading "0 de 31"), and every weekly/
+ * monthly habit's progress within its CURRENT period (same period-range
+ * logic as getPeriodProgressByHabitId in member-area.service.ts, kept as a
+ * separate implementation here since this needs the full distinct habit
+ * list for the challenge, not just today's missions). Read-only, never
+ * touches points/streak/completion_percent - purely a different view over
+ * habit_logs that already exist.
+ */
+async function getRecurringHabitProgress({
+  challengeId,
+  currentDay,
+  enrollmentId,
+  localDate,
+  supabase,
+}: {
+  challengeId: string;
+  currentDay: number;
+  enrollmentId: string;
+  localDate: string;
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
+}): Promise<JourneyRecurringHabitProgress[]> {
+  const { data: habitRows } = await supabase
+    .from("habits")
+    .select("id,title,frequency_type,validation_config")
+    .eq("challenge_id", challengeId)
+    .eq("active", true);
+
+  const habits = habitRows ?? [];
+
+  if (habits.length === 0 || currentDay < 1) {
+    return [];
+  }
+
+  const dailyHabits = habits.filter((habit) => habit.frequency_type === "daily");
+  const periodHabits = habits.filter((habit) => habit.frequency_type !== "daily");
+  const results: JourneyRecurringHabitProgress[] = [];
+
+  if (dailyHabits.length > 0) {
+    const dailyHabitIds = dailyHabits.map((habit) => habit.id);
+    const { data: completions } = await supabase
+      .from("habit_logs")
+      .select("habit_id, daily_logs!inner(enrollment_id)")
+      .in("habit_id", dailyHabitIds)
+      .eq("status", "completed")
+      .eq("daily_logs.enrollment_id", enrollmentId);
+
+    const completedByHabitId = new Map<string, number>();
+    for (const row of completions ?? []) {
+      completedByHabitId.set(row.habit_id, (completedByHabitId.get(row.habit_id) ?? 0) + 1);
+    }
+
+    for (const habit of dailyHabits) {
+      results.push({
+        completed: completedByHabitId.get(habit.id) ?? 0,
+        frequencyType: "daily",
+        habitId: habit.id,
+        label: readShortTitle(habit),
+        target: currentDay,
+      });
+    }
+  }
+
+  if (periodHabits.length > 0) {
+    const habitsByFrequency = new Map<"monthly" | "weekly", typeof periodHabits>();
+    for (const habit of periodHabits) {
+      const frequency = habit.frequency_type as "monthly" | "weekly";
+      habitsByFrequency.set(frequency, [...(habitsByFrequency.get(frequency) ?? []), habit]);
+    }
+
+    await Promise.all(
+      Array.from(habitsByFrequency.entries()).map(async ([frequency, group]) => {
+        const { start, end } = getHabitPeriodRange(localDate, frequency);
+        const habitIds = group.map((habit) => habit.id);
+
+        const { data: completions } = await supabase
+          .from("habit_logs")
+          .select("habit_id, daily_logs!inner(log_date, enrollment_id)")
+          .in("habit_id", habitIds)
+          .eq("status", "completed")
+          .eq("daily_logs.enrollment_id", enrollmentId)
+          .gte("daily_logs.log_date", start)
+          .lte("daily_logs.log_date", end);
+
+        const completedByHabitId = new Map<string, number>();
+        for (const row of completions ?? []) {
+          completedByHabitId.set(row.habit_id, (completedByHabitId.get(row.habit_id) ?? 0) + 1);
+        }
+
+        for (const habit of group) {
+          results.push({
+            completed: completedByHabitId.get(habit.id) ?? 0,
+            frequencyType: frequency,
+            habitId: habit.id,
+            label: readShortTitle(habit),
+            target: readTarget(habit.validation_config),
+          });
+        }
+      }),
+    );
+  }
+
+  return results;
+}
 
 /**
  * Everything the Jornada detail panel needs for ONE enrollment: the compact
@@ -274,8 +410,15 @@ export async function getJourneyDetail({
     const habitIds = dayHabits.map((row) => row.habit_id);
     const { data: habitRows } =
       habitIds.length > 0
-        ? await supabase.from("habits").select("id,title,points").in("id", habitIds)
-        : { data: [] as Array<Pick<Tables<"habits">, "id" | "points" | "title">> };
+        ? await supabase
+            .from("habits")
+            .select("id,title,points,daily_prompt,validation_config")
+            .in("id", habitIds)
+        : {
+            data: [] as Array<
+              Pick<Tables<"habits">, "daily_prompt" | "id" | "points" | "title" | "validation_config">
+            >,
+          };
     const habitsById = new Map((habitRows ?? []).map((habit) => [habit.id, habit]));
     const logsByHabitId = new Map((habitLogRows ?? []).map((row) => [row.habit_id, row]));
 
@@ -296,6 +439,7 @@ export async function getJourneyDetail({
         const habitLog = logsByHabitId.get(row.habit_id);
         return [
           {
+            dailyPrompt: resolveDailyPrompt(habit),
             habitId: row.habit_id,
             note: habitLog?.note ?? null,
             points: row.override_points ?? habit.points,
@@ -312,11 +456,21 @@ export async function getJourneyDetail({
   }
 
   const daysCompleted = calendarDays.filter((day) => day.state === "completed").length;
+  const recurringHabits = notStarted
+    ? []
+    : await getRecurringHabitProgress({
+        challengeId: enrollment.challenge_id,
+        currentDay: todayDayNumber,
+        enrollmentId: enrollment.id,
+        localDate: today,
+        supabase,
+      });
 
   return {
     calendarDays,
     notStarted,
     officialStartDate: challenge.start_date,
+    recurringHabits,
     selectedDay,
     summary: {
       challengeName: challenge.name,

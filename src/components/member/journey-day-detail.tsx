@@ -118,7 +118,7 @@ export function JourneyDayDetailPanel({ day }: { day: JourneyDayDetail | null })
                       )}
                       size={15}
                     />
-                    <p className="text-sm font-medium text-foreground">{habit.title}</p>
+                    <p className="text-sm font-medium text-foreground">{habit.dailyPrompt}</p>
                     <span className="ml-auto font-mono text-[0.62rem] uppercase tracking-[0.08em] text-muted-2">
                       {habitStateLabel[habit.state]}
                     </span>
