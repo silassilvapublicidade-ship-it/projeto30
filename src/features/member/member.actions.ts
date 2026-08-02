@@ -183,6 +183,9 @@ export async function joinAvailableChallengeAction() {
   const { error } = await rpc.rpc("join_available_challenge");
 
   if (error) {
+    console.error(
+      `[journey-rpc-failed] join_available_challenge code=${error.code ?? "unknown"}: ${error.message}`,
+    );
     const message = encodeURIComponent(getSafeJourneyErrorMessage(error));
     redirect(`/app/hoje?journey=error&message=${message}`);
   }

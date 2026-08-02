@@ -61,6 +61,18 @@ function redirectWithJourneyNotice(
   redirect(`/app/hoje?${params.toString()}`);
 }
 
+/**
+ * The user only ever sees a whitelisted, safe message (getSafeJourneyErrorMessage) -
+ * this is the only place the real Postgres error (code + message, never any
+ * row payload/secret) reaches a log. Without this, an RPC failure like the
+ * "Acao nao salva" regression (0030 dropping a not-null column from an
+ * INSERT) is invisible server-side and can only be found by manually
+ * reproducing the call - exactly what happened before this was added.
+ */
+function logJourneyRpcFailure(rpcName: string, error: { code?: string; message: string }) {
+  console.error(`[journey-rpc-failed] ${rpcName} code=${error.code ?? "unknown"}: ${error.message}`);
+}
+
 export async function updateHabitLogAction(formData: FormData) {
   await requireAuthUser("/app/hoje");
 
@@ -88,6 +100,7 @@ export async function updateHabitLogAction(formData: FormData) {
   });
 
   if (error) {
+    logJourneyRpcFailure("update_habit_log", error);
     redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
   }
 
@@ -126,6 +139,7 @@ export async function saveJournalEntryAction(formData: FormData) {
   });
 
   if (error) {
+    logJourneyRpcFailure("save_journal_entry", error);
     redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
   }
 
@@ -153,6 +167,7 @@ export async function finalizeDailyLogAction(formData: FormData) {
   });
 
   if (error) {
+    logJourneyRpcFailure("finalize_daily_log", error);
     redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
   }
 
