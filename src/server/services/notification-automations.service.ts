@@ -1,10 +1,13 @@
 import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { dispatchCampaignToAudience } from "./notification-dispatch.service";
+import type { Tables } from "@/types/database";
+
+import { dispatchCampaignToAudience, type AudienceEntry } from "./notification-dispatch.service";
 import { logRpcFailure } from "./rpc-logging.service";
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
+type DailyMotivationMessageRow = Tables<"daily_motivation_messages">;
 
 /**
  * Creates the automation's campaign row on first sight of a given
@@ -300,6 +303,130 @@ export async function runAchievementUnlockedAutomation(input: {
   }
 }
 
+function toSaoPauloDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
+
+/**
+ * Picks today's daily motivation message (Parte 3: sorteio aleatorio entre
+ * as ativas/elegiveis, nunca repetindo a do dia anterior). Stability across
+ * multiple cron ticks in the same day - and the "never repeat consecutive
+ * days" rule itself - both come from the same source of truth: the most
+ * recent automation_type='daily_motivation' campaign row. If it was created
+ * today, its stored message is reused unchanged; otherwise it's exactly
+ * "yesterday's" message and gets excluded from today's draw. One message
+ * rotates for the whole app per day (see the Modulo G summary's documented
+ * design decision) - simpler than per-user history and still satisfies the
+ * literal requirement since every user sees the same day's message.
+ */
+async function pickDailyMotivationMessage(
+  supabase: AdminClient,
+): Promise<DailyMotivationMessageRow | null> {
+  const today = todayReferenceDate();
+
+  const { data: lastCampaign } = await supabase
+    .from("notification_campaigns")
+    .select("created_at, destination_reference_id")
+    .eq("automation_type", "daily_motivation")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastMessageId = lastCampaign?.destination_reference_id ?? null;
+
+  if (lastCampaign && lastMessageId && toSaoPauloDate(lastCampaign.created_at) === today) {
+    const { data: reused } = await supabase
+      .from("daily_motivation_messages")
+      .select("*")
+      .eq("id", lastMessageId)
+      .maybeSingle();
+
+    if (reused) {
+      return reused;
+    }
+  }
+
+  const { data: candidates } = await supabase.from("daily_motivation_messages").select("*").eq("active", true);
+
+  if (!candidates || candidates.length === 0) {
+    return null;
+  }
+
+  const now = Date.now();
+  const eligible = candidates.filter((message) => {
+    if (message.starts_at && new Date(message.starts_at).getTime() > now) return false;
+    if (message.ends_at && new Date(message.ends_at).getTime() < now) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) {
+    return null;
+  }
+
+  const pool = eligible.length > 1 ? eligible.filter((message) => message.id !== lastMessageId) : eligible;
+  const drawFrom = pool.length > 0 ? pool : eligible;
+
+  return drawFrom[Math.floor(Math.random() * drawFrom.length)] ?? null;
+}
+
+/**
+ * Motor inteligente (Parte 1/3/5/6/7/8): uma unica chamada RPC resolve, por
+ * usuario, no maximo 1 notificacao vencedora entre todos os lembretes de
+ * habito habilitados e a motivacao do dia (ja aplicando janela 07:00-22:00,
+ * "so se ainda nao concluido", frequencia e o espacamento anti-spam de 60min
+ * - toda a logica de selecao roda no banco, Parte 14). Aqui so agrupamos por
+ * candidate_key e despachamos pelo MESMO motor de campanhas de sempre
+ * (getOrCreateAutomationCampaign + dispatchCampaignToAudience) - nenhuma
+ * fila paralela.
+ */
+export async function runSmartNotificationTick(): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const today = todayReferenceDate();
+
+  const dailyMotivationMessage = await pickDailyMotivationMessage(supabase);
+
+  const { data: rows, error } = await supabase.rpc("automation_resolve_smart_notification_candidates", {
+    p_daily_motivation_body: dailyMotivationMessage?.body ?? undefined,
+    p_daily_motivation_category: dailyMotivationMessage?.category ?? undefined,
+    p_daily_motivation_message_id: dailyMotivationMessage?.id ?? undefined,
+    p_daily_motivation_title: dailyMotivationMessage?.title ?? undefined,
+  });
+
+  if (error || !rows) {
+    logRpcFailure("automation_resolve_smart_notification_candidates", error ?? { message: "no rows" });
+    return;
+  }
+
+  type CandidateRow = (typeof rows)[number];
+  const byCandidateKey = new Map<string, { audience: AudienceEntry[]; sample: CandidateRow }>();
+
+  for (const row of rows) {
+    const entry = byCandidateKey.get(row.candidate_key) ?? { audience: [], sample: row };
+    entry.audience.push({ push_eligible: row.push_eligible, user_id: row.user_id });
+    byCandidateKey.set(row.candidate_key, entry);
+  }
+
+  for (const [candidateKey, { audience, sample }] of byCandidateKey) {
+    const isMotivation = candidateKey === "motivation";
+
+    const campaignId = await getOrCreateAutomationCampaign(supabase, {
+      audienceType: isMotivation ? "automation_daily_motivation" : "automation_habit_reminder",
+      automationType: isMotivation ? "daily_motivation" : "habit_reminder",
+      destinationReferenceId: isMotivation ? (dailyMotivationMessage?.id ?? null) : (sample.habit_id ?? null),
+      destinationType: sample.destination_type,
+      idempotencyKey: isMotivation
+        ? `daily_motivation:${today}`
+        : `habit_reminder:${sample.habit_id}:${today}`,
+      message: sample.notification_body ?? "",
+      title: sample.notification_title ?? "",
+    });
+
+    if (campaignId) {
+      await dispatchCampaignToAudience(campaignId, audience);
+    }
+  }
+}
+
 /** Runs every date-driven automation once - called by the cron route, never
  * by a user request. Event-driven automations (new tip, achievement) are
  * NOT here - they run from their own trigger point instead. */
@@ -309,4 +436,5 @@ export async function runAllScheduledAutomations(): Promise<void> {
   await runChallengeStartingTodayAutomation();
   await runChallengeEndingSoonAutomation();
   await runInactiveUserAutomation();
+  await runSmartNotificationTick();
 }

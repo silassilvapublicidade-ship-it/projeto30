@@ -98,6 +98,33 @@ export function NotificationPreferencesForm({
           label="Comunicados importantes"
           name="importantUpdatesNotifications"
         />
+        <Switch
+          defaultChecked={notifications.admin_campaign_notifications}
+          description="Campanhas e avisos enviados manualmente pela administração."
+          label="Campanhas do administrador"
+          name="adminCampaignNotifications"
+        />
+      </div>
+
+      <div className="space-y-3 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.03] p-4">
+        <Switch
+          defaultChecked={notifications.daily_motivation_enabled}
+          description="Uma mensagem motivacional diferente todo dia pela manhã."
+          label="Mensagens de motivação"
+          name="dailyMotivationEnabled"
+        />
+        <Switch
+          defaultChecked={notifications.faith_messages_enabled}
+          description="Mensagens da categoria Fé, para começar o dia com Deus."
+          label="Mensagens de fé"
+          name="faithMessagesEnabled"
+        />
+        <Switch
+          defaultChecked={notifications.habit_reminders_enabled}
+          description="Lembretes inteligentes por hábito, só quando ainda não concluído."
+          label="Lembretes de hábitos"
+          name="habitRemindersEnabled"
+        />
       </div>
 
       <SaveButton />

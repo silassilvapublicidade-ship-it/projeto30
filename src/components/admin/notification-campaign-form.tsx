@@ -17,7 +17,10 @@ import {
 } from "@/features/admin/notification-campaigns.actions";
 import {
   AUDIENCE_REQUIRES_CHALLENGE,
+  AUDIENCE_REQUIRES_HABIT_KEYWORD,
+  AUDIENCE_REQUIRES_MIN_STREAK,
   AUDIENCE_REQUIRES_USER,
+  HABIT_KEYWORD_SUGGESTIONS,
   NOTIFICATION_AUDIENCE_LABELS,
   NOTIFICATION_AUDIENCE_TYPES,
   type NotificationAudienceType,
@@ -57,8 +60,10 @@ export type NotificationCampaignFormValues = {
   channelPush: boolean;
   destinationReferenceId: string;
   destinationType: NotificationDestinationType;
+  habitKeyword: string;
   imageUrl: string;
   message: string;
+  minStreak: string;
   specificUser: UserOption | null;
   title: string;
 };
@@ -71,8 +76,10 @@ const emptyValues: NotificationCampaignFormValues = {
   channelPush: true,
   destinationReferenceId: "",
   destinationType: "hoje",
+  habitKeyword: "",
   imageUrl: "",
   message: "",
+  minStreak: "",
   specificUser: null,
   title: "",
 };
@@ -230,7 +237,9 @@ export function NotificationCampaignForm({
 
   const audienceReady =
     (!AUDIENCE_REQUIRES_CHALLENGE.has(values.audienceType) || Boolean(values.challengeId)) &&
-    (!AUDIENCE_REQUIRES_USER.has(values.audienceType) || Boolean(values.specificUser));
+    (!AUDIENCE_REQUIRES_USER.has(values.audienceType) || Boolean(values.specificUser)) &&
+    (!AUDIENCE_REQUIRES_MIN_STREAK.has(values.audienceType) || values.minStreak !== "") &&
+    (!AUDIENCE_REQUIRES_HABIT_KEYWORD.has(values.audienceType) || Boolean(values.habitKeyword.trim()));
 
   useEffect(() => {
     if (!audienceReady) {
@@ -241,6 +250,8 @@ export function NotificationCampaignForm({
     estimateNotificationAudienceAction({
       audienceType: values.audienceType,
       challengeId: values.challengeId || null,
+      habitKeyword: values.habitKeyword.trim() || null,
+      minStreak: values.minStreak === "" ? null : Number(values.minStreak),
       specificUserId: values.specificUser?.id ?? null,
     }).then((result) => {
       if (!cancelled && result.ok) setEstimate(result.count);
@@ -249,7 +260,14 @@ export function NotificationCampaignForm({
     return () => {
       cancelled = true;
     };
-  }, [audienceReady, values.audienceType, values.challengeId, values.specificUser]);
+  }, [
+    audienceReady,
+    values.audienceType,
+    values.challengeId,
+    values.habitKeyword,
+    values.minStreak,
+    values.specificUser,
+  ]);
 
   const displayEstimate = audienceReady ? estimate : null;
 
@@ -263,6 +281,8 @@ export function NotificationCampaignForm({
       <input name="audienceType" type="hidden" value={values.audienceType} />
       <input name="challengeId" type="hidden" value={values.challengeId} />
       <input name="specificUserId" type="hidden" value={values.specificUser?.id ?? ""} />
+      <input name="minStreak" type="hidden" value={values.minStreak} />
+      <input name="habitKeyword" type="hidden" value={values.habitKeyword} />
 
       {state.message ? (
         <StatusCard
@@ -375,6 +395,53 @@ export function NotificationCampaignForm({
           />
         </Field>
       ) : null}
+
+      {AUDIENCE_REQUIRES_HABIT_KEYWORD.has(values.audienceType) ? (
+        <Field
+          error={fieldErrors?.habitKeyword?.[0]}
+          hint="Compara com o título/categoria do hábito (ex.: treino, bíblia, oração)."
+          label="Palavra-chave do hábito"
+        >
+          <Input
+            onChange={(event) => setValues((prev) => ({ ...prev, habitKeyword: event.target.value }))}
+            required
+            value={values.habitKeyword}
+          />
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {HABIT_KEYWORD_SUGGESTIONS.map((suggestion) => (
+              <button
+                className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs text-muted transition-colors hover:border-white/14 hover:text-foreground"
+                key={suggestion}
+                onClick={() => setValues((prev) => ({ ...prev, habitKeyword: suggestion }))}
+                type="button"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </Field>
+      ) : null}
+
+      <Field
+        hint={
+          AUDIENCE_REQUIRES_MIN_STREAK.has(values.audienceType)
+            ? "Número mínimo de dias de sequência para incluir no público."
+            : "Opcional - combina com o público acima (Parte 11, segmentação combinada): só inclui quem também tem essa sequência mínima."
+        }
+        label={
+          AUDIENCE_REQUIRES_MIN_STREAK.has(values.audienceType)
+            ? "Sequência mínima (dias)"
+            : "Sequência mínima (opcional)"
+        }
+      >
+        <Input
+          min={0}
+          onChange={(event) => setValues((prev) => ({ ...prev, minStreak: event.target.value }))}
+          required={AUDIENCE_REQUIRES_MIN_STREAK.has(values.audienceType)}
+          type="number"
+          value={values.minStreak}
+        />
+      </Field>
 
       <div className="rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-muted">
         Público estimado:{" "}

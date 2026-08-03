@@ -2,7 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, RefreshCcw } from "lucide-react";
+import {
+  Award,
+  Bell,
+  CheckCheck,
+  Flag,
+  Lightbulb,
+  ListChecks,
+  Megaphone,
+  RefreshCcw,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
@@ -12,8 +23,23 @@ import {
   markNotificationClickedAction,
   markNotificationReadAction,
 } from "@/features/notifications/notifications.actions";
+import {
+  getNotificationTypeDisplay,
+  type NotificationTypeIconKey,
+} from "@/features/notifications/notification-type-display.core";
 import { cn } from "@/lib/utils";
 import type { MemberNotification } from "@/server/services/notifications.service";
+
+const NOTIFICATION_TYPE_ICONS: Record<NotificationTypeIconKey, LucideIcon> = {
+  achievement: Award,
+  bell: Bell,
+  campaign: Megaphone,
+  challenge: Flag,
+  habit: ListChecks,
+  motivation: Sparkles,
+  reminder: Bell,
+  tip: Lightbulb,
+};
 
 function formatNotificationDate(iso: string) {
   const parsed = new Date(iso);
@@ -36,6 +62,8 @@ function NotificationRow({
   onOpen: (notification: MemberNotification) => void;
 }) {
   const isUnread = notification.status !== "read";
+  const { categoryLabel, icon } = getNotificationTypeDisplay(notification.type);
+  const Icon = NOTIFICATION_TYPE_ICONS[icon];
 
   return (
     <li>
@@ -53,12 +81,17 @@ function NotificationRow({
             isUnread ? "border-action/30 bg-action/14 text-action-soft" : "border-white/10 bg-white/[0.05] text-muted-2",
           )}
         >
-          <Bell aria-hidden="true" size={16} />
+          <Icon aria-hidden="true" size={16} />
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-            <p className="text-sm font-semibold leading-5 text-foreground">{notification.title}</p>
+            <div className="min-w-0">
+              <span className="block font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">
+                {categoryLabel}
+              </span>
+              <p className="text-sm font-semibold leading-5 text-foreground">{notification.title}</p>
+            </div>
             <span className="shrink-0 font-mono text-[0.6rem] uppercase tracking-[0.08em] text-muted-2">
               {formatNotificationDate(notification.createdAt)}
             </span>

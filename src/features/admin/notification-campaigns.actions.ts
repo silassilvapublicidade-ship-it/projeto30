@@ -53,8 +53,10 @@ function parseCampaignForm(formData: FormData) {
     challengeId: getFormValue(formData, "challengeId"),
     destinationReferenceId: getFormValue(formData, "destinationReferenceId"),
     destinationType: getFormValue(formData, "destinationType"),
+    habitKeyword: getFormValue(formData, "habitKeyword"),
     imageUrl: getFormValue(formData, "imageUrl"),
     message: getFormValue(formData, "message") ?? "",
+    minStreak: getFormValue(formData, "minStreak"),
     specificUserId: getFormValue(formData, "specificUserId"),
     title: getFormValue(formData, "title") ?? "",
   });
@@ -81,8 +83,10 @@ export async function createNotificationCampaignAction(
     p_channel_push: parsed.data.channelPush,
     p_destination_reference_id: parsed.data.destinationReferenceId,
     p_destination_type: parsed.data.destinationType,
+    p_habit_keyword: parsed.data.habitKeyword,
     p_image_url: parsed.data.imageUrl,
     p_message: parsed.data.message,
+    p_min_streak_threshold: parsed.data.minStreak,
     p_specific_user_id: parsed.data.specificUserId,
     p_title: parsed.data.title,
   });
@@ -124,8 +128,10 @@ export async function updateNotificationCampaignAction(
     p_channel_push: parsed.data.channelPush,
     p_destination_reference_id: parsed.data.destinationReferenceId,
     p_destination_type: parsed.data.destinationType,
+    p_habit_keyword: parsed.data.habitKeyword,
     p_image_url: parsed.data.imageUrl,
     p_message: parsed.data.message,
+    p_min_streak_threshold: parsed.data.minStreak,
     p_specific_user_id: parsed.data.specificUserId,
     p_title: parsed.data.title,
   });
@@ -307,6 +313,8 @@ export type AudienceEstimateResult = { count: number; ok: true } | { ok: false }
 export async function estimateNotificationAudienceAction(input: {
   audienceType: string;
   challengeId?: string | null;
+  habitKeyword?: string | null;
+  minStreak?: number | null;
   specificUserId?: string | null;
 }): Promise<AudienceEstimateResult> {
   await requireAdminUser();
@@ -315,6 +323,8 @@ export async function estimateNotificationAudienceAction(input: {
   const { data, error } = await supabase.rpc("admin_estimate_notification_audience", {
     p_audience_type: input.audienceType,
     p_challenge_id: input.challengeId ?? undefined,
+    p_habit_keyword: input.habitKeyword ?? undefined,
+    p_min_streak: input.minStreak ?? undefined,
     p_specific_user_id: input.specificUserId ?? undefined,
   });
 

@@ -56,8 +56,10 @@ export default async function EditNotificationCampaignPage({
           channelPush: campaign.channel_push,
           destinationReferenceId: campaign.destination_reference_id ?? "",
           destinationType: campaign.destination_type,
+          habitKeyword: campaign.habit_keyword ?? "",
           imageUrl: campaign.image_url ?? "",
           message: campaign.message,
+          minStreak: campaign.min_streak_threshold?.toString() ?? "",
           specificUser,
           title: campaign.title,
         }}

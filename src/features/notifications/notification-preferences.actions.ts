@@ -30,9 +30,13 @@ export async function saveNotificationPreferencesAction(
 
   const parsed = notificationPreferencesFormSchema.safeParse({
     achievementNotifications: formData.get("achievementNotifications") === "on",
+    adminCampaignNotifications: formData.get("adminCampaignNotifications") === "on",
     challengeStartNotifications: formData.get("challengeStartNotifications") === "on",
+    dailyMotivationEnabled: formData.get("dailyMotivationEnabled") === "on",
     dailyReminderEnabled: formData.get("dailyReminderEnabled") === "on",
     dailyReminderTime: formData.get("dailyReminderTime") || undefined,
+    faithMessagesEnabled: formData.get("faithMessagesEnabled") === "on",
+    habitRemindersEnabled: formData.get("habitRemindersEnabled") === "on",
     importantUpdatesNotifications: formData.get("importantUpdatesNotifications") === "on",
     newTipNotifications: formData.get("newTipNotifications") === "on",
     pushEnabled: formData.get("pushEnabled") === "on",
@@ -60,8 +64,12 @@ export async function saveNotificationPreferencesAction(
   const notifications = {
     ...asRecord(existing?.notifications),
     achievement_notifications: parsed.data.achievementNotifications,
+    admin_campaign_notifications: parsed.data.adminCampaignNotifications,
     challenge_start_notifications: parsed.data.challengeStartNotifications,
+    daily_motivation_enabled: parsed.data.dailyMotivationEnabled,
     daily_reminder_enabled: parsed.data.dailyReminderEnabled,
+    faith_messages_enabled: parsed.data.faithMessagesEnabled,
+    habit_reminders_enabled: parsed.data.habitRemindersEnabled,
     important_updates_notifications: parsed.data.importantUpdatesNotifications,
     new_tip_notifications: parsed.data.newTipNotifications,
     push_enabled: parsed.data.pushEnabled,

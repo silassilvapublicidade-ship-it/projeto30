@@ -14,9 +14,13 @@ const reminderTimeSchema = z
 
 export const notificationPreferencesFormSchema = z.object({
   achievementNotifications: z.coerce.boolean().default(true),
+  adminCampaignNotifications: z.coerce.boolean().default(true),
   challengeStartNotifications: z.coerce.boolean().default(true),
+  dailyMotivationEnabled: z.coerce.boolean().default(true),
   dailyReminderEnabled: z.coerce.boolean().default(false),
   dailyReminderTime: reminderTimeSchema.optional(),
+  faithMessagesEnabled: z.coerce.boolean().default(true),
+  habitRemindersEnabled: z.coerce.boolean().default(true),
   importantUpdatesNotifications: z.coerce.boolean().default(true),
   newTipNotifications: z.coerce.boolean().default(true),
   pushEnabled: z.coerce.boolean().default(false),
@@ -33,10 +37,14 @@ export type NotificationPreferencesFormInput = z.infer<typeof notificationPrefer
  */
 export type NotificationPreferencesJson = {
   achievement_notifications: boolean;
+  admin_campaign_notifications: boolean;
   challenge_start_notifications: boolean;
   communication_opt_in?: boolean;
+  daily_motivation_enabled: boolean;
   daily_reminder_enabled: boolean;
   email?: boolean;
+  faith_messages_enabled: boolean;
+  habit_reminders_enabled: boolean;
   important_updates_notifications: boolean;
   in_app?: boolean;
   new_tip_notifications: boolean;
@@ -45,8 +53,12 @@ export type NotificationPreferencesJson = {
 
 export const NOTIFICATION_PREFERENCES_DEFAULTS: NotificationPreferencesJson = {
   achievement_notifications: true,
+  admin_campaign_notifications: true,
   challenge_start_notifications: true,
+  daily_motivation_enabled: true,
   daily_reminder_enabled: false,
+  faith_messages_enabled: true,
+  habit_reminders_enabled: true,
   important_updates_notifications: true,
   new_tip_notifications: true,
   push_enabled: false,

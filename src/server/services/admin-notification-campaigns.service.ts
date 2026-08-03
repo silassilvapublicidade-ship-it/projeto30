@@ -121,17 +121,21 @@ export type AdminNotificationCampaignDetail = {
   destination_reference_id: string | null;
   destination_type: NotificationDestinationType;
   failures: { failure_code: string | null; retry_count: number; user_id: string }[];
+  habit_keyword: string | null;
   id: string;
   image_url: string | null;
   message: string;
   metrics: {
+    cancelled_count: number;
     clicked_count: number;
     failed_count: number;
     opened_count: number;
+    pending_count: number;
     read_count: number;
     sent_count: number;
     total_recipients: number;
   };
+  min_streak_threshold: number | null;
   scheduled_for: string | null;
   source: string;
   specific_user_id: string | null;
@@ -156,6 +160,51 @@ export async function getAdminNotificationCampaign(
     return { data: data as unknown as AdminNotificationCampaignDetail, error: null };
   } catch (caughtError) {
     return { data: null, error: logUnexpectedFailure("getAdminNotificationCampaign", caughtError) };
+  }
+}
+
+export type NotificationCampaignPeriodSummary = {
+  campaignsSent: number;
+  notificationsClicked: number;
+  notificationsFailed: number;
+  notificationsOpened: number;
+  notificationsSent: number;
+};
+
+/** Parte 12 "graficos por periodo" - uma unica agregacao no banco (nunca
+ * N+1 de contagens separadas), sem biblioteca de graficos. */
+export async function getNotificationCampaignPeriodSummary(
+  days = 30,
+): Promise<NotificationCampaignPeriodSummary> {
+  const empty: NotificationCampaignPeriodSummary = {
+    campaignsSent: 0,
+    notificationsClicked: 0,
+    notificationsFailed: 0,
+    notificationsOpened: 0,
+    notificationsSent: 0,
+  };
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("admin_notification_campaign_period_summary", {
+      p_days: days,
+    });
+
+    if (error || !data || typeof data !== "object") {
+      return empty;
+    }
+
+    const result = data as Record<string, number>;
+    return {
+      campaignsSent: result.campaigns_sent ?? 0,
+      notificationsClicked: result.notifications_clicked ?? 0,
+      notificationsFailed: result.notifications_failed ?? 0,
+      notificationsOpened: result.notifications_opened ?? 0,
+      notificationsSent: result.notifications_sent ?? 0,
+    };
+  } catch (caughtError) {
+    logUnexpectedFailure("getNotificationCampaignPeriodSummary", caughtError);
+    return empty;
   }
 }
 

@@ -36,6 +36,13 @@ function MetricBox({ label, value }: { label: string; value: number }) {
   );
 }
 
+function formatRate(numerator: number, denominator: number): string {
+  if (denominator <= 0) {
+    return "—";
+  }
+  return `${((numerator / denominator) * 100).toFixed(1)}%`;
+}
+
 export default async function NotificationCampaignDetailPage({
   params,
 }: {
@@ -92,6 +99,29 @@ export default async function NotificationCampaignDetailPage({
         <MetricBox label="Cliques" value={campaign.metrics.clicked_count} />
         <MetricBox label="Lidas" value={campaign.metrics.read_count} />
         <MetricBox label="Falhas" value={campaign.metrics.failed_count} />
+        <MetricBox label="Canceladas" value={campaign.metrics.cancelled_count} />
+        <MetricBox label="Pendentes/expiradas" value={campaign.metrics.pending_count} />
+      </div>
+
+      <div className="flex flex-wrap gap-4 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.03] p-4 text-sm">
+        <p className="text-muted">
+          Taxa de abertura:{" "}
+          <strong className="text-foreground">
+            {formatRate(campaign.metrics.opened_count, campaign.metrics.sent_count)}
+          </strong>
+        </p>
+        <p className="text-muted">
+          Taxa de clique:{" "}
+          <strong className="text-foreground">
+            {formatRate(campaign.metrics.clicked_count, campaign.metrics.sent_count)}
+          </strong>
+        </p>
+        <p className="text-muted">
+          Ignoradas (entregues, nunca abertas):{" "}
+          <strong className="text-foreground">
+            {Math.max(0, campaign.metrics.sent_count - campaign.metrics.opened_count).toLocaleString("pt-BR")}
+          </strong>
+        </p>
       </div>
 
       {campaign.failures.length > 0 ? (

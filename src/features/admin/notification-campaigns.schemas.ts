@@ -16,6 +16,11 @@ export const NOTIFICATION_AUDIENCE_TYPES = [
   "push_disabled_internal_only",
   "admins",
   "super_admins",
+  // Modulo G, Parte 11.
+  "streak_above_threshold",
+  "streak_lost",
+  "day_all_habits_completed",
+  "habit_keyword_not_completed_today",
 ] as const;
 
 export type NotificationAudienceType = (typeof NOTIFICATION_AUDIENCE_TYPES)[number];
@@ -31,6 +36,10 @@ export const NOTIFICATION_AUDIENCE_LABELS: Record<NotificationAudienceType, stri
   push_disabled_internal_only: "Sem push (só central interna)",
   admins: "Administradores",
   super_admins: "Super administradores",
+  streak_above_threshold: "Sequência acima de X dias",
+  streak_lost: "Perderam a sequência",
+  day_all_habits_completed: "Concluíram todos os hábitos hoje",
+  habit_keyword_not_completed_today: "Ainda não concluíram um hábito específico hoje",
 };
 
 /** Which audience types require which extra parameter, mirrored by resolve_notification_audience. */
@@ -38,6 +47,17 @@ export const AUDIENCE_REQUIRES_CHALLENGE: ReadonlySet<NotificationAudienceType> 
   "challenge_participants",
 ]);
 export const AUDIENCE_REQUIRES_USER: ReadonlySet<NotificationAudienceType> = new Set(["specific_user"]);
+export const AUDIENCE_REQUIRES_MIN_STREAK: ReadonlySet<NotificationAudienceType> = new Set([
+  "streak_above_threshold",
+]);
+export const AUDIENCE_REQUIRES_HABIT_KEYWORD: ReadonlySet<NotificationAudienceType> = new Set([
+  "habit_keyword_not_completed_today",
+]);
+
+/** Quick-select suggestions for the habit-keyword field (Parte 11's own
+ * literal examples: treino, Bíblia, oração) - the field itself stays free
+ * text, these are just shortcuts, never a closed list. */
+export const HABIT_KEYWORD_SUGGESTIONS = ["treino", "bíblia", "oração"] as const;
 
 export const campaignTitleSchema = z
   .string()
@@ -60,8 +80,14 @@ export const campaignFormSchema = z
     challengeId: z.uuid().optional(),
     destinationReferenceId: z.string().trim().max(160).optional(),
     destinationType: z.enum(NOTIFICATION_DESTINATION_TYPES, "Selecione um destino."),
+    habitKeyword: z.string().trim().max(80).optional(),
     imageUrl: z.url().optional(),
     message: campaignMessageSchema,
+    // Doubles as the base filter for audienceType='streak_above_threshold'
+    // AND as the optional "segmentacao combinada" intersect for any OTHER
+    // audienceType (Parte 11's last item) - one field, two RPC parameter
+    // slots (p_min_streak / p_combined_min_streak), same stored column.
+    minStreak: z.coerce.number().int().min(0).max(3660).optional(),
     specificUserId: z.uuid().optional(),
     title: campaignTitleSchema,
   })
@@ -81,6 +107,20 @@ export const campaignFormSchema = z
     {
       error: "Selecione o usuário para este público.",
       path: ["specificUserId"],
+    },
+  )
+  .refine(
+    (data) => !AUDIENCE_REQUIRES_MIN_STREAK.has(data.audienceType) || data.minStreak !== undefined,
+    {
+      error: "Informe o número mínimo de dias de sequência.",
+      path: ["minStreak"],
+    },
+  )
+  .refine(
+    (data) => !AUDIENCE_REQUIRES_HABIT_KEYWORD.has(data.audienceType) || !!data.habitKeyword,
+    {
+      error: "Informe uma palavra-chave do hábito (ex.: treino, bíblia, oração).",
+      path: ["habitKeyword"],
     },
   );
 

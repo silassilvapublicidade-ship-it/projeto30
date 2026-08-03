@@ -312,7 +312,7 @@ export type AudienceEntry = { push_eligible: boolean; user_id: string };
 
 /**
  * The shared "engine" every source (admin compositor, cron-scheduled
- * campaigns, and each of the 6 automations) funnels through once a campaign
+ * campaigns, and every automation) funnels through once a campaign
  * row exists and an audience has been resolved - the only thing that ever
  * differs between an admin broadcast and an automation is HOW the audience
  * list was built (generic segmentation vs. a business-rule query), never
@@ -375,14 +375,22 @@ export async function processNotificationCampaign(campaignId: string): Promise<v
     return;
   }
 
-  const { data: audience, error: audienceError } = await supabase.rpc("resolve_notification_audience", {
+  // resolve_notification_audience_combined, never the base resolver
+  // directly - min_streak_threshold/habit_keyword (Modulo G, Parte 11) must
+  // apply the exact same way here as in the compositor's live estimate
+  // (admin_estimate_notification_audience calls the same combined wrapper),
+  // so the real send can never diverge from what the admin was shown.
+  const { data: audience, error: audienceError } = await supabase.rpc("resolve_notification_audience_combined", {
     p_audience_type: campaign.audience_type,
     p_challenge_id: campaign.challenge_id ?? undefined,
+    p_combined_min_streak: campaign.min_streak_threshold ?? undefined,
+    p_habit_keyword: campaign.habit_keyword ?? undefined,
+    p_min_streak: campaign.min_streak_threshold ?? undefined,
     p_specific_user_id: campaign.specific_user_id ?? undefined,
   });
 
   if (audienceError || !audience) {
-    logRpcFailure("resolve_notification_audience", audienceError ?? { message: "no audience returned" });
+    logRpcFailure("resolve_notification_audience_combined", audienceError ?? { message: "no audience returned" });
     await supabase
       .from("notification_campaigns")
       .update({ completed_at: new Date().toISOString(), status: "failed" })
