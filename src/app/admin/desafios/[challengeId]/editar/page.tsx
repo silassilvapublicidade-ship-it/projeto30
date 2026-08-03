@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { HabitNotificationFields } from "@/components/admin/habit-notification-fields";
 import { HabitVisibilityFields } from "@/components/admin/habit-visibility-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
 } from "@/features/admin/challenge-editor.actions";
 import { describeChallengeLifecycleStage } from "@/features/admin/challenge-editor.core";
 import { describeChallengeStatus } from "@/features/admin/admin-metrics.core";
+import { upsertHabitNotificationConfigAction } from "@/features/admin/habit-notifications.actions";
 import { describeHabitVisibility } from "@/features/journey/habit-visibility.core";
 import { getChallengeEditorData } from "@/server/services/admin-challenge-editor.service";
 
@@ -44,6 +46,21 @@ const feedbackMessages: Record<string, { description: string; title: string; ton
     description: "A janela de exibição deste item foi atualizada.",
     title: "Visibilidade salva",
     tone: "success",
+  },
+  "habit-notification-saved": {
+    description: "O lembrete inteligente deste hábito foi atualizado.",
+    title: "Notificação salva",
+    tone: "success",
+  },
+  "habit-notification-invalid": {
+    description: "Revise título, mensagem, horário e frequência do lembrete.",
+    title: "Dados inválidos",
+    tone: "error",
+  },
+  "habit-notification-error": {
+    description: "Não foi possível salvar a notificação agora.",
+    title: "Erro",
+    tone: "error",
   },
   "identity-success": { description: "Identidade atualizada.", title: "Salvo", tone: "success" },
   invalid: { description: "Revise os campos e tente novamente.", title: "Dados inválidos", tone: "error" },
@@ -335,6 +352,7 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
                     {habitTypeLabels[habit.habit_type] ?? habit.habit_type} · {habit.points} pts ·{" "}
                     {habit.is_required ? "obrigatório" : "opcional"} ·{" "}
                     {describeHabitVisibility(habit.visibility_config, challenge.duration_days)}
+                    {habit.notificationConfig?.enabled ? " · Lembrete ativo" : ""}
                   </p>
                 </div>
                 {!hasParticipants ? (
@@ -366,6 +384,20 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
                   />
                   <Button size="sm" type="submit" variant="secondary">
                     Salvar visibilidade
+                  </Button>
+                </form>
+              </details>
+
+              <details className="rounded-[var(--radius-control)] border border-white/[0.06] bg-black/15 p-3">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-muted">
+                  Notificações
+                </summary>
+                <form action={upsertHabitNotificationConfigAction} className="mt-3 space-y-3">
+                  <input name="challengeId" type="hidden" value={challenge.id} />
+                  <input name="habitId" type="hidden" value={habit.id} />
+                  <HabitNotificationFields config={habit.notificationConfig} />
+                  <Button size="sm" type="submit" variant="secondary">
+                    Salvar notificação
                   </Button>
                 </form>
               </details>

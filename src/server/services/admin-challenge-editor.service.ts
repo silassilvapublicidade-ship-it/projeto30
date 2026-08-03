@@ -3,7 +3,9 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
-export type ChallengeEditorHabit = Tables<"habits">;
+export type ChallengeEditorHabit = Tables<"habits"> & {
+  notificationConfig: Tables<"challenge_habit_notifications"> | null;
+};
 
 export type ChallengeEditorData = {
   challenge: Tables<"challenges">;
@@ -45,10 +47,22 @@ export async function getChallengeEditorData(challengeId: string): Promise<Chall
     return null;
   }
 
+  const habitIds = (habits ?? []).map((habit) => habit.id);
+  // Single extra query for every habit's notification config at once
+  // (Modulo G, Parte 14 - never N+1 per habit row).
+  const { data: notificationConfigs } =
+    habitIds.length > 0
+      ? await supabase.from("challenge_habit_notifications").select("*").in("habit_id", habitIds)
+      : { data: [] as Tables<"challenge_habit_notifications">[] };
+  const configByHabitId = new Map((notificationConfigs ?? []).map((config) => [config.habit_id, config]));
+
   return {
     challenge,
     daysCount: daysCount ?? 0,
-    habits: habits ?? [],
+    habits: (habits ?? []).map((habit) => ({
+      ...habit,
+      notificationConfig: configByHabitId.get(habit.id) ?? null,
+    })),
     hasParticipants: (participantCount ?? 0) > 0,
     participantCount: participantCount ?? 0,
   };
