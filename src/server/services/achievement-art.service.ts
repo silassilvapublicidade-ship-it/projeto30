@@ -48,7 +48,7 @@ export async function generateAchievementShareCard(
   const { data: unlocked, error: unlockedError } = await supabase
     .from("user_achievements")
     .select(
-      "id, unlocked_at, user_id, enrollment_id, achievement:achievements(id,name,description,icon,category,rarity,share_title,share_message,challenge_id,challenge:challenges(name))",
+      "id, unlocked_at, user_id, enrollment_id, achievement:achievements(id,name,description,icon,category,rarity,slug,share_title,share_message,challenge_id,challenge:challenges(name))",
     )
     .eq("id", userAchievementId)
     .eq("user_id", user.id)
@@ -60,20 +60,49 @@ export async function generateAchievementShareCard(
 
   const { achievement } = unlocked;
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("display_name, name")
-    .eq("id", user.id)
-    .maybeSingle();
+  let admin;
 
-  const displayName = profile?.display_name || profile?.name || null;
+  try {
+    admin = createSupabaseAdminClient();
+  } catch {
+    return { error: "A configuração segura do servidor ainda não permite gerar artes.", ok: false };
+  }
 
-  const { data: templateRow, error: templateError } = await supabase
-    .from("share_templates")
-    .select("id, slug, config")
-    .eq("slug", TEMPLATE_SLUGS_BY_FORMAT[format])
-    .eq("active", true)
-    .maybeSingle();
+  const [
+    { data: profile },
+    { data: templateRow, error: templateError },
+    { data: siblingAchievements },
+    { count: unlockedCount },
+    { count: enrollmentCount },
+  ] = await Promise.all([
+    supabase.from("users").select("display_name, name").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("share_templates")
+      .select("id, slug, config")
+      .eq("slug", TEMPLATE_SLUGS_BY_FORMAT[format])
+      .eq("active", true)
+      .maybeSingle(),
+    // Every user's own achievements-progress reads (achievements.service.ts)
+    // already run with the session client because `achievements` is
+    // publicly readable - but user_achievements/challenge_enrollments
+    // aggregate counts below need every user's row, not just this one's, so
+    // those two use the admin client (anonymous counts only, never exposes
+    // another user's row).
+    supabase
+      .from("achievements")
+      .select("id, sort_order")
+      .eq("challenge_id", achievement.challenge_id)
+      .eq("active", true)
+      .order("sort_order", { ascending: true }),
+    admin
+      .from("user_achievements")
+      .select("id", { count: "exact", head: true })
+      .eq("achievement_id", achievement.id),
+    admin
+      .from("challenge_enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("challenge_id", achievement.challenge_id),
+  ]);
 
   if (templateError || !templateRow) {
     return { error: "Modelo de arte indisponível no momento.", ok: false };
@@ -85,16 +114,31 @@ export async function generateAchievementShareCard(
     return { error: "Configuração do modelo de arte é inválida.", ok: false };
   }
 
+  const displayName = profile?.display_name || profile?.name || null;
+
+  const achievementIndex = (siblingAchievements ?? []).findIndex((row) => row.id === achievement.id);
+  const achievementNumber = achievementIndex >= 0 ? achievementIndex + 1 : null;
+  const achievementTotal = siblingAchievements?.length ?? null;
+  const unlockedPercent =
+    typeof enrollmentCount === "number" && enrollmentCount > 0
+      ? ((unlockedCount ?? 0) / enrollmentCount) * 100
+      : null;
+
   const content = buildAchievementCardContent(
     {
+      achievementNumber,
+      achievementTotal,
       category: achievement.category,
       challengeName: achievement.challenge?.name ?? null,
       description: achievement.description,
+      icon: achievement.icon,
       name: achievement.name,
       rarity: achievement.rarity,
       shareMessage: achievement.share_message,
       shareTitle: achievement.share_title,
+      slug: achievement.slug,
       unlockedAt: unlocked.unlocked_at,
+      unlockedPercent,
     },
     displayName,
   );
@@ -105,14 +149,6 @@ export async function generateAchievementShareCard(
     templateSlug: templateRow.slug ?? TEMPLATE_SLUGS_BY_FORMAT[format],
     templateVersion: TEMPLATE_VERSION,
   });
-
-  let admin;
-
-  try {
-    admin = createSupabaseAdminClient();
-  } catch {
-    return { error: "A configuração segura do servidor ainda não permite gerar artes.", ok: false };
-  }
 
   const { data: existingCard } = await admin
     .from("share_cards")

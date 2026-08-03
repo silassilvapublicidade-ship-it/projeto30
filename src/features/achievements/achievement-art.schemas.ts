@@ -10,18 +10,15 @@ export const shareCardFormatSchema = z.enum(["story", "feed"]);
 
 export type ShareCardFormat = z.infer<typeof shareCardFormatSchema>;
 
+/**
+ * Structural-only: every color/effect decision now lives in code
+ * (achievement-rarity.core.ts / achievement-scene.core.ts), never in
+ * admin-editable free text - see migration 0040. This schema only pins the
+ * one thing that's genuinely template-specific: canvas dimensions.
+ */
 export const shareCardTemplateConfigSchema = z.object({
-  accentColor: z.string().min(1),
-  background: z.object({
-    from: z.string().min(1),
-    to: z.string().min(1),
-    type: z.literal("gradient"),
-  }),
   format: shareCardFormatSchema,
   height: z.number().int().positive(),
-  showChallengeBranding: z.boolean().default(true),
-  showFooterSignature: z.boolean().default(true),
-  textColor: z.string().min(1),
   width: z.number().int().positive(),
 });
 

@@ -170,4 +170,9 @@ describe("achievementPreviewSchema", () => {
   it("rejects a format outside story/feed", () => {
     expect(achievementPreviewSchema.safeParse({ name: "X", format: "square" }).success).toBe(false);
   });
+
+  it("accepts an icon from the fixed picker and rejects anything else - the live preview needs the real medal art", () => {
+    expect(achievementPreviewSchema.safeParse({ name: "X", icon: "trophy" }).success).toBe(true);
+    expect(achievementPreviewSchema.safeParse({ name: "X", icon: "not-a-real-icon" }).success).toBe(false);
+  });
 });

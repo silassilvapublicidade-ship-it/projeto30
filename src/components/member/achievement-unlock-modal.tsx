@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { ChevronRight, Download, Loader2, Share2, Trophy, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { FinalizeDaySummary } from "@/features/member/journey.actions";
 
 type UnlockedAchievement = FinalizeDaySummary["unlockedAchievements"][number];
+
+// Six short outward drifts around the medal - a discreet particle burst,
+// never a full-screen confetti effect.
+const PARTICLE_OFFSETS: Array<[number, number]> = [
+  [26, -30],
+  [-28, -26],
+  [32, 14],
+  [-30, 18],
+  [8, -36],
+  [-10, 34],
+];
 
 type ShareCardResponse = {
   achievementName: string;
@@ -81,20 +92,51 @@ function UnlockSlide({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 text-center [animation:p30-celebrate-in_var(--motion-celebration)_var(--ease-premium)]">
+    <div className="flex flex-col items-center gap-4 text-center [animation:p30-unlock-card-in_700ms_var(--ease-premium)]">
       <span className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-action-soft">
         Conquista desbloqueada
       </span>
 
-      <div className="flex aspect-[9/16] w-full max-w-[220px] items-center justify-center overflow-hidden rounded-[1.25rem] border border-action/28 bg-[linear-gradient(180deg,rgba(255,106,0,0.14),rgba(255,255,255,0.02))]">
-        {result ? (
-          // eslint-disable-next-line @next/next/no-img-element -- imagem publica em bucket do Supabase, gerada sob demanda
-          <img alt={`Arte da conquista ${achievement.name}`} className="size-full object-cover" src={result.imageUrl} />
-        ) : error ? (
-          <Trophy aria-hidden="true" className="text-action-soft" size={40} />
-        ) : (
-          <Loader2 aria-hidden="true" className="animate-spin text-action-soft" size={28} />
-        )}
+      <div className="relative">
+        {/* Glow bloom + particles are purely decorative and play once
+            (700ms budget) - never looping, never blocking interaction. */}
+        <div
+          aria-hidden="true"
+          className="absolute -inset-6 rounded-[1.75rem] bg-[radial-gradient(circle,rgba(255,106,0,0.45),transparent_70%)] blur-xl [animation:p30-unlock-glow_700ms_var(--ease-premium)]"
+        />
+        {PARTICLE_OFFSETS.map(([x, y], index) => {
+          const particleStyle = {
+            "--particle-x": `${x}px`,
+            "--particle-y": `${y}px`,
+            animationDelay: `${80 + index * 40}ms`,
+          } as CSSProperties;
+
+          return (
+            <span
+              aria-hidden="true"
+              className="absolute left-1/2 top-1/2 size-1.5 rounded-full bg-action-soft [animation:p30-unlock-particle_650ms_var(--ease-premium)_forwards]"
+              key={index}
+              style={particleStyle}
+            />
+          );
+        })}
+
+        <div className="relative flex aspect-[9/16] w-full max-w-[220px] items-center justify-center overflow-hidden rounded-[1.25rem] border border-action/28 bg-[linear-gradient(180deg,rgba(255,106,0,0.14),rgba(255,255,255,0.02))]">
+          {result ? (
+            // eslint-disable-next-line @next/next/no-img-element -- imagem publica em bucket do Supabase, gerada sob demanda
+            <img alt={`Arte da conquista ${achievement.name}`} className="size-full object-cover" src={result.imageUrl} />
+          ) : error ? (
+            <Trophy aria-hidden="true" className="text-action-soft" size={40} />
+          ) : (
+            <Loader2 aria-hidden="true" className="animate-spin text-action-soft" size={28} />
+          )}
+          {result ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 w-1/2 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent)] [animation:p30-sheen_700ms_var(--ease-premium)_200ms_1]"
+            />
+          ) : null}
+        </div>
       </div>
 
       <div>
@@ -143,14 +185,6 @@ function UnlockSlide({
 }
 
 /**
- * Auto-opens right after a finalize response comes back with 1+ newly
- * unlocked achievements (today-interactive-section wires this). Shows every
- * one of them, one at a time, never a summarized/collapsed list - the
- * explicit product requirement is that a new achievement is never quietly
- * skipped. Native <dialog> for the same reason ConfirmDialog uses it: real
- * focus trap and ESC handling for free.
- */
-/**
  * Owns which slide is showing. Keyed (by the caller, on the achievement list
  * itself) so a brand new finalize result - always a brand new
  * unlocked_achievements array - remounts this and naturally starts back at
@@ -195,6 +229,14 @@ function UnlockPager({
   );
 }
 
+/**
+ * Auto-opens right after a finalize response comes back with 1+ newly
+ * unlocked achievements (today-interactive-section wires this). Shows every
+ * one of them, one at a time, never a summarized/collapsed list - the
+ * explicit product requirement is that a new achievement is never quietly
+ * skipped. Native <dialog> for the same reason ConfirmDialog uses it: real
+ * focus trap and ESC handling for free.
+ */
 export function AchievementUnlockModal({
   achievements,
   onOpenChange,
@@ -237,7 +279,7 @@ export function AchievementUnlockModal({
   return (
     <dialog
       aria-labelledby={titleId}
-      className="m-auto max-w-xs rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-0 text-foreground shadow-[var(--shadow-lift)] backdrop:bg-black/70"
+      className="m-auto max-w-xs rounded-[var(--radius-card)] border border-white/[0.10] bg-matte/96 p-0 text-foreground shadow-[var(--shadow-lift)] backdrop:bg-black/70 backdrop:[animation:p30-unlock-backdrop_700ms_var(--ease-premium)]"
       onClick={(event) => {
         if (event.target === dialogRef.current) {
           onOpenChange(false);

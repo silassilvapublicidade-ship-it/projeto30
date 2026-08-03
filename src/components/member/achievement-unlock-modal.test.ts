@@ -64,6 +64,25 @@ describe("AchievementUnlockModal", () => {
     const pagerBody = source.slice(source.indexOf("function UnlockPager"), source.indexOf("export function AchievementUnlockModal"));
     expect(pagerBody).not.toContain("useEffect");
   });
+
+  it("every unlock-sequence animation is capped at the 700ms product spec - none run longer or loop", () => {
+    expect(source).toContain("p30-unlock-card-in_700ms");
+    expect(source).toContain("p30-unlock-glow_700ms");
+    expect(source).toContain("p30-unlock-backdrop_700ms");
+    expect(source).toContain("p30-sheen_700ms_var(--ease-premium)_200ms_1");
+    expect(source).not.toContain("infinite");
+  });
+
+  it("particles are a short, discreet burst (6 of them, one-shot, staggered) - never a full confetti effect", () => {
+    expect(source).toContain("const PARTICLE_OFFSETS: Array<[number, number]> = [");
+    const offsetsBlock = source.slice(
+      source.indexOf("const PARTICLE_OFFSETS"),
+      source.indexOf("];", source.indexOf("const PARTICLE_OFFSETS")),
+    );
+    const offsetCount = (offsetsBlock.match(/\[-?\d+, -?\d+\]/g) ?? []).length;
+    expect(offsetCount).toBe(6);
+    expect(source).toContain("p30-unlock-particle_650ms_var(--ease-premium)_forwards");
+  });
 });
 
 describe("TodayInteractiveSection - achievement unlock modal wiring", () => {

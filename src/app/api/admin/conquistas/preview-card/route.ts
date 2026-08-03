@@ -53,10 +53,14 @@ export async function POST(request: Request) {
       category: parsed.data.category ?? null,
       challengeName: parsed.data.challengeName ?? null,
       description: parsed.data.description ?? null,
+      icon: parsed.data.icon ?? null,
       name: parsed.data.name,
       rarity: parsed.data.rarity ?? null,
       shareMessage: parsed.data.shareMessage ?? null,
       shareTitle: parsed.data.shareTitle ?? null,
+      // No real achievement row exists yet for a draft being previewed - no
+      // slug to pick a scene by (falls back to the generic soft-light
+      // motif) and no real unlock/position data to show a number or percent.
       unlockedAt: new Date().toISOString(),
     },
     "Você",

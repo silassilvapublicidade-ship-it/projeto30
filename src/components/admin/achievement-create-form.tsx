@@ -44,6 +44,7 @@ export function AchievementCreateForm({
   const [ruleType, setRuleType] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [icon, setIcon] = useState("");
   const [category, setCategory] = useState("");
   const [rarity, setRarity] = useState("");
   const [shareTitle, setShareTitle] = useState("");
@@ -96,6 +97,9 @@ export function AchievementCreateForm({
             if (rule && !name) {
               setName(rule.defaultName);
             }
+            if (rule && !icon) {
+              setIcon(rule.defaultIcon);
+            }
           }}
           options={ruleTypeOptions}
           placeholder={
@@ -137,11 +141,12 @@ export function AchievementCreateForm({
         </Field>
 
         <Select
-          defaultValue={selectedRule?.defaultIcon ?? ""}
           label="Ícone (opcional)"
           name="icon"
+          onValueChange={setIcon}
           options={iconOptions}
           placeholder="Selecione um ícone"
+          value={icon}
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -199,6 +204,7 @@ export function AchievementCreateForm({
           category: category || undefined,
           challengeName: selectedChallenge?.name,
           description: description || undefined,
+          icon: icon || selectedRule?.defaultIcon || undefined,
           name: name || selectedRule?.defaultName || "Nova conquista",
           rarity: rarity || undefined,
           shareMessage: shareMessage || undefined,

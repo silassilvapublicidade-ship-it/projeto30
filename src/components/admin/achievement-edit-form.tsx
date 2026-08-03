@@ -36,6 +36,7 @@ export function AchievementEditForm({ achievement }: { achievement: AdminAchieve
 
   const [name, setName] = useState(achievement.name);
   const [description, setDescription] = useState(achievement.description ?? "");
+  const [icon, setIcon] = useState(achievement.icon ?? "");
   const [category, setCategory] = useState(achievement.category ?? "");
   const [rarity, setRarity] = useState(achievement.rarity ?? "");
   const [shareTitle, setShareTitle] = useState(achievement.share_title ?? "");
@@ -83,11 +84,12 @@ export function AchievementEditForm({ achievement }: { achievement: AdminAchieve
         </Field>
 
         <Select
-          defaultValue={achievement.icon ?? ""}
           label="Ícone (opcional)"
           name="icon"
+          onValueChange={setIcon}
           options={iconOptions}
           placeholder="Selecione um ícone"
+          value={icon}
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -152,6 +154,7 @@ export function AchievementEditForm({ achievement }: { achievement: AdminAchieve
           category: category || undefined,
           challengeName: achievement.challenge_name,
           description: description || undefined,
+          icon: icon || undefined,
           name: name || achievement.name,
           rarity: rarity || undefined,
           shareMessage: shareMessage || undefined,

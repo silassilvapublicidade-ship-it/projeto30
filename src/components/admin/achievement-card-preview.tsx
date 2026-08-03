@@ -8,6 +8,7 @@ export type AchievementPreviewFields = {
   category?: string | undefined;
   challengeName?: string | undefined;
   description?: string | undefined;
+  icon?: string | undefined;
   name: string;
   rarity?: string | undefined;
   shareMessage?: string | undefined;

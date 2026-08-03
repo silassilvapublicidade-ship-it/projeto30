@@ -190,6 +190,7 @@ export const achievementPreviewSchema = z.object({
   challengeName: z.string().trim().max(160).optional(),
   description: z.string().trim().max(280).optional(),
   format: z.enum(["story", "feed"]).default("feed"),
+  icon: z.enum(ACHIEVEMENT_ICONS).optional(),
   name: z.string().trim().min(1).max(120),
   rarity: z.string().trim().max(60).optional(),
   shareMessage: z.string().trim().max(200).optional(),

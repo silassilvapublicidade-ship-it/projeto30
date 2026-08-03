@@ -1,16 +1,23 @@
 import { createHash } from "node:crypto";
 
+import { normalizeRarity, RARITY_TIERS, type RarityTier } from "./achievement-rarity.core";
+import { getSceneForAchievement, type SceneId } from "./achievement-scene.core";
 import type { ShareCardFormat } from "./achievement-art.schemas";
 
 export type AchievementCardSource = {
+  achievementNumber?: number | null;
+  achievementTotal?: number | null;
   category?: string | null;
   challengeName?: string | null;
   description?: string | null;
+  icon?: string | null;
   name: string;
   rarity?: string | null;
   shareMessage?: string | null;
   shareTitle?: string | null;
+  slug?: string | null;
   unlockedAt: string;
+  unlockedPercent?: number | null;
 };
 
 export type AchievementCardContent = {
@@ -19,8 +26,14 @@ export type AchievementCardContent = {
   challengeLabel: string | null;
   dateLabel: string;
   footerLine: string;
+  icon: string | null;
+  numberLabel: string | null;
+  rarityLabel: string;
+  rarityTier: RarityTier;
+  sceneId: SceneId;
   subtitle: string | null;
   title: string;
+  unlockedPercentLabel: string | null;
 };
 
 /**
@@ -41,9 +54,26 @@ export function buildAchievementCardContent(
     ? `${trimmedDisplayName} desbloqueou`
     : "Conquista desbloqueada";
 
-  const badgeLabel = [achievement.category, achievement.rarity]
-    .filter((value): value is string => Boolean(value?.trim()))
-    .join(" · ") || null;
+  const rarityTier = normalizeRarity(achievement.rarity);
+
+  // Uses the normalized tier label (Bronze/Prata/Ouro/Lendária), not the raw
+  // admin-entered rarity string - the whole point of a tier system is a
+  // consistent label everywhere on the card, not whatever casing/accent an
+  // admin happened to type ("comum", "Comum", "bronze"...).
+  const badgeLabel =
+    [achievement.category?.trim(), achievement.rarity ? RARITY_TIERS[rarityTier].label : null]
+      .filter((value): value is string => Boolean(value))
+      .join(" · ") || null;
+
+  const numberLabel =
+    achievement.achievementNumber && achievement.achievementTotal
+      ? `Nº ${String(achievement.achievementNumber).padStart(2, "0")} de ${achievement.achievementTotal}`
+      : null;
+
+  const unlockedPercentLabel =
+    typeof achievement.unlockedPercent === "number" && Number.isFinite(achievement.unlockedPercent)
+      ? `${formatPercent(achievement.unlockedPercent)} dos participantes desbloquearam`
+      : null;
 
   return {
     attributionLine,
@@ -51,9 +81,21 @@ export function buildAchievementCardContent(
     challengeLabel: achievement.challengeName?.trim() || null,
     dateLabel: formatUnlockedDate(achievement.unlockedAt),
     footerLine: "projeto30.app",
+    icon: achievement.icon?.trim() || null,
+    numberLabel,
+    rarityLabel: RARITY_TIERS[rarityTier].label,
+    rarityTier,
+    sceneId: getSceneForAchievement(achievement.slug),
     subtitle: achievement.shareMessage?.trim() || achievement.description?.trim() || null,
     title,
+    unlockedPercentLabel,
   };
+}
+
+function formatPercent(value: number) {
+  const clamped = Math.min(100, Math.max(0, value));
+  const rounded = clamped < 1 && clamped > 0 ? Math.round(clamped * 10) / 10 : Math.round(clamped);
+  return `${rounded}%`;
 }
 
 function formatUnlockedDate(isoDate: string): string {

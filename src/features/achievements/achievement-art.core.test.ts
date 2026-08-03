@@ -49,9 +49,9 @@ describe("buildAchievementCardContent", () => {
     expect(content.subtitle).toBe("Mensagem customizada.");
   });
 
-  it("joins category and rarity into a single badge label", () => {
+  it("joins category and the normalized rarity tier label into a single badge label - not the raw admin-entered rarity text", () => {
     const content = buildAchievementCardContent(baseAchievement, "Ana");
-    expect(content.badgeLabel).toBe("Consistência · comum");
+    expect(content.badgeLabel).toBe("Consistência · Bronze");
   });
 
   it("omits the badge label when neither category nor rarity is set", () => {
@@ -65,6 +65,46 @@ describe("buildAchievementCardContent", () => {
   it("formats the unlocked date in pt-BR", () => {
     const content = buildAchievementCardContent(baseAchievement, "Ana");
     expect(content.dateLabel).toMatch(/2026/);
+  });
+
+  it("normalizes rarity into a tier and picks a scene from slug", () => {
+    const content = buildAchievementCardContent(
+      { ...baseAchievement, rarity: "épica", slug: "primeiro-dia" },
+      "Ana",
+    );
+    expect(content.rarityTier).toBe("ouro");
+    expect(content.rarityLabel).toBe("Ouro");
+    expect(content.sceneId).toBe("sunrise-glow");
+  });
+
+  it("defaults to the bronze tier and the generic scene when rarity/slug are absent", () => {
+    const content = buildAchievementCardContent({ ...baseAchievement, rarity: null, slug: null }, "Ana");
+    expect(content.rarityTier).toBe("bronze");
+    expect(content.sceneId).toBe("soft-light");
+  });
+
+  it("builds the achievement number label only when both number and total are known", () => {
+    const withNumber = buildAchievementCardContent(
+      { ...baseAchievement, achievementNumber: 3, achievementTotal: 10 },
+      "Ana",
+    );
+    expect(withNumber.numberLabel).toBe("Nº 03 de 10");
+
+    const withoutNumber = buildAchievementCardContent(baseAchievement, "Ana");
+    expect(withoutNumber.numberLabel).toBeNull();
+  });
+
+  it("formats the unlocked-percent label, and omits it entirely when unknown", () => {
+    const withPercent = buildAchievementCardContent({ ...baseAchievement, unlockedPercent: 12.4 }, "Ana");
+    expect(withPercent.unlockedPercentLabel).toBe("12% dos participantes desbloquearam");
+
+    const withoutPercent = buildAchievementCardContent(baseAchievement, "Ana");
+    expect(withoutPercent.unlockedPercentLabel).toBeNull();
+  });
+
+  it("carries the icon through untouched, trimmed", () => {
+    const content = buildAchievementCardContent({ ...baseAchievement, icon: "  sunrise  " }, "Ana");
+    expect(content.icon).toBe("sunrise");
   });
 });
 
