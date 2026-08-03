@@ -51,6 +51,27 @@ export function describeActivity(activity: string): string {
   return activityLabels[activity as ParticipantActivity] ?? activity;
 }
 
+type DailyLogStatus = Database["public"]["Enums"]["daily_log_status"];
+
+// "finalized" always means finalizado, regardless of completion_percent -
+// never implied "complete"/"done" by this label alone. The admin history
+// table pairs this with the Progresso column so a super admin never confuses
+// "Finalizado" (fechado, qualquer %) with "100% dos hábitos".
+const dailyLogStatusLabels: Record<DailyLogStatus, string> = {
+  finalized: "Finalizado",
+  in_progress: "Em aberto",
+  missed: "Não finalizado",
+  reopened: "Reaberto",
+};
+
+export function describeDailyLogStatus(status: DailyLogStatus | null): string {
+  if (!status) {
+    return "Não finalizado";
+  }
+
+  return dailyLogStatusLabels[status];
+}
+
 export function formatPercent(value: number | null | undefined): string {
   const safe = Number.isFinite(value) ? Number(value) : 0;
   return `${Math.round(safe)}%`;

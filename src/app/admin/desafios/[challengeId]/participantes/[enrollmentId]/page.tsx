@@ -10,6 +10,7 @@ import { enrollmentIdSchema } from "@/features/admin/admin-analytics.schemas";
 import { pauseEnrollmentAction, resumeEnrollmentAction } from "@/features/admin/admin-challenges.actions";
 import {
   describeActivity,
+  describeDailyLogStatus,
   describeEnrollmentStatus,
   formatCount,
   formatDate,
@@ -208,7 +209,7 @@ export default async function AdminParticipantDetailPage({
                   <td className="px-4 py-3 text-muted">
                     {day.log_date ? formatDate(day.log_date) : "Não aberto"}
                   </td>
-                  <td className="px-4 py-3 text-muted">{day.status ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted">{describeDailyLogStatus(day.status)}</td>
                   <td className="px-4 py-3 text-muted">
                     {day.status ? formatPercent(day.completion_percent) : "—"}
                   </td>

@@ -4,6 +4,7 @@ import {
   canViewReflections,
   describeActivity,
   describeChallengeStatus,
+  describeDailyLogStatus,
   describeEnrollmentStatus,
   describeInstrumentationWindow,
   formatChallengePeriod,
@@ -49,6 +50,17 @@ describe("status labels", () => {
 
   it("falls back to the raw value for an unknown activity bucket", () => {
     expect(describeActivity("mystery")).toBe("mystery");
+  });
+
+  it("describes daily_log status without ever implying a finalized day is incomplete or unrealized - real case: Silas's Dia 2, finalized at 50%, must read 'Finalizado', not the raw enum or 'não finalizado'", () => {
+    expect(describeDailyLogStatus("finalized")).toBe("Finalizado");
+    expect(describeDailyLogStatus("in_progress")).toBe("Em aberto");
+    expect(describeDailyLogStatus("missed")).toBe("Não finalizado");
+    expect(describeDailyLogStatus("reopened")).toBe("Reaberto");
+  });
+
+  it("treats a day with no daily_log row at all (null status) the same as any other not-finalized day, never as an error or empty state", () => {
+    expect(describeDailyLogStatus(null)).toBe("Não finalizado");
   });
 });
 

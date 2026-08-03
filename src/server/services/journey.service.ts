@@ -134,7 +134,9 @@ export type JourneySummary = {
   challengeName: string;
   completionPercent: number;
   currentDay: number;
-  daysCompleted: number;
+  /** Any finalized day (completed/partial_kept/partial_lost) - never just
+   * the 100% ones. See daysRemaining, the only current consumer. */
+  daysFinalized: number;
   daysRemaining: number;
   durationDays: number;
   endDate: string | null;
@@ -339,6 +341,7 @@ export async function getJourneyDetail({
     targetDate: today,
   });
   const todayDayNumber = notStarted ? 0 : dayResult.dayNumber;
+  const streakMinimumCompletion = readStreakMinimumCompletion(challenge.rules_config);
 
   const [{ data: days }, { data: logs }] = await Promise.all([
     supabase
@@ -364,7 +367,7 @@ export async function getJourneyDetail({
         completionPercent: log ? Number(log.completion_percent) : 0,
         dayNumber: day.day_number,
         finalized: log?.status === "finalized",
-        hasLog: Boolean(log),
+        streakMinimumCompletion,
         todayDayNumber,
       }),
     };
@@ -383,7 +386,7 @@ export async function getJourneyDetail({
       completionPercent: log ? Number(log.completion_percent) : 0,
       dayNumber: selectedChallengeDay.day_number,
       finalized: log?.status === "finalized",
-      hasLog: Boolean(log),
+      streakMinimumCompletion,
       todayDayNumber,
     });
 
@@ -457,7 +460,15 @@ export async function getJourneyDetail({
     };
   }
 
-  const daysCompleted = calendarDays.filter((day) => day.state === "completed").length;
+  // "Dias restantes" means days not yet lived/finalized - a finalized day
+  // counts as no longer remaining regardless of its completion percent
+  // (completed/partial_kept/partial_lost are all finalized). Counting only
+  // state === "completed" here previously inflated daysRemaining by one for
+  // every finalized-but-partial day, the same root confusion as the
+  // calendar/detail state bug this round fixes.
+  const daysFinalized = calendarDays.filter((day) =>
+    ["completed", "partial_kept", "partial_lost"].includes(day.state),
+  ).length;
   const recurringHabits = notStarted
     ? []
     : await getRecurringHabitProgress({
@@ -478,15 +489,15 @@ export async function getJourneyDetail({
       challengeName: challenge.name,
       completionPercent: enrollment.completion_percent,
       currentDay: todayDayNumber,
-      daysCompleted,
-      daysRemaining: Math.max(0, challenge.duration_days - daysCompleted),
+      daysFinalized,
+      daysRemaining: Math.max(0, challenge.duration_days - daysFinalized),
       durationDays: challenge.duration_days,
       endDate: challenge.end_date,
       pointsTotal: enrollment.points_total,
       startDate: challenge.start_date,
       status: enrollment.status,
       streakCurrent: enrollment.streak_current,
-      streakMinimumCompletion: readStreakMinimumCompletion(challenge.rules_config),
+      streakMinimumCompletion,
     },
   };
 }

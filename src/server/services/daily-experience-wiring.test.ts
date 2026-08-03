@@ -51,6 +51,15 @@ describe("journey.service.ts - Jornada summary also exposes streakMinimumComplet
     expect(source).toContain(
       'import { readStreakMinimumCompletion } from "@/features/journey/rules.core";',
     );
-    expect(source).toContain("streakMinimumCompletion: readStreakMinimumCompletion(challenge.rules_config),");
+    expect(source).toContain(
+      "const streakMinimumCompletion = readStreakMinimumCompletion(challenge.rules_config);",
+    );
+  });
+
+  it("computes it once and reuses the same value for both getJourneyDayState calls and the summary, never re-deriving it per day", () => {
+    const occurrences = source.match(/streakMinimumCompletion/g) ?? [];
+    // declaration + 2x getJourneyDayState call sites + 1x summary field = 4 minimum
+    expect(occurrences.length).toBeGreaterThanOrEqual(4);
+    expect(source).not.toContain("readStreakMinimumCompletion(challenge.rules_config),");
   });
 });

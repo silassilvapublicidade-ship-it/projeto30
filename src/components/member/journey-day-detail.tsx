@@ -16,10 +16,11 @@ function formatFullDate(value: string) {
 }
 
 const stateLabel: Record<JourneyDayDetail["state"], string> = {
-  completed: "Completo",
+  completed: "Finalizado · completo",
   future: "Bloqueado",
-  missed: "Não realizado",
-  partial: "Parcial",
+  not_finalized: "Não finalizado",
+  partial_kept: "Finalizado · parcial · sequência mantida",
+  partial_lost: "Finalizado · parcial · sequência não mantida",
   today: "Hoje",
 };
 
