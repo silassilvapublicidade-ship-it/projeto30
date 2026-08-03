@@ -22,17 +22,15 @@ describe("TipRowActions - per-status menu gating", () => {
     expect(before).not.toMatch(/status === "\w+"\s*\?\s*\($/);
   });
 
-  it("offers Publicar for draft and Publicar novamente for archived, both via publishTipAction", () => {
-    expect(source).toContain('{status === "draft" ? (');
-    expect(source).toContain('{status === "archived" ? (');
-    const draftIndex = source.indexOf('{status === "draft" ? (');
-    const draftBlock = source.slice(draftIndex, draftIndex + 250);
-    expect(draftBlock).toContain("action={publishTipAction}");
-    expect(draftBlock).toContain("Publicar");
-    const archivedIndex = source.indexOf('{status === "archived" ? (');
-    const archivedBlock = source.slice(archivedIndex, archivedIndex + 250);
-    expect(archivedBlock).toContain("action={publishTipAction}");
-    expect(archivedBlock).toContain("Publicar novamente");
+  it("offers Publicar for draft and Publicar novamente for archived (plus a notify variant of each), both via publishTipAction", () => {
+    expect(source).toContain('{status === "draft" || status === "archived" ? (');
+    const blockIndex = source.indexOf('{status === "draft" || status === "archived" ? (');
+    const block = source.slice(blockIndex, blockIndex + 700);
+    expect(block).toContain("action={publishTipAction}");
+    expect(block).toContain('{status === "draft" ? "Publicar" : "Publicar novamente"}');
+    expect(block).toContain(
+      '{status === "draft" ? "Publicar e avisar usuários" : "Publicar novamente e avisar usuários"}',
+    );
   });
 
   it("only offers Despublicar and Arquivar for published", () => {
