@@ -16,6 +16,7 @@ import {
   challengeRulesSchema,
   habitIdParamSchema,
   habitSchema,
+  habitVisibilityFormSchema,
 } from "./challenge-editor.schemas";
 import { mergeJsonConfig, suggestChallengeSlug } from "./challenge-editor.core";
 
@@ -246,7 +247,15 @@ export async function addHabitAction(formData: FormData) {
     },
   });
 
-  if (!parsed.success) {
+  const parsedVisibility = habitVisibilityFormSchema.safeParse({
+    betweenFrom: getFormValue(formData, "visibilityBetweenFrom"),
+    betweenTo: getFormValue(formData, "visibilityBetweenTo"),
+    fromDay: getFormValue(formData, "visibilityFromDay"),
+    specificDays: getFormValue(formData, "visibilitySpecificDays"),
+    type: getFormValue(formData, "visibilityType") ?? "all_days",
+  });
+
+  if (!parsed.success || !parsedVisibility.success) {
     redirectWithFeedback(challengeId, "invalid");
   }
 
@@ -263,6 +272,7 @@ export async function addHabitAction(formData: FormData) {
     sort_order: parsed.data.sortOrder,
     title: parsed.data.title,
     validation_config: parsed.data.validationConfig,
+    visibility_config: parsedVisibility.data,
   });
 
   if (error) {
@@ -270,6 +280,47 @@ export async function addHabitAction(formData: FormData) {
   }
 
   redirectWithFeedback(challengeId, "habit-added");
+}
+
+/**
+ * Unlike addHabitAction/removeHabitAction, deliberately NOT gated by
+ * challengeHasParticipants - visibility_config only controls WHEN an item
+ * appears/can be answered, it never changes scoring, frequency or history,
+ * so it's safe (and necessary) to fix even on a live challenge with real
+ * participants, which is exactly the case that motivated this feature
+ * (ações especiais como "Concluir o livro do mês" apareciam todo dia em um
+ * ciclo já publicado).
+ */
+export async function updateHabitVisibilityAction(formData: FormData) {
+  await requireAdminUser();
+
+  const challengeId = challengeIdParamSchema.parse(formData.get("challengeId"));
+  const habitId = habitIdParamSchema.parse(formData.get("habitId"));
+
+  const parsedVisibility = habitVisibilityFormSchema.safeParse({
+    betweenFrom: getFormValue(formData, "visibilityBetweenFrom"),
+    betweenTo: getFormValue(formData, "visibilityBetweenTo"),
+    fromDay: getFormValue(formData, "visibilityFromDay"),
+    specificDays: getFormValue(formData, "visibilitySpecificDays"),
+    type: getFormValue(formData, "visibilityType") ?? "all_days",
+  });
+
+  if (!parsedVisibility.success) {
+    redirectWithFeedback(challengeId, "invalid");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("habits")
+    .update({ visibility_config: parsedVisibility.data })
+    .eq("id", habitId)
+    .eq("challenge_id", challengeId);
+
+  if (error) {
+    redirectWithFeedback(challengeId, "error");
+  }
+
+  redirectWithFeedback(challengeId, "visibility-updated");
 }
 
 export async function removeHabitAction(formData: FormData) {

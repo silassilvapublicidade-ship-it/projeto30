@@ -102,3 +102,55 @@ export type HabitInput = z.infer<typeof habitSchema>;
 
 export const challengeIdParamSchema = z.uuid("Identificador de desafio inválido.");
 export const habitIdParamSchema = z.uuid("Identificador de hábito inválido.");
+
+// Mirrors habits_visibility_config_check (migration 0050) - the 6 types the
+// engine actually understands. "Uma versao robusta primeiro": nao oferece
+// dias da semana/mensal/condicional/calendario manual do briefing original,
+// que o schema atual nao modela ainda.
+export const HABIT_VISIBILITY_TYPES = [
+  "all_days",
+  "first_day",
+  "last_day",
+  "from_day",
+  "between_days",
+  "specific_days",
+] as const;
+
+export const habitVisibilityFormSchema = z
+  .object({
+    betweenFrom: z.coerce.number().int().min(1).max(366).optional(),
+    betweenTo: z.coerce.number().int().min(1).max(366).optional(),
+    fromDay: z.coerce.number().int().min(1).max(366).optional(),
+    specificDays: z.string().trim().max(400).optional(),
+    type: z.enum(HABIT_VISIBILITY_TYPES),
+  })
+  .transform((data) => {
+    switch (data.type) {
+      case "from_day":
+        return { day: data.fromDay ?? 1, type: "from_day" as const };
+      case "between_days":
+        return {
+          from: data.betweenFrom ?? 1,
+          to: data.betweenTo ?? data.betweenFrom ?? 1,
+          type: "between_days" as const,
+        };
+      case "specific_days":
+        return {
+          days: (data.specificDays ?? "")
+            .split(",")
+            .map((value) => Number(value.trim()))
+            .filter((value) => Number.isInteger(value) && value > 0),
+          type: "specific_days" as const,
+        };
+      default:
+        return { type: data.type };
+    }
+  })
+  .refine((data) => data.type !== "between_days" || ("from" in data && data.from <= data.to), {
+    error: "O dia inicial precisa ser igual ou anterior ao dia final.",
+    path: ["betweenTo"],
+  })
+  .refine((data) => data.type !== "specific_days" || ("days" in data && data.days.length > 0), {
+    error: "Informe ao menos um dia (ex.: 1, 31).",
+    path: ["specificDays"],
+  });

@@ -8,7 +8,9 @@ import {
 } from "@/features/challenges/date.core";
 import { resolveDailyPrompt, resolveGoalLabel } from "@/features/journey/habit-daily-prompt.core";
 import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
+import { isHabitVisibleOnDay } from "@/features/journey/habit-visibility.core";
 import { calculateDailyProgress } from "@/features/journey/progress.core";
+import { readRuleInt as getRuleInt } from "@/features/journey/rules.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json, Tables } from "@/types/database";
 
@@ -96,6 +98,7 @@ export type TodayProgress = {
   pointsEarned: number;
   pointsPotential: number;
   state: "complete" | "finalized" | "in_progress" | "not_started" | "partial";
+  streakMinimumCompletion: number;
 };
 
 /**
@@ -146,21 +149,6 @@ function getTodayLabel(timezone: string) {
 
 function isJsonRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-function getRuleInt(rulesConfig: Json, key: string, fallback: number) {
-  const rules = isJsonRecord(rulesConfig) ? rulesConfig : {};
-  const value = rules[key];
-
-  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return Math.floor(value);
-  }
-
-  if (typeof value === "string" && /^\d+$/.test(value)) {
-    return Number(value);
-  }
-
-  return fallback;
 }
 
 function getFallbackProfile(user: Awaited<ReturnType<typeof requireAuthUser>>) {
@@ -318,6 +306,7 @@ async function getPeriodProgressByHabitId({
 async function getTodayMissionData({
   challengeId,
   currentDay,
+  durationDays,
   enrollmentId,
   localDate,
   supabase,
@@ -325,6 +314,7 @@ async function getTodayMissionData({
 }: {
   challengeId: string;
   currentDay: number;
+  durationDays: number;
   enrollmentId: string;
   localDate: string;
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -380,7 +370,7 @@ async function getTodayMissionData({
   const { data: habits } = await supabase
     .from("habits")
     .select(
-      "id,title,description,category,habit_type,icon,points,validation_config,sort_order,frequency_type,daily_prompt",
+      "id,title,description,category,habit_type,icon,points,validation_config,sort_order,frequency_type,daily_prompt,visibility_config",
     )
     .eq("challenge_id", challengeId)
     .in("id", habitIds);
@@ -398,6 +388,15 @@ async function getTodayMissionData({
     const habit = habitsById.get(item.habit_id);
 
     if (!habit) {
+      return [];
+    }
+
+    // Backend-enforced (never CSS-only): an item scheduled outside today's
+    // window never even reaches the client as a mission - it can't be
+    // answered, doesn't count toward the percentage, and can't block
+    // finalização, mirroring habit_visible_on_day() in
+    // finalize_daily_log_with_responses/journey_recalculate_daily_log.
+    if (!isHabitVisibleOnDay(habit.visibility_config, currentDay, durationDays)) {
       return [];
     }
 
@@ -546,6 +545,7 @@ async function buildEnrollmentDayContext({
   const todayData = await getTodayMissionData({
     challengeId: enrollment.challenge_id,
     currentDay: activeEnrollment.current_day,
+    durationDays: challenge?.duration_days ?? Math.max(1, activeEnrollment.current_day),
     enrollmentId: enrollment.id,
     localDate: today,
     supabase,
@@ -582,6 +582,7 @@ async function buildEnrollmentDayContext({
       ...progress,
       pointsEarned: todayLog?.points_earned ?? 0,
       pointsPotential,
+      streakMinimumCompletion: getRuleInt(rulesConfig, "streak_minimum_completion", 70),
     },
   };
 }

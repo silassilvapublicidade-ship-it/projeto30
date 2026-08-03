@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
+import { HabitVisibilityFields } from "@/components/admin/habit-visibility-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,9 +19,11 @@ import {
   removeHabitAction,
   updateChallengeCalendarAndRulesAction,
   updateChallengeIdentityAction,
+  updateHabitVisibilityAction,
 } from "@/features/admin/challenge-editor.actions";
 import { describeChallengeLifecycleStage } from "@/features/admin/challenge-editor.core";
 import { describeChallengeStatus } from "@/features/admin/admin-metrics.core";
+import { describeHabitVisibility } from "@/features/journey/habit-visibility.core";
 import { getChallengeEditorData } from "@/server/services/admin-challenge-editor.service";
 
 export const metadata: Metadata = {
@@ -37,6 +40,11 @@ const feedbackMessages: Record<string, { description: string; title: string; ton
   error: { description: "Não foi possível concluir a ação agora.", title: "Erro", tone: "error" },
   "habit-added": { description: "Hábito adicionado.", title: "Hábito salvo", tone: "success" },
   "habit-removed": { description: "Hábito removido.", title: "Hábito removido", tone: "success" },
+  "visibility-updated": {
+    description: "A janela de exibição deste item foi atualizada.",
+    title: "Visibilidade salva",
+    tone: "success",
+  },
   "identity-success": { description: "Identidade atualizada.", title: "Salvo", tone: "success" },
   invalid: { description: "Revise os campos e tente novamente.", title: "Dados inválidos", tone: "error" },
   "rules-success": { description: "Calendário e regras atualizados.", title: "Salvo", tone: "success" },
@@ -317,30 +325,50 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
         <ul className="mt-4 space-y-2">
           {habits.map((habit) => (
             <li
-              className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-3"
+              className="space-y-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-3"
               key={habit.id}
             >
-              <div>
-                <p className="text-sm font-semibold text-foreground">{habit.title}</p>
-                <p className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted-2">
-                  {habitTypeLabels[habit.habit_type] ?? habit.habit_type} · {habit.points} pts ·{" "}
-                  {habit.is_required ? "obrigatório" : "opcional"}
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{habit.title}</p>
+                  <p className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-muted-2">
+                    {habitTypeLabels[habit.habit_type] ?? habit.habit_type} · {habit.points} pts ·{" "}
+                    {habit.is_required ? "obrigatório" : "opcional"} ·{" "}
+                    {describeHabitVisibility(habit.visibility_config, challenge.duration_days)}
+                  </p>
+                </div>
+                {!hasParticipants ? (
+                  <form action={removeHabitAction}>
+                    <input name="challengeId" type="hidden" value={challenge.id} />
+                    <input name="habitId" type="hidden" value={habit.id} />
+                    <ConfirmSubmitButton
+                      confirmMessage="Remover este hábito do desafio?"
+                      size="xs"
+                      variant="ghost"
+                    >
+                      <Trash2 aria-hidden="true" size={13} />
+                      Remover
+                    </ConfirmSubmitButton>
+                  </form>
+                ) : null}
               </div>
-              {!hasParticipants ? (
-                <form action={removeHabitAction}>
+
+              <details className="rounded-[var(--radius-control)] border border-white/[0.06] bg-black/15 p-3">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-muted">
+                  Quando este item aparece
+                </summary>
+                <form action={updateHabitVisibilityAction} className="mt-3 space-y-3">
                   <input name="challengeId" type="hidden" value={challenge.id} />
                   <input name="habitId" type="hidden" value={habit.id} />
-                  <ConfirmSubmitButton
-                    confirmMessage="Remover este hábito do desafio?"
-                    size="xs"
-                    variant="ghost"
-                  >
-                    <Trash2 aria-hidden="true" size={13} />
-                    Remover
-                  </ConfirmSubmitButton>
+                  <HabitVisibilityFields
+                    durationDays={challenge.duration_days}
+                    initialVisibilityConfig={habit.visibility_config}
+                  />
+                  <Button size="sm" type="submit" variant="secondary">
+                    Salvar visibilidade
+                  </Button>
                 </form>
-              ) : null}
+              </details>
             </li>
           ))}
           {habits.length === 0 ? (
@@ -402,6 +430,7 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
               </Field>
             </div>
             <Checkbox defaultChecked label="Obrigatório para concluir o dia" name="isRequired" />
+            <HabitVisibilityFields durationDays={challenge.duration_days} />
             <Button type="submit" variant="secondary">
               Adicionar hábito
             </Button>
