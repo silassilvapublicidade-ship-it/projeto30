@@ -415,6 +415,62 @@ export type Database = {
           },
         ]
       }
+      challenge_habit_notifications: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          frequency_type: string
+          habit_id: string
+          id: string
+          monthly_day: number | null
+          notification_body: string
+          notification_time: string
+          notification_title: string
+          only_if_not_completed: boolean
+          priority: number
+          updated_at: string
+          weekdays: Json
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          frequency_type?: string
+          habit_id: string
+          id?: string
+          monthly_day?: number | null
+          notification_body?: string
+          notification_time?: string
+          notification_title?: string
+          only_if_not_completed?: boolean
+          priority?: number
+          updated_at?: string
+          weekdays?: Json
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          frequency_type?: string
+          habit_id?: string
+          id?: string
+          monthly_day?: number | null
+          notification_body?: string
+          notification_time?: string
+          notification_title?: string
+          only_if_not_completed?: boolean
+          priority?: number
+          updated_at?: string
+          weekdays?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_habit_notifications_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: true
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenges: {
         Row: {
           cover_image_url: string | null
@@ -646,6 +702,45 @@ export type Database = {
           },
         ]
       }
+      daily_motivation_messages: {
+        Row: {
+          active: boolean
+          body: string
+          category: string
+          created_at: string
+          ends_at: string | null
+          id: string
+          priority: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          category?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          priority?: number
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          category?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          priority?: number
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
         Row: {
           challenge_day_id: string
@@ -847,11 +942,13 @@ export type Database = {
           created_by: string | null
           destination_reference_id: string | null
           destination_type: string
+          habit_keyword: string | null
           id: string
           idempotency_key: string
           image_url: string | null
           message: string
           metadata: Json
+          min_streak_threshold: number | null
           scheduled_for: string | null
           source: string
           specific_user_id: string | null
@@ -875,11 +972,13 @@ export type Database = {
           created_by?: string | null
           destination_reference_id?: string | null
           destination_type: string
+          habit_keyword?: string | null
           id?: string
           idempotency_key?: string
           image_url?: string | null
           message: string
           metadata?: Json
+          min_streak_threshold?: number | null
           scheduled_for?: string | null
           source?: string
           specific_user_id?: string | null
@@ -903,11 +1002,13 @@ export type Database = {
           created_by?: string | null
           destination_reference_id?: string | null
           destination_type?: string
+          habit_keyword?: string | null
           id?: string
           idempotency_key?: string
           image_url?: string | null
           message?: string
           metadata?: Json
+          min_streak_threshold?: number | null
           scheduled_for?: string | null
           source?: string
           specific_user_id?: string | null
@@ -1663,8 +1764,10 @@ export type Database = {
           p_channel_push?: boolean | undefined
           p_destination_reference_id?: string | undefined
           p_destination_type: string
+          p_habit_keyword?: string | undefined
           p_image_url?: string | undefined
           p_message: string
+          p_min_streak_threshold?: number | undefined
           p_specific_user_id?: string | undefined
           p_title: string
         }
@@ -1703,6 +1806,8 @@ export type Database = {
         Args: {
           p_audience_type: string
           p_challenge_id?: string | undefined
+          p_habit_keyword?: string | undefined
+          p_min_streak?: number | undefined
           p_specific_user_id?: string | undefined
         }
         Returns: number
@@ -1832,6 +1937,10 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: Json
       }
+      admin_notification_campaign_period_summary: {
+        Args: { p_days?: number }
+        Returns: Json
+      }
       admin_participant_detail: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -1887,8 +1996,10 @@ export type Database = {
           p_channel_push?: boolean | undefined
           p_destination_reference_id?: string | undefined
           p_destination_type: string
+          p_habit_keyword?: string | undefined
           p_image_url?: string | undefined
           p_message: string
+          p_min_streak_threshold?: number | undefined
           p_specific_user_id?: string | undefined
           p_title: string
         }
@@ -1946,6 +2057,24 @@ export type Database = {
       automation_resolve_new_tip_subscribers_audience: {
         Args: never
         Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_smart_notification_candidates: {
+        Args: {
+          p_daily_motivation_body?: string | undefined
+          p_daily_motivation_category?: string | undefined
+          p_daily_motivation_message_id?: string | undefined
+          p_daily_motivation_title?: string | undefined
+        }
+        Returns: {
+          candidate_key: string
+          destination_reference_id: string
+          destination_type: string
+          habit_id: string
+          notification_body: string
+          notification_title: string
           push_eligible: boolean
           user_id: string
         }[]
@@ -2054,6 +2183,22 @@ export type Database = {
         Args: {
           p_audience_type: string
           p_challenge_id?: string | undefined
+          p_habit_keyword?: string | undefined
+          p_min_streak?: number | undefined
+          p_specific_user_id?: string | undefined
+        }
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      resolve_notification_audience_combined: {
+        Args: {
+          p_audience_type: string
+          p_challenge_id?: string | undefined
+          p_combined_min_streak?: number | undefined
+          p_habit_keyword?: string | undefined
+          p_min_streak?: number | undefined
           p_specific_user_id?: string | undefined
         }
         Returns: {
