@@ -5,12 +5,40 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordAnalyticsEvent, type AnalyticsEventName } from "@/server/services/analytics.service";
 import { requireAuthUser } from "@/server/services/auth-session.service";
 import {
   getJourneyRpcClient,
   getSafeJourneyErrorMessage,
 } from "@/server/services/journey-rpc.service";
 import { runAchievementUnlockedAutomation } from "@/server/services/notification-automations.service";
+
+const DAILY_COMPLETION_EVENT_NAMES = [
+  "daily_completion_summary_viewed",
+  "daily_completion_continue_clicked",
+  "daily_completion_journey_clicked",
+  "daily_completion_share_clicked",
+] as const satisfies readonly AnalyticsEventName[];
+
+type DailyCompletionEventName = (typeof DAILY_COMPLETION_EVENT_NAMES)[number];
+
+/**
+ * The only analytics entry point the new DailyCompletionCelebration calls -
+ * narrowed to these 4 event names so the component can never accidentally
+ * record something outside this feature. Best-effort by construction
+ * (recordAnalyticsEvent never throws).
+ */
+export async function recordDailyCompletionEventAction(
+  eventName: DailyCompletionEventName,
+  enrollmentId?: string,
+): Promise<void> {
+  if (!DAILY_COMPLETION_EVENT_NAMES.includes(eventName)) {
+    return;
+  }
+
+  await requireAuthUser("/app/hoje");
+  await recordAnalyticsEvent({ enrollmentId: enrollmentId ?? null, eventName, source: "client" });
+}
 
 const uuidSchema = z.uuid();
 
@@ -121,6 +149,8 @@ export type FinalizeDaySummary = {
   pointsEarned: number;
   streakBest: number;
   streakCurrent: number;
+  streakMetMinimum: boolean;
+  streakMinimumCompletion: number;
   unlockedAchievements: Array<{
     icon: string | null;
     id: string;
@@ -145,6 +175,8 @@ type RawFinalizeSummary = {
   points_earned: number;
   streak_best: number;
   streak_current: number;
+  streak_met_minimum: boolean;
+  streak_minimum_completion: number;
   unlocked_achievements: Array<{
     icon: string | null;
     id: string;
@@ -166,6 +198,8 @@ function mapFinalizeSummary(raw: RawFinalizeSummary): FinalizeDaySummary {
     pointsEarned: raw.points_earned,
     streakBest: raw.streak_best,
     streakCurrent: raw.streak_current,
+    streakMetMinimum: raw.streak_met_minimum,
+    streakMinimumCompletion: raw.streak_minimum_completion,
     unlockedAchievements: raw.unlocked_achievements.map((achievement) => ({
       icon: achievement.icon,
       id: achievement.id,

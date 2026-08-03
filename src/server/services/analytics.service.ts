@@ -22,7 +22,12 @@ export type AnalyticsEventName =
   | "push_permission_granted"
   | "push_permission_denied"
   | "push_subscription_created"
-  | "push_subscription_revoked";
+  | "push_subscription_revoked"
+  // Rodada "experiencia diaria" - celebracao de finalizacao.
+  | "daily_completion_summary_viewed"
+  | "daily_completion_continue_clicked"
+  | "daily_completion_journey_clicked"
+  | "daily_completion_share_clicked";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;
