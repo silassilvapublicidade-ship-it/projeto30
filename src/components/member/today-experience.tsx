@@ -4,6 +4,7 @@ import { CalendarClock, PauseCircle, Route } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
 import { TodayInteractiveSection } from "@/components/member/today-interactive-section";
+import { resolveDailyChallengeMessage } from "@/features/journey/progress-motivation.core";
 import type {
   EnrollmentDayContext,
   MemberContext,
@@ -361,14 +362,17 @@ function EnrollmentSection({
           {enrollment.challenge?.name ?? "Desafio"}
         </h2>
         <p className="mt-1 truncate text-sm text-muted">
-          {enrollmentContext.todayChallengeDay?.message ??
-            "A disciplina de hoje não precisa fazer barulho. Ela precisa existir."}
+          {resolveDailyChallengeMessage(enrollmentContext.todayChallengeDay?.message)}
         </p>
       </div>
 
       <TodayInteractiveSection
+        challengeDayMessage={enrollmentContext.todayChallengeDay?.message ?? null}
         dailyLogId={dailyLogId}
+        dayNumber={enrollment.current_day}
         durationDays={durationDays}
+        enrollmentId={enrollment.id}
+        initialCompletionPercent={enrollment.todayLog?.completion_percent ?? 0}
         initialFinalized={enrollment.todayLog?.status === "finalized"}
         initialFinalizedAt={enrollment.todayLog?.finalized_at ?? null}
         initialPointsEarned={enrollment.todayLog?.points_earned ?? 0}
@@ -376,6 +380,7 @@ function EnrollmentSection({
         journalEntry={enrollmentContext.journalEntry}
         missions={enrollmentContext.todayMissions}
         pointsPotential={enrollmentContext.todayProgress.pointsPotential}
+        streakMinimumCompletion={enrollmentContext.todayProgress.streakMinimumCompletion}
       />
     </section>
   );

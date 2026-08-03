@@ -719,6 +719,7 @@ export type Database = {
           title: string
           updated_at: string
           validation_config: Json
+          visibility_config: Json
         }
         Insert: {
           active?: boolean
@@ -738,6 +739,7 @@ export type Database = {
           title: string
           updated_at?: string
           validation_config?: Json
+          visibility_config?: Json
         }
         Update: {
           active?: boolean
@@ -757,6 +759,7 @@ export type Database = {
           title?: string
           updated_at?: string
           validation_config?: Json
+          visibility_config?: Json
         }
         Relationships: [
           {
@@ -1969,6 +1972,14 @@ export type Database = {
       finalize_daily_log_with_responses: {
         Args: { responses?: Json; target_daily_log_id: string }
         Returns: Json
+      }
+      habit_visible_on_day: {
+        Args: {
+          p_day_number: number
+          p_duration_days: number
+          p_visibility_config: Json
+        }
+        Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
       join_available_challenge: { Args: never; Returns: string }

@@ -95,13 +95,18 @@ describe("TodayInteractiveSection - achievement unlock modal wiring", () => {
     expect(source).toContain("<AchievementUnlockModal");
   });
 
-  it("opens the modal automatically the moment a finalize response includes 1+ unlocked achievements - no manual step required", () => {
+  it("no longer auto-opens on finalize - DailyCompletionCelebration opens first instead (Parte B/9), and only its 'Ver conquista' button opens this modal", () => {
     const runFinalizeBody = source.slice(
       source.indexOf("async function runFinalize"),
       source.indexOf("function handleFinalizeSubmit"),
     );
-    expect(runFinalizeBody).toContain("if (result.summary.unlockedAchievements.length > 0) {");
-    expect(runFinalizeBody).toContain("setUnlockModalOpen(true);");
+    expect(runFinalizeBody).not.toContain("setUnlockModalOpen(true);");
+    expect(runFinalizeBody).toContain("setCelebrationOpen(true);");
+    expect(source).toContain("onOpenAchievements={() => setUnlockModalOpen(true)}");
+  });
+
+  it("never hides a new achievement - DailyCompletionCelebration always opens on a fresh finalize, achievement or not", () => {
+    expect(source).toContain("if (!result.summary.alreadyFinalized) {");
   });
 
   it("passes the exact achievements from this finalize's summary, not a stale or guessed list", () => {

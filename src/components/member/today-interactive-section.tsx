@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { CheckCircle2, Flame, MessageSquare, Save, XCircle } from "lucide-react";
 
 import { AchievementUnlockModal } from "@/components/member/achievement-unlock-modal";
+import { DailyCompletionCelebration } from "@/components/member/daily-completion-celebration";
 import { useUnsavedChangesGuard } from "@/components/member/use-unsaved-changes-guard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/field";
@@ -15,6 +16,8 @@ import {
   type FinalizeDaySummary,
 } from "@/features/member/journey.actions";
 import { calculateDailyProgress } from "@/features/journey/progress.core";
+import { resolveDailyChallengeMessage, resolveProgressMotivationalMessage } from "@/features/journey/progress-motivation.core";
+import { describeStreakOutcome } from "@/features/journey/streak-explanation.core";
 import {
   buildFinalizeResponses,
   buildInitialLocalState,
@@ -188,11 +191,13 @@ function MissionRow({
 }
 
 type DisplaySummary = {
+  completionPercent: number;
   finalizedAt: string | null;
   habitResults: FinalizeDaySummary["habitResults"];
   justFinalized: boolean;
   pointsEarned: number;
   streakCurrent: number;
+  streakMinimumCompletion: number;
   unlockedAchievements: FinalizeDaySummary["unlockedAchievements"];
 };
 
@@ -208,13 +213,12 @@ function formatFinalizedTime(value: string | null) {
 }
 
 /**
- * Renders both right after a fresh finalize (rich data straight from the
- * RPC response) AND when reopening an already-finalized day from a previous
+ * Only rendered when REOPENING an already-finalized day from a previous
  * session (habitResults rebuilt from the persisted habit_logs the page
- * already loaded - see today-interactive-section's displaySummary). The
- * only field that's genuinely unavailable on reopen is which achievements
- * unlocked THIS finalize specifically - that list is simply empty then,
- * never guessed.
+ * already loaded) - a fresh finalize opens DailyCompletionCelebration
+ * instead (see justFinalized below), so this never re-plays the
+ * celebratory moment on every revisit/reload. Chips instead of raw lists
+ * (Parte 19); não realizados fica secundário, nunca em destaque negativo.
  */
 function FinalizeSummaryPanel({
   missions,
@@ -231,38 +235,61 @@ function FinalizeSummaryPanel({
     (item) => missionsById.get(item.habitId)?.frequencyType !== "daily",
   );
   const finalizedTime = formatFinalizedTime(summary.finalizedAt);
+  const streakOutcome = describeStreakOutcome({
+    completionPercent: summary.completionPercent,
+    streakCurrent: summary.streakCurrent,
+    streakMinimumCompletion: summary.streakMinimumCompletion,
+  });
 
   return (
     <section className="space-y-3 rounded-xl border border-action/24 bg-action/[0.06] p-4 sm:p-5">
       <div>
         <h2 className="font-display text-lg text-foreground">Dia finalizado.</h2>
         <p className="text-sm leading-6 text-muted">
-          {summary.pointsEarned} pontos conquistados{summary.justFinalized ? " hoje" : ""} · sequência atual
-          de {summary.streakCurrent} {summary.streakCurrent === 1 ? "dia" : "dias"}
-          {finalizedTime ? ` · finalizado às ${finalizedTime}` : ""}.
+          {summary.pointsEarned} pontos conquistados{finalizedTime ? ` · finalizado às ${finalizedTime}` : ""}.
+        </p>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+          <Flame
+            aria-hidden="true"
+            className={streakOutcome.metMinimum ? "text-action-soft" : "text-muted-2"}
+            size={14}
+          />
+          {streakOutcome.message}
         </p>
       </div>
 
       {realized.length > 0 ? (
         <div>
           <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-action-soft">Realizados</p>
-          <ul className="mt-1 space-y-0.5 text-sm text-foreground">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {realized.map((item) => (
-              <li key={item.habitId}>· {missionsById.get(item.habitId)?.dailyPrompt ?? "Hábito"}</li>
+              <span
+                className="rounded-full border border-action/24 bg-action/[0.06] px-2.5 py-1 text-xs text-foreground"
+                key={item.habitId}
+              >
+                {missionsById.get(item.habitId)?.dailyPrompt ?? "Hábito"}
+              </span>
             ))}
-          </ul>
+          </div>
         </div>
       ) : null}
 
       {notRealized.length > 0 ? (
-        <div>
-          <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted-2">Não realizados</p>
-          <ul className="mt-1 space-y-0.5 text-sm text-muted">
+        <details>
+          <summary className="cursor-pointer select-none font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted-2">
+            {notRealized.length} não realizado{notRealized.length > 1 ? "s" : ""}
+          </summary>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {notRealized.map((item) => (
-              <li key={item.habitId}>· {missionsById.get(item.habitId)?.dailyPrompt ?? "Hábito"}</li>
+              <span
+                className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-xs text-muted"
+                key={item.habitId}
+              >
+                {missionsById.get(item.habitId)?.dailyPrompt ?? "Hábito"}
+              </span>
             ))}
-          </ul>
-        </div>
+          </div>
+        </details>
       ) : null}
 
       {notApplicable.length > 0 ? (
@@ -295,8 +322,12 @@ function FinalizeSummaryPanel({
 }
 
 export function TodayInteractiveSection({
+  challengeDayMessage,
   dailyLogId,
+  dayNumber,
   durationDays,
+  enrollmentId,
+  initialCompletionPercent,
   initialFinalized,
   initialFinalizedAt,
   initialPointsEarned,
@@ -304,9 +335,14 @@ export function TodayInteractiveSection({
   journalEntry,
   missions,
   pointsPotential,
+  streakMinimumCompletion,
 }: {
+  challengeDayMessage: string | null;
   dailyLogId: string | null;
+  dayNumber: number;
   durationDays: number;
+  enrollmentId: string;
+  initialCompletionPercent: number;
   initialFinalized: boolean;
   initialFinalizedAt: string | null;
   initialPointsEarned: number;
@@ -317,6 +353,7 @@ export function TodayInteractiveSection({
   > | null;
   missions: TodayMission[];
   pointsPotential: number;
+  streakMinimumCompletion: number;
 }) {
   const [baseline] = useState(() =>
     buildInitialLocalState(
@@ -337,6 +374,7 @@ export function TodayInteractiveSection({
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const [celebrationOpen, setCelebrationOpen] = useState(false);
 
   const editable = Boolean(dailyLogId) && !finalized;
   const unsaved = editable && hasUnsavedChanges(habitsState, baseline);
@@ -354,6 +392,7 @@ export function TodayInteractiveSection({
     [habitsState, finalized],
   );
   const pendingCount = countPendingHabits(habitsState);
+  const resolvedChallengeMessage = resolveDailyChallengeMessage(challengeDayMessage);
 
   // Right after a fresh finalize, `summary` (the RPC's own rich response) is
   // authoritative. Reopening an already-finalized day from a previous
@@ -365,15 +404,18 @@ export function TodayInteractiveSection({
   // is simply empty on reopen - never guessed.
   const displaySummary: DisplaySummary | null = summary
     ? {
+        completionPercent: summary.completionPercent,
         finalizedAt: initialFinalizedAt,
         habitResults: summary.habitResults,
         justFinalized: true,
         pointsEarned: summary.pointsEarned,
         streakCurrent: summary.streakCurrent,
+        streakMinimumCompletion: summary.streakMinimumCompletion,
         unlockedAchievements: summary.unlockedAchievements,
       }
     : initialFinalized
       ? {
+          completionPercent: initialCompletionPercent,
           finalizedAt: initialFinalizedAt,
           habitResults: Object.entries(habitsState).map(([habitId, entry]) => ({
             habitId,
@@ -382,6 +424,7 @@ export function TodayInteractiveSection({
           justFinalized: false,
           pointsEarned: initialPointsEarned,
           streakCurrent: initialStreakCurrent,
+          streakMinimumCompletion,
           unlockedAchievements: [],
         }
       : null;
@@ -406,14 +449,19 @@ export function TodayInteractiveSection({
 
     setSummary(result.summary);
     setFinalized(true);
+
+    // Só abre a celebração numa finalização de verdade - um retry que caiu
+    // no branch idempotente (already_finalized) nunca reabre o momento de
+    // celebração, evitando repetir a experiência à toa.
+    if (!result.summary.alreadyFinalized) {
+      setCelebrationOpen(true);
+    }
     setPendingModalOpen(false);
 
-    // Feedback imediato: qualquer conquista nova sempre abre o modal de
-    // desbloqueio automaticamente - nunca fica escondida atras de um resumo
-    // em texto que o membro pode nem rolar ate ver.
-    if (result.summary.unlockedAchievements.length > 0) {
-      setUnlockModalOpen(true);
-    }
+    // Conquistas novas nunca ficam escondidas (Parte 9), mas agora aparecem
+    // destacadas DENTRO da celebração (DailyCompletionCelebration), que abre
+    // sempre primeiro - "Ver conquista" ali é o único caminho para o modal
+    // de desbloqueio, evitando dois modais empilhados automaticamente.
   }
 
   function handleFinalizeSubmit(event: FormEvent<HTMLFormElement>) {
@@ -427,44 +475,65 @@ export function TodayInteractiveSection({
     void runFinalize();
   }
 
+  const liveStreakOutcome = displaySummary
+    ? describeStreakOutcome({
+        completionPercent: displaySummary.completionPercent,
+        streakCurrent: displaySummary.streakCurrent,
+        streakMinimumCompletion: displaySummary.streakMinimumCompletion,
+      })
+    : null;
+
   return (
     <>
       <div className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 shadow-[var(--shadow-soft)] sm:p-5">
-        <div className="flex items-center gap-3">
-          <p className="font-display text-2xl leading-none text-foreground">
-            {clampPercent(progress.completionPercent)}
-            <span className="text-xs font-normal text-muted-2">%</span>
+        <p className="font-display text-lg text-foreground">
+          {finalized ? "Hoje você avançou." : "Continue avançando hoje."}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-muted">
+          {resolveProgressMotivationalMessage(progress.completionPercent)}
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+          <p className="font-display text-3xl leading-none text-foreground">
+            {displaySummary?.pointsEarned ?? 0}
+            <span className="ml-1.5 text-xs font-normal text-muted-2">
+              de até {pointsPotential} pontos conquistados
+            </span>
           </p>
-          <div className="min-w-0 flex-1">
-            <div
-              aria-label="Progresso do dia"
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={clampPercent(progress.completionPercent)}
-              className="h-2 w-full overflow-visible rounded-full bg-white/10"
-              role="progressbar"
-            >
-              <div
-                className="relative h-full rounded-full bg-[linear-gradient(90deg,var(--p30-orange),var(--p30-amber))] transition-[width] duration-[var(--motion-slow)] ease-[var(--ease-premium)]"
-                style={{ width: `${clampPercent(progress.completionPercent)}%` }}
-              />
-            </div>
-            <p className="mt-1.5 font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">
-              {durationDays} dias no ciclo
-            </p>
-          </div>
+          <p className="text-sm text-muted">
+            {progress.completedHabits} hábito{progress.completedHabits === 1 ? "" : "s"} realizado
+            {progress.completedHabits === 1 ? "" : "s"}
+          </p>
         </div>
 
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[0.66rem] uppercase tracking-[0.1em] text-muted-2">
-          <span>
-            {progress.completedHabits}/{progress.applicableHabits} hábitos
-          </span>
-          <span>
-            {displaySummary?.pointsEarned ?? 0}/{pointsPotential} pts
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Flame aria-hidden="true" className="text-action-soft" size={12} />
-            {displaySummary?.streakCurrent ?? initialStreakCurrent}d sequência
+        <div
+          aria-label="Progresso do dia"
+          aria-valuemax={100}
+          aria-valuemin={0}
+          aria-valuenow={clampPercent(progress.completionPercent)}
+          className="mt-3 h-2 w-full overflow-visible rounded-full bg-white/10"
+          role="progressbar"
+        >
+          <div
+            className="relative h-full rounded-full bg-[linear-gradient(90deg,var(--p30-orange),var(--p30-amber))] transition-[width] duration-[var(--motion-slow)] ease-[var(--ease-premium)]"
+            style={{ width: `${clampPercent(progress.completionPercent)}%` }}
+          />
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <p className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">
+            {clampPercent(progress.completionPercent)}% dos hábitos diários aplicáveis · {durationDays} dias
+            no ciclo
+          </p>
+          <span className="inline-flex items-center gap-1 text-xs text-muted">
+            <Flame
+              aria-hidden="true"
+              className={liveStreakOutcome?.metMinimum === false ? "text-muted-2" : "text-action-soft"}
+              size={13}
+            />
+            {liveStreakOutcome
+              ? liveStreakOutcome.message
+              : `${initialStreakCurrent} ${initialStreakCurrent === 1 ? "dia" : "dias"} de sequência`}
           </span>
         </div>
 
@@ -475,7 +544,7 @@ export function TodayInteractiveSection({
         ) : null}
       </div>
 
-      {displaySummary ? (
+      {displaySummary && !displaySummary.justFinalized ? (
         <div className="mt-3">
           <FinalizeSummaryPanel missions={missions} summary={displaySummary} />
         </div>
@@ -578,6 +647,19 @@ export function TodayInteractiveSection({
         onOpenChange={setUnlockModalOpen}
         open={unlockModalOpen}
       />
+
+      {summary ? (
+        <DailyCompletionCelebration
+          challengeMessage={resolvedChallengeMessage}
+          dayNumber={dayNumber}
+          enrollmentId={enrollmentId}
+          missions={missions}
+          onOpenAchievements={() => setUnlockModalOpen(true)}
+          onOpenChange={setCelebrationOpen}
+          open={celebrationOpen}
+          summary={summary}
+        />
+      ) : null}
     </>
   );
 }
