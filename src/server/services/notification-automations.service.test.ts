@@ -58,15 +58,72 @@ describe("notification-automations.service.ts - safety contract", () => {
     expect(source).toContain('source: "automation"');
   });
 
-  it("runAllScheduledAutomations covers exactly the 5 date-driven automations - new tip and achievement are event-driven, triggered from their own call sites, not polled here", () => {
+  it("runAllScheduledAutomations covers the 5 date-driven automations plus the smart tick (habit reminders + daily motivation) - new tip and achievement stay event-driven, triggered from their own call sites, not polled here", () => {
     const fn = source.slice(source.indexOf("export async function runAllScheduledAutomations"));
     expect(fn).toContain("runDailyReminderAutomation();");
     expect(fn).toContain("runChallengeStartingTomorrowAutomation();");
     expect(fn).toContain("runChallengeStartingTodayAutomation();");
     expect(fn).toContain("runChallengeEndingSoonAutomation();");
     expect(fn).toContain("runInactiveUserAutomation();");
+    expect(fn).toContain("runSmartNotificationTick();");
     expect(fn).not.toContain("runNewTipPublishedAutomation");
     expect(fn).not.toContain("runAchievementUnlockedAutomation");
+  });
+});
+
+describe("notification-automations.service.ts - Modulo G smart tick (runSmartNotificationTick)", () => {
+  const source = readSource();
+  const fn = source.slice(
+    source.indexOf("export async function runSmartNotificationTick"),
+    source.indexOf("/** Runs every date-driven automation once"),
+  );
+
+  it("calls the single RPC engine, never resolving audience or anti-spam logic itself in TS (Parte 14: selecao roda no banco)", () => {
+    expect(fn).toContain('supabase.rpc("automation_resolve_smart_notification_candidates"');
+  });
+
+  it("groups results by candidate_key so each habit and the daily motivation message each get their own campaign, not one campaign per user", () => {
+    expect(fn).toContain("byCandidateKey");
+    expect(fn).toContain("row.candidate_key");
+  });
+
+  it("habit reminder campaigns are keyed per habit per day (re-dispatchable across ticks, distinct per habit) - the daily motivation campaign is keyed once per day for the whole app", () => {
+    expect(fn).toContain("`habit_reminder:${sample.habit_id}:${today}`");
+    expect(fn).toContain("`daily_motivation:${today}`");
+  });
+
+  it("uses automation_type values that exactly match what the SQL anti-spam window checks (n.type in ('habit_reminder', 'daily_motivation'))", () => {
+    expect(fn).toContain('automationType: isMotivation ? "daily_motivation" : "habit_reminder"');
+  });
+
+  it("picks today's motivation message via pickDailyMotivationMessage before calling the RPC, never inline/random in the dispatch loop itself", () => {
+    expect(fn).toContain("pickDailyMotivationMessage(supabase)");
+  });
+});
+
+describe("notification-automations.service.ts - Modulo G pickDailyMotivationMessage (Parte 3: never repeat consecutive days)", () => {
+  const source = readSource();
+  const fn = source.slice(
+    source.indexOf("async function pickDailyMotivationMessage"),
+    source.indexOf("export async function runSmartNotificationTick"),
+  );
+
+  it("looks up the most recent daily_motivation campaign to decide whether today's message was already chosen", () => {
+    expect(fn).toContain('.eq("automation_type", "daily_motivation")');
+    expect(fn).toContain('.order("created_at", { ascending: false })');
+  });
+
+  it("reuses the same message across ticks within the same day (stability), and only re-draws once the last pick is from a prior day", () => {
+    expect(fn).toContain("toSaoPauloDate(lastCampaign.created_at) === today");
+  });
+
+  it("excludes the most recent message from the new draw whenever there's more than one eligible message, satisfying the never-repeat-consecutive-day rule", () => {
+    expect(fn).toContain("message.id !== lastMessageId");
+  });
+
+  it("filters candidates by their starts_at/ends_at window before drawing, respecting daily_motivation_messages' own eligibility window", () => {
+    expect(fn).toContain("message.starts_at");
+    expect(fn).toContain("message.ends_at");
   });
 
   it("never imports or calls anything from the achievement engine's own migration-level RPCs - only reacts to what finalize_daily_log_with_responses already returned", () => {

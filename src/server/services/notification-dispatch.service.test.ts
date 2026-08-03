@@ -55,8 +55,9 @@ describe("notification-dispatch.service.ts - safety contract", () => {
     expect(source).not.toMatch(/console\.(log|error|warn)\([^)]*\bauth\b/i);
   });
 
-  it("resolveNotificationCampaign resolves the audience through the same RPC the compositor's live estimate uses", () => {
-    expect(source).toContain('supabase.rpc("resolve_notification_audience"');
+  it("processNotificationCampaign resolves the audience through resolve_notification_audience_combined (Modulo G, Parte 11) - the same combined wrapper admin_estimate_notification_audience uses, so min_streak_threshold/habit_keyword can never diverge between the shown estimate and the real send", () => {
+    expect(source).toContain('supabase.rpc("resolve_notification_audience_combined"');
+    expect(source).toContain("p_combined_min_streak: campaign.min_streak_threshold ?? undefined");
   });
 
   it("finalizes a campaign as sent/partially_failed/failed only once no deliveries remain pending", () => {
