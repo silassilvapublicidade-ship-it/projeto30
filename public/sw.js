@@ -198,3 +198,137 @@ self.addEventListener("fetch", (event) => {
   // Everything else (API routes, RSC data requests, Supabase calls, etc.):
   // do not intercept at all.
 });
+
+/**
+ * Web Push (Modulo F). Everything below is additive to the caching logic
+ * above - no existing listener is touched, and push/notificationclick only
+ * ever act on notification data, never on cache/fetch.
+ *
+ * Destination allowlist duplicated by hand from
+ * src/features/notifications/notification-destination.core.ts - this file
+ * has no build step (see the header comment), so it cannot import that
+ * module. Keep both in sync if the allowlist ever changes.
+ */
+const NOTIFICATION_DESTINATION_TYPES = [
+  "hoje",
+  "desafios",
+  "desafio",
+  "jornada",
+  "dicas",
+  "dica",
+  "conquistas",
+  "notificacoes",
+  "configuracoes_notificacoes",
+];
+
+function isSafeSlug(value) {
+  return /^[a-z0-9][a-z0-9-]{0,118}[a-z0-9]$|^[a-z0-9]$/.test(value);
+}
+
+function resolveDestinationPath(destinationType, destinationReferenceId) {
+  if (NOTIFICATION_DESTINATION_TYPES.indexOf(destinationType) === -1) {
+    return null;
+  }
+
+  const ref = (destinationReferenceId || "").trim();
+
+  switch (destinationType) {
+    case "hoje":
+      return "/app/hoje";
+    case "desafios":
+      return "/app/desafios";
+    case "desafio":
+      return ref && isSafeSlug(ref) ? "/app/desafios/" + ref : null;
+    case "jornada":
+      return "/app/jornada";
+    case "dicas":
+      return "/app/dicas";
+    case "dica":
+      return ref && isSafeSlug(ref) ? "/app/dicas/" + ref : null;
+    case "conquistas":
+      return "/app/conquistas";
+    case "notificacoes":
+      return "/app/notificacoes";
+    case "configuracoes_notificacoes":
+      return "/app/configuracoes/notificacoes";
+    default:
+      return null;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    return;
+  }
+
+  if (!payload || typeof payload.title !== "string" || typeof payload.body !== "string") {
+    return;
+  }
+
+  const destinationPath = resolveDestinationPath(payload.destinationType, payload.destinationReferenceId);
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      badge: payload.badge || "/icons/icon-192.png",
+      body: payload.body,
+      data: {
+        campaignId: payload.campaignId || null,
+        deliveryId: payload.deliveryId || null,
+        destinationPath,
+        notificationId: payload.notificationId || null,
+      },
+      icon: payload.icon || "/icons/icon-192.png",
+      image: payload.image || undefined,
+      tag: payload.tag || undefined,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  const data = (event.notification && event.notification.data) || {};
+  const destinationPath = data.destinationPath;
+
+  event.notification.close();
+
+  event.waitUntil(
+    (async () => {
+      // Best-effort click tracking - never blocks navigation on failure.
+      if (data.notificationId || data.deliveryId) {
+        try {
+          await fetch("/api/notifications/click", {
+            body: JSON.stringify({ deliveryId: data.deliveryId, notificationId: data.notificationId }),
+            credentials: "include",
+            headers: { "content-type": "application/json" },
+            method: "POST",
+          });
+        } catch {
+          // Ignored - the click itself must still open the destination.
+        }
+      }
+
+      if (!destinationPath) {
+        return;
+      }
+
+      const targetUrl = new URL(destinationPath, self.location.origin).href;
+      const windowClients = await clients.matchAll({ includeUncontrolled: true, type: "window" });
+
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin) && "focus" in client) {
+          await client.focus();
+          if ("navigate" in client) {
+            await client.navigate(targetUrl);
+          }
+          return;
+        }
+      }
+
+      await clients.openWindow(targetUrl);
+    })(),
+  );
+});

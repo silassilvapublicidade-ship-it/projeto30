@@ -1,4 +1,5 @@
-import { Settings } from "lucide-react";
+import Link from "next/link";
+import { Bell, ChevronRight, Settings } from "lucide-react";
 
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
 import { Card } from "@/components/ui/card";
@@ -47,6 +48,20 @@ export default async function ConfiguracoesPage() {
           ))}
         </div>
       </Card>
+
+      <Link
+        className="mt-4 flex items-center gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
+        href="/app/configuracoes/notificacoes"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-action/12 text-action-soft">
+          <Bell aria-hidden="true" size={16} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">Notificações</span>
+          <span className="block text-xs text-muted-2">Lembretes, push e o que você quer receber</span>
+        </span>
+        <ChevronRight aria-hidden="true" className="shrink-0 text-muted-2" size={16} />
+      </Link>
     </MemberEmptyPage>
   );
 }

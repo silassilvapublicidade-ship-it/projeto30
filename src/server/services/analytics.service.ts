@@ -10,7 +10,19 @@ export type AnalyticsEventName =
   | "share_achievement_completed"
   | "tip_card_viewed"
   | "tip_card_opened"
-  | "tip_card_downloaded";
+  | "tip_card_downloaded"
+  // Modulo F - eventos disparados a partir do cliente (auth.uid() resolve
+  // pela sessao normalmente). Eventos disparados pelo processador em lote
+  // (notification_sent/failed/campaign_created/campaign_scheduled/
+  // notification_scheduled) NAO passam por aqui - ver
+  // notification-analytics.service.ts (insert direto via service role).
+  | "notification_opened"
+  | "notification_read"
+  | "notification_clicked"
+  | "push_permission_granted"
+  | "push_permission_denied"
+  | "push_subscription_created"
+  | "push_subscription_revoked";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;

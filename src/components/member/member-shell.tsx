@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { MemberAvatar } from "@/components/member/member-avatar";
@@ -8,17 +8,20 @@ import {
   MemberDesktopNavigation,
   MemberMobileNavigation,
 } from "@/components/member/member-navigation";
+import { NotificationBellLink } from "@/components/member/notification-bell-link";
+import { SignOutForm } from "@/components/member/sign-out-form";
 import { Button } from "@/components/ui/button";
 import { isAdminRole } from "@/features/admin/admin-access.core";
-import { signOutAndRedirectAction } from "@/features/auth/auth.actions";
 import type { MemberContext } from "@/server/services/member-area.service";
 
 export function MemberShell({
   children,
   context,
+  unreadNotificationCount,
 }: {
   children: ReactNode;
   context: MemberContext;
+  unreadNotificationCount: number;
 }) {
   const displayName =
     context.profile.display_name || context.profile.name || context.profile.email;
@@ -46,12 +49,13 @@ export function MemberShell({
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3 shadow-[var(--shadow-hairline)]">
               <BrandLogo decorative preload size={40} />
-              <span>
+              <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Projeto 30</span>
                 <span className="font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-2">
                   Area de membros
                 </span>
               </span>
+              <NotificationBellLink unreadCount={unreadNotificationCount} />
             </div>
 
             <div className="mt-6">
@@ -95,16 +99,7 @@ export function MemberShell({
                 </Button>
               ) : null}
 
-              <form action={signOutAndRedirectAction}>
-                <Button
-                  className="w-full"
-                  leadingIcon={<LogOut aria-hidden="true" size={15} />}
-                  type="submit"
-                  variant="ghost"
-                >
-                  Sair
-                </Button>
-              </form>
+              <SignOutForm />
             </div>
           </div>
         </aside>
@@ -128,6 +123,7 @@ export function MemberShell({
                 </span>
               </Link>
               <div className="flex shrink-0 items-center gap-2">
+                <NotificationBellLink compact unreadCount={unreadNotificationCount} />
                 {showAdminAccess ? (
                   <Button
                     aria-label="Acessar administração"
@@ -139,17 +135,7 @@ export function MemberShell({
                     <ShieldCheck aria-hidden="true" size={15} />
                   </Button>
                 ) : null}
-                <form action={signOutAndRedirectAction}>
-                  <Button
-                    aria-label="Sair"
-                    leadingIcon={<LogOut aria-hidden="true" size={15} />}
-                    size="sm"
-                    type="submit"
-                    variant="secondary"
-                  >
-                    Sair
-                  </Button>
-                </form>
+                <SignOutForm compact />
               </div>
             </div>
           </header>
