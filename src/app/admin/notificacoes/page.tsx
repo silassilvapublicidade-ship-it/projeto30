@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
 import { buildAdminQuery } from "@/components/admin/admin-query-utils";
@@ -10,6 +11,7 @@ import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import {
   ADMIN_NOTIFICATION_CAMPAIGN_PAGE_SIZE,
+  getNotificationCampaignPeriodSummary,
   listAdminNotificationCampaigns,
 } from "@/server/services/admin-notification-campaigns.service";
 import { requireAdminUser } from "@/server/services/admin-session.service";
@@ -80,7 +82,10 @@ export default async function AdminNotificationsPage({ searchParams }: AdminNoti
   const pageParam = Array.isArray(rawParams.page) ? rawParams.page[0] : rawParams.page;
   const page = Math.max(1, Number(pageParam) || 1);
 
-  const { data, error } = await listAdminNotificationCampaigns({ page, search, status });
+  const [{ data, error }, periodSummary] = await Promise.all([
+    listAdminNotificationCampaigns({ page, search, status }),
+    getNotificationCampaignPeriodSummary(30),
+  ]);
 
   const feedbackKey = Array.isArray(rawParams.feedback) ? rawParams.feedback[0] : rawParams.feedback;
   const feedback = feedbackKey ? feedbackMessages[feedbackKey] : undefined;
@@ -95,9 +100,14 @@ export default async function AdminNotificationsPage({ searchParams }: AdminNoti
             Campanhas personalizadas, agendamentos e automações da Central de Notificações.
           </p>
         </div>
-        <Button as="a" href="/admin/notificacoes/nova">
-          Nova notificação
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button as="a" href="/admin/notificacoes/motivacionais" variant="secondary">
+            Mensagens motivacionais
+          </Button>
+          <Button as="a" href="/admin/notificacoes/nova">
+            Nova notificação
+          </Button>
+        </div>
       </div>
 
       {feedback ? (
@@ -111,6 +121,13 @@ export default async function AdminNotificationsPage({ searchParams }: AdminNoti
           }
         />
       ) : null}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <AdminMetricCard hint="Últimos 30 dias" label="Campanhas enviadas" value={periodSummary.campaignsSent.toLocaleString("pt-BR")} />
+        <AdminMetricCard hint="Últimos 30 dias" label="Notificações enviadas" value={periodSummary.notificationsSent.toLocaleString("pt-BR")} />
+        <AdminMetricCard hint="Últimos 30 dias" label="Abertas" value={periodSummary.notificationsOpened.toLocaleString("pt-BR")} />
+        <AdminMetricCard hint="Últimos 30 dias" label="Clicadas" value={periodSummary.notificationsClicked.toLocaleString("pt-BR")} />
+      </div>
 
       <form
         className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:flex-row sm:items-center"
