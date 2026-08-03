@@ -5,6 +5,7 @@ import { resolveDailyPrompt } from "@/features/journey/habit-daily-prompt.core";
 import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
 import { getJourneyDayState } from "@/features/journey/journey-day-state.core";
 import type { JourneyDayState } from "@/features/journey/journey-day-state.core";
+import { readStreakMinimumCompletion } from "@/features/journey/rules.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
@@ -141,6 +142,7 @@ export type JourneySummary = {
   startDate: string | null;
   status: Tables<"challenge_enrollments">["status"];
   streakCurrent: number;
+  streakMinimumCompletion: number;
 };
 
 export type JourneyRecurringHabitProgress = {
@@ -484,6 +486,7 @@ export async function getJourneyDetail({
       startDate: challenge.start_date,
       status: enrollment.status,
       streakCurrent: enrollment.streak_current,
+      streakMinimumCompletion: readStreakMinimumCompletion(challenge.rules_config),
     },
   };
 }
