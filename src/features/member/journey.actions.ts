@@ -10,6 +10,7 @@ import {
   getJourneyRpcClient,
   getSafeJourneyErrorMessage,
 } from "@/server/services/journey-rpc.service";
+import { runAchievementUnlockedAutomation } from "@/server/services/notification-automations.service";
 
 const uuidSchema = z.uuid();
 
@@ -196,7 +197,7 @@ export async function finalizeDayWithResponsesAction(
   dailyLogId: string,
   responses: FinalizeResponseInput[],
 ): Promise<FinalizeDayActionResult> {
-  await requireAuthUser("/app/hoje");
+  const user = await requireAuthUser("/app/hoje");
 
   const parsed = finalizeWithResponsesSchema.safeParse({ dailyLogId, responses });
 
@@ -228,9 +229,33 @@ export async function finalizeDayWithResponsesAction(
     };
   }
 
+  const summary = mapFinalizeSummary(data);
+
+  // Fires the achievement-unlocked automation for each achievement this
+  // finalize just unlocked, without touching the engine that decided the
+  // unlock (finalize_daily_log_with_responses itself, untouched) - this only
+  // reacts to what that RPC already returned. Never allowed to fail the
+  // finalize response itself: a misconfigured notification backend must
+  // never block a member from seeing their day was saved.
+  try {
+    await Promise.all(
+      summary.unlockedAchievements.map((achievement) =>
+        runAchievementUnlockedAutomation({
+          achievementName: achievement.name,
+          userAchievementId: achievement.userAchievementId,
+          userId: user.id,
+        }),
+      ),
+    );
+  } catch (automationError) {
+    logJourneyRpcFailure("achievement_unlocked_automation", {
+      message: automationError instanceof Error ? automationError.message : String(automationError),
+    });
+  }
+
   revalidatePath("/app/hoje");
   revalidatePath("/app/jornada");
   revalidatePath("/app/conquistas");
 
-  return { ok: true, summary: mapFinalizeSummary(data) };
+  return { ok: true, summary };
 }

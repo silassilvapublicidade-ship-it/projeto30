@@ -8,6 +8,7 @@ import sharp from "sharp";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminUser } from "@/server/services/admin-session.service";
+import { runNewTipPublishedAutomation } from "@/server/services/notification-automations.service";
 
 import {
   isRecommendedTipImageRatio,
@@ -398,12 +399,22 @@ function resolveRedirectTarget(formData: FormData) {
  * in this product is a visual card by definition. Works from both draft and
  * archived (no status precondition beyond "has an image") - "Publicar" and
  * "Publicar novamente" in the menu are the same action under two labels.
+ *
+ * The optional "avisar usuários" checkbox (name="notifyUsers") only ever
+ * fires the new-tip-published automation from THIS explicit submission - it
+ * is never inferred, never carried over, and never fires for
+ * unpublish/archive. Re-publishing the same tip with the box checked again
+ * notifies again on purpose (a fresh confirmation each time), which is why
+ * the automation's idempotency key is based on this call's own timestamp
+ * rather than content_items.published_at (which re-publish deliberately
+ * leaves untouched below).
  */
 export async function publishTipAction(formData: FormData) {
   const admin = await requireAdminUser();
 
   const { separator, target } = resolveRedirectTarget(formData);
   const tipId = tipIdSchema.safeParse(formData.get("tipId"));
+  const notifyUsers = formData.get("notifyUsers") === "on";
 
   if (!tipId.success) {
     redirect(`${target}${separator}feedback=invalid`);
@@ -412,7 +423,7 @@ export async function publishTipAction(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const { data: tip } = await supabase
     .from("content_items")
-    .select("category, image_url, published_at, title")
+    .select("category, image_url, published_at, slug, title")
     .eq("id", tipId.data)
     .eq("content_type", TIP_CONTENT_TYPE)
     .maybeSingle();
@@ -438,6 +449,15 @@ export async function publishTipAction(formData: FormData) {
 
   if (error) {
     redirect(`${target}${separator}feedback=error`);
+  }
+
+  if (notifyUsers) {
+    await runNewTipPublishedAutomation({
+      publishedAt: new Date().toISOString(),
+      tipId: tipId.data,
+      tipSlug: tip.slug,
+      tipTitle: tip.title,
+    });
   }
 
   revalidateTipPaths(tipId.data);

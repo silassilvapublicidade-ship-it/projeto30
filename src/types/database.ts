@@ -828,13 +828,222 @@ export type Database = {
           },
         ]
       }
+      notification_campaigns: {
+        Row: {
+          action_label: string | null
+          audience_estimated_count: number | null
+          audience_type: string
+          automation_type: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          challenge_id: string | null
+          channel_internal: boolean
+          channel_push: boolean
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          destination_reference_id: string | null
+          destination_type: string
+          id: string
+          idempotency_key: string
+          image_url: string | null
+          message: string
+          metadata: Json
+          scheduled_for: string | null
+          source: string
+          specific_user_id: string | null
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          action_label?: string | null
+          audience_estimated_count?: number | null
+          audience_type: string
+          automation_type?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          challenge_id?: string | null
+          channel_internal?: boolean
+          channel_push?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_reference_id?: string | null
+          destination_type: string
+          id?: string
+          idempotency_key?: string
+          image_url?: string | null
+          message: string
+          metadata?: Json
+          scheduled_for?: string | null
+          source?: string
+          specific_user_id?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          action_label?: string | null
+          audience_estimated_count?: number | null
+          audience_type?: string
+          automation_type?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          challenge_id?: string | null
+          channel_internal?: boolean
+          channel_push?: boolean
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_reference_id?: string | null
+          destination_type?: string
+          id?: string
+          idempotency_key?: string
+          image_url?: string | null
+          message?: string
+          metadata?: Json
+          scheduled_for?: string | null
+          source?: string
+          specific_user_id?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_campaigns_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_campaigns_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_campaigns_specific_user_id_fkey"
+            columns: ["specific_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_deliveries: {
+        Row: {
+          campaign_id: string
+          clicked_at: string | null
+          created_at: string
+          failed_at: string | null
+          failure_code: string | null
+          failure_message: string | null
+          id: string
+          idempotency_key: string
+          internal_notification_id: string | null
+          next_retry_at: string | null
+          opened_at: string | null
+          read_at: string | null
+          retry_count: number
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          clicked_at?: string | null
+          created_at?: string
+          failed_at?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          idempotency_key: string
+          internal_notification_id?: string | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          read_at?: string | null
+          retry_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          clicked_at?: string | null
+          created_at?: string
+          failed_at?: string | null
+          failure_code?: string | null
+          failure_message?: string | null
+          id?: string
+          idempotency_key?: string
+          internal_notification_id?: string | null
+          next_retry_at?: string | null
+          opened_at?: string | null
+          read_at?: string | null
+          retry_count?: number
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_internal_notification_id_fkey"
+            columns: ["internal_notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
+          action_label: string | null
           body: string
+          campaign_id: string | null
           channel: string
+          clicked_at: string | null
           created_at: string
           data: Json
+          delivery_id: string | null
+          destination_reference_id: string | null
+          destination_type: string | null
           id: string
+          image_url: string | null
+          opened_at: string | null
           read_at: string | null
           scheduled_at: string | null
           sent_at: string | null
@@ -845,11 +1054,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          action_label?: string | null
           body: string
+          campaign_id?: string | null
           channel?: string
+          clicked_at?: string | null
           created_at?: string
           data?: Json
+          delivery_id?: string | null
+          destination_reference_id?: string | null
+          destination_type?: string | null
           id?: string
+          image_url?: string | null
+          opened_at?: string | null
           read_at?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
@@ -860,11 +1077,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          action_label?: string | null
           body?: string
+          campaign_id?: string | null
           channel?: string
+          clicked_at?: string | null
           created_at?: string
           data?: Json
+          delivery_id?: string | null
+          destination_reference_id?: string | null
+          destination_type?: string | null
           id?: string
+          image_url?: string | null
+          opened_at?: string | null
           read_at?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
@@ -875,6 +1100,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "notification_deliveries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_user_id_fkey"
             columns: ["user_id"]
@@ -938,6 +1177,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenge_enrollments"
             referencedColumns: ["id", "user_id", "challenge_id"]
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_name: string | null
+          endpoint: string
+          failure_count: number
+          id: string
+          last_failure_at: string | null
+          last_success_at: string | null
+          p256dh: string
+          platform: string | null
+          revoked_at: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_name?: string | null
+          endpoint: string
+          failure_count?: number
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_name?: string | null
+          endpoint?: string
+          failure_count?: number
+          id?: string
+          last_failure_at?: string | null
+          last_success_at?: string | null
+          p256dh?: string
+          platform?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1337,6 +1635,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      admin_cancel_notification_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: undefined
+      }
       admin_challenge_detail: {
         Args: { p_challenge_id: string }
         Returns: Json
@@ -1349,9 +1651,29 @@ export type Database = {
         Args: { p_challenge_id: string }
         Returns: Json
       }
+      admin_create_notification_campaign: {
+        Args: {
+          p_action_label?: string | undefined
+          p_audience_type: string
+          p_challenge_id?: string | undefined
+          p_channel_internal?: boolean | undefined
+          p_channel_push?: boolean | undefined
+          p_destination_reference_id?: string | undefined
+          p_destination_type: string
+          p_image_url?: string | undefined
+          p_message: string
+          p_specific_user_id?: string | undefined
+          p_title: string
+        }
+        Returns: string
+      }
       admin_dashboard_overview: { Args: never; Returns: Json }
       admin_delete_achievement: {
         Args: { p_achievement_id: string }
+        Returns: undefined
+      }
+      admin_delete_notification_campaign_draft: {
+        Args: { p_campaign_id: string }
         Returns: undefined
       }
       admin_delete_test_challenge_permanently: {
@@ -1362,6 +1684,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_duplicate_notification_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: string
+      }
       admin_end_challenge: {
         Args: { p_challenge_id: string; p_confirmation_name: string }
         Returns: undefined
@@ -1370,8 +1696,20 @@ export type Database = {
         Args: { p_challenge_id: string; p_user_id: string }
         Returns: string
       }
+      admin_estimate_notification_audience: {
+        Args: {
+          p_audience_type: string
+          p_challenge_id?: string | undefined
+          p_specific_user_id?: string | undefined
+        }
+        Returns: number
+      }
       admin_generate_challenge_days: {
         Args: { p_challenge_id: string }
+        Returns: Json
+      }
+      admin_get_notification_campaign: {
+        Args: { p_campaign_id: string }
         Returns: Json
       }
       admin_list_challenges: {
@@ -1396,6 +1734,37 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["challenge_status"]
           total_count: number
+        }[]
+      }
+      admin_list_notification_campaigns: {
+        Args: {
+          p_limit?: number | undefined
+          p_offset?: number | undefined
+          p_search?: string | undefined
+          p_sort_by?: string | undefined
+          p_sort_dir?: string | undefined
+          p_status?: string | undefined
+        }
+        Returns: {
+          audience_estimated_count: number
+          audience_type: string
+          channel_internal: boolean
+          channel_push: boolean
+          clicked_count: number
+          completed_at: string
+          created_at: string
+          created_by_name: string
+          delivered_count: number
+          failed_count: number
+          id: string
+          opened_count: number
+          scheduled_for: string
+          sent_count: number
+          source: string
+          status: string
+          title: string
+          total_count: number
+          total_recipients: number
         }[]
       }
       admin_list_participants: {
@@ -1492,11 +1861,36 @@ export type Database = {
         Args: { p_challenge_id: string; p_day: number }
         Returns: Json
       }
+      admin_schedule_notification_campaign: {
+        Args: { p_campaign_id: string; p_scheduled_for: string }
+        Returns: undefined
+      }
+      admin_start_notification_campaign_now: {
+        Args: { p_campaign_id: string }
+        Returns: undefined
+      }
       admin_test_challenge_purge_preview: {
         Args: { target_challenge_id: string }
         Returns: Json
       }
       admin_tips_analytics: { Args: never; Returns: Json }
+      admin_update_notification_campaign: {
+        Args: {
+          p_action_label?: string | undefined
+          p_audience_type: string
+          p_campaign_id: string
+          p_challenge_id?: string | undefined
+          p_channel_internal?: boolean | undefined
+          p_channel_push?: boolean | undefined
+          p_destination_reference_id?: string | undefined
+          p_destination_type: string
+          p_image_url?: string | undefined
+          p_message: string
+          p_specific_user_id?: string | undefined
+          p_title: string
+        }
+        Returns: undefined
+      }
       admin_update_user_profile: {
         Args: {
           p_city: string
@@ -1522,6 +1916,44 @@ export type Database = {
       }
       admin_user_detail: { Args: { p_user_id: string }; Returns: Json }
       admin_users_analytics: { Args: never; Returns: Json }
+      automation_resolve_challenge_date_audience: {
+        Args: { p_days_offset: number; p_use_start_date: boolean }
+        Returns: {
+          challenge_id: string
+          challenge_name: string
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_daily_reminder_audience: {
+        Args: never
+        Returns: {
+          local_date: string
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_inactive_users_audience: {
+        Args: { p_inactive_days?: number | undefined }
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_new_tip_subscribers_audience: {
+        Args: never
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_specific_users_audience: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1535,7 +1967,7 @@ export type Database = {
         Returns: Json
       }
       finalize_daily_log_with_responses: {
-        Args: { responses?: Json | undefined; target_daily_log_id: string }
+        Args: { responses?: Json; target_daily_log_id: string }
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
@@ -1570,6 +2002,23 @@ export type Database = {
         Args: { fallback_value: number; target_key: string; target_rules: Json }
         Returns: number
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
+      mark_delivery_clicked: {
+        Args: { p_delivery_id: string }
+        Returns: undefined
+      }
+      mark_notification_clicked: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
+      mark_notification_opened: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: undefined
+      }
       owns_daily_log: {
         Args: { target_daily_log_id: string }
         Returns: boolean
@@ -1580,15 +2029,30 @@ export type Database = {
       }
       record_analytics_event: {
         Args: {
-          p_challenge_id?: string | undefined
-          p_content_item_id?: string | undefined
-          p_enrollment_id?: string | undefined
+          p_challenge_id?: string
+          p_content_item_id?: string
+          p_enrollment_id?: string
           p_event_name: string
-          p_metadata?: Json | undefined
-          p_session_id?: string | undefined
-          p_source?: string | undefined
+          p_metadata?: Json
+          p_session_id?: string
+          p_source?: string
         }
         Returns: string
+      }
+      resolve_notification_audience: {
+        Args: {
+          p_audience_type: string
+          p_challenge_id?: string | undefined
+          p_specific_user_id?: string | undefined
+        }
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      revoke_push_subscription: {
+        Args: { p_endpoint: string }
+        Returns: undefined
       }
       save_journal_entry: {
         Args: {
@@ -1611,6 +2075,17 @@ export type Database = {
           target_value_json?: Json
         }
         Returns: Json
+      }
+      upsert_push_subscription: {
+        Args: {
+          p_auth: string
+          p_device_name?: string
+          p_endpoint: string
+          p_p256dh: string
+          p_platform?: string
+          p_user_agent?: string
+        }
+        Returns: string
       }
     }
     Enums: {

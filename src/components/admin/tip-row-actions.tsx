@@ -24,6 +24,7 @@ function ActionForm({
   action,
   children,
   close,
+  extraFields,
   hiddenTipId,
   redirectTo,
   tone = "default",
@@ -31,6 +32,7 @@ function ActionForm({
   action: (formData: FormData) => void | Promise<void>;
   children: React.ReactNode;
   close: () => void;
+  extraFields?: Record<string, string>;
   hiddenTipId: string;
   redirectTo: string;
   tone?: "danger" | "default";
@@ -39,6 +41,9 @@ function ActionForm({
     <form action={action} onSubmit={close}>
       <input name="tipId" type="hidden" value={hiddenTipId} />
       <input name="redirectTo" type="hidden" value={redirectTo} />
+      {Object.entries(extraFields ?? {}).map(([name, value]) => (
+        <input key={name} name={name} type="hidden" value={value} />
+      ))}
       <DropdownMenuItem tone={tone} type="submit">
         {children}
       </DropdownMenuItem>
@@ -64,16 +69,21 @@ export function TipRowActions({ redirectTo, status, tipId, tipTitle }: TipRowAct
             <DropdownMenuItem href={`/admin/dicas/${tipId}/preview`}>Ver prévia</DropdownMenuItem>
             <DropdownMenuItem href={`/admin/dicas/${tipId}/editar`}>Editar</DropdownMenuItem>
 
-            {status === "draft" ? (
-              <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
-                Publicar
-              </ActionForm>
-            ) : null}
-
-            {status === "archived" ? (
-              <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
-                Publicar novamente
-              </ActionForm>
+            {status === "draft" || status === "archived" ? (
+              <>
+                <ActionForm action={publishTipAction} close={close} hiddenTipId={tipId} redirectTo={redirectTo}>
+                  {status === "draft" ? "Publicar" : "Publicar novamente"}
+                </ActionForm>
+                <ActionForm
+                  action={publishTipAction}
+                  close={close}
+                  extraFields={{ notifyUsers: "on" }}
+                  hiddenTipId={tipId}
+                  redirectTo={redirectTo}
+                >
+                  {status === "draft" ? "Publicar e avisar usuários" : "Publicar novamente e avisar usuários"}
+                </ActionForm>
+              </>
             ) : null}
 
             {status === "published" ? (
