@@ -1,15 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import type { AdminSearchParams } from "@/components/admin/admin-query-utils";
+import { CockpitBlockCard, type CockpitBlockStatus } from "@/components/admin/cockpit-block-card";
 import { CopyDiagnosticButton } from "@/components/admin/copy-diagnostic-button";
+import { ObservabilitySection } from "@/components/admin/observability-section";
 import { ObservabilityStatusBanner } from "@/components/admin/observability-status-banner";
+import { StatLine } from "@/components/admin/stat-line";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { APP_VERSION, getDeployInfo, LATEST_MIGRATION_ID, SERVICE_WORKER_VERSION } from "@/config/system-version";
+import { describeCronEvidenceLabel, describeCronHealth } from "@/features/admin/cron-schedule.core";
 import { buildHealthAlerts } from "@/features/observability/health-alerts.core";
 import {
   SYSTEM_ERROR_AREA_LABELS,
@@ -27,10 +30,10 @@ import { requireAdminUser } from "@/server/services/admin-session.service";
 import { getSystemHealthOverview, listSystemErrorEvents } from "@/server/services/system-observability.service";
 
 export const metadata: Metadata = {
-  title: "Observabilidade · Administração",
+  title: "Central Operacional · Administração",
 };
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 5;
 
 const severityBadgeTone: Record<SystemErrorSeverity, "accent" | "neutral" | "success" | "warning" | "danger"> = {
   info: "neutral",
@@ -49,6 +52,20 @@ const alertToneClass: Record<"critical" | "warning" | "info", string> = {
   critical: "border-danger/25 bg-danger-wash text-danger",
   warning: "border-warning/25 bg-warning-wash text-warning",
   info: "border-white/[0.08] bg-white/[0.035] text-muted",
+};
+
+const sectionBadgeTone: Record<CockpitBlockStatus, "success" | "accent" | "warning" | "danger"> = {
+  saudavel: "success",
+  atencao: "accent",
+  degradado: "warning",
+  critico: "danger",
+};
+
+const sectionBadgeLabel: Record<CockpitBlockStatus, string> = {
+  saudavel: "Saudável",
+  atencao: "Atenção",
+  degradado: "Degradado",
+  critico: "Crítico",
 };
 
 function formatDateTime(value: string | null) {
@@ -91,8 +108,25 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
   ]);
 
   const alerts = buildHealthAlerts(overview);
+  const [topAlert] = alerts;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const deployInfo = getDeployInfo();
+  const cronHealth = describeCronHealth(overview);
+  const cronEvidenceLabel = describeCronEvidenceLabel(overview);
+  const hasAnyFiltersApplied = Boolean(area || severity || status);
+  const hasEverHadErrors = totalCount > 0 || hasAnyFiltersApplied;
+
+  const notificationsStatus: CockpitBlockStatus =
+    overview.campaignsFailed24h > 0
+      ? "critico"
+      : overview.campaignsPartial24h > 0 || overview.deliveriesRetry >= 10
+        ? "atencao"
+        : "saudavel";
+
+  const contentFailures = overview.cardsFailed24h + overview.uploadsFailed24h;
+  const contentStatus: CockpitBlockStatus = contentFailures > 0 ? "atencao" : "saudavel";
+
+  const usersStatus: CockpitBlockStatus = overview.onboardingStuck >= 5 ? "atencao" : "saudavel";
 
   const versionCopyText = [
     `Versão: ${APP_VERSION}`,
@@ -102,226 +136,290 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
     `Última migration: ${LATEST_MIGRATION_ID}`,
   ].join("\n");
 
+  const updatedAt = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Observabilidade</h1>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          Painel técnico para identificar rapidamente falhas reais, sem precisar de terminal, Vercel ou
-          Supabase Studio.
-        </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Central Operacional</h1>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Saúde do sistema, alertas e diagnósticos em um só lugar.
+          </p>
+        </div>
+        <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Atualizado às {updatedAt}</p>
       </div>
 
       <ObservabilityStatusBanner status={overview.status} />
 
-      {alerts.length > 0 ? (
-        <div className="space-y-2">
-          {alerts.map((alert) => (
-            <div className={`rounded-[var(--radius-card)] border p-3 sm:p-4 ${alertToneClass[alert.tone]}`} key={alert.title}>
-              <p className="text-sm font-semibold text-foreground">{alert.title}</p>
-              <p className="mt-1 text-xs leading-5 text-muted sm:text-sm">{alert.description}</p>
+      {topAlert ? (
+        <div className={`min-w-0 rounded-[var(--radius-card)] border p-3 sm:p-4 ${alertToneClass[topAlert.tone]}`}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="break-words text-sm font-semibold text-foreground">{topAlert.title}</p>
+              <p className="mt-1 break-words text-xs leading-5 text-muted sm:text-sm">{topAlert.description}</p>
+              {alerts.length > 1 ? (
+                <p className="mt-2 text-xs text-muted-2">+{alerts.length - 1} outro(s) ponto(s) nas seções abaixo.</p>
+              ) : null}
             </div>
-          ))}
+            {topAlert.href ? (
+              <Link
+                className="inline-flex shrink-0 items-center rounded-[var(--radius-pill)] border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-white/[0.08] focus-visible:outline-action-soft"
+                href={topAlert.href}
+              >
+                Ver detalhes
+              </Link>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <AdminMetricCard hint="Últimas 24h" label="Erros" value={overview.errors24h.toLocaleString("pt-BR")} />
-        <AdminMetricCard hint="Últimos 7 dias" label="Erros" value={overview.errors7d.toLocaleString("pt-BR")} />
-        <AdminMetricCard hint="Últimas 24h" label="Usuários afetados" value={overview.usersAffected24h.toLocaleString("pt-BR")} />
-        <AdminMetricCard hint="Últimas 24h" label="Onboarding preso" value={overview.onboardingStuck.toLocaleString("pt-BR")} />
-      </div>
-
-      <section className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Saúde das notificações</h2>
-          <Button as="a" href="/admin/notificacoes" size="sm" variant="ghost">
-            Ver notificações
-          </Button>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <AdminMetricCard label="Campanhas falhas (24h)" value={overview.campaignsFailed24h.toLocaleString("pt-BR")} />
-          <AdminMetricCard label="Parcialmente falhas (24h)" value={overview.campaignsPartial24h.toLocaleString("pt-BR")} />
-          <AdminMetricCard label="Deliveries pendentes" value={overview.deliveriesPending.toLocaleString("pt-BR")} />
-          <AdminMetricCard label="Deliveries em retry" value={overview.deliveriesRetry.toLocaleString("pt-BR")} />
-          <AdminMetricCard label="Subscriptions revogadas (24h)" value={overview.subscriptionsRevoked24h.toLocaleString("pt-BR")} />
-          <AdminMetricCard label="Subscriptions ativas" value={overview.subscriptionsActive.toLocaleString("pt-BR")} />
-          <AdminMetricCard
-            hint={overview.lastCronRun ? undefined : "Nunca executado"}
-            label="Última execução do cron"
-            value={formatDateTime(overview.lastCronRun?.lastSeenAt ?? null)}
-          />
-          <AdminMetricCard
-            label="Cron: última rodada"
-            value={
-              overview.lastCronRun
-                ? `${overview.lastCronRun.metadata.campaignsProcessed ?? 0} camp. · ${overview.lastCronRun.metadata.deliveriesRetried ?? 0} retries`
-                : "—"
-            }
-          />
-        </div>
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CockpitBlockCard
+          ctaLabel="Ver erros"
+          description={`${overview.errors24h} evento(s) nas últimas 24h · cron ${cronEvidenceLabel.toLowerCase()}`}
+          headline={overview.openCriticalErrors24h > 0 ? `${overview.openCriticalErrors24h} erro(s) crítico(s)` : "Nenhum erro crítico"}
+          href="#erros-recentes"
+          status={overview.status}
+          title="Sistema"
+        />
+        <CockpitBlockCard
+          ctaLabel="Ver usuários"
+          description={`${overview.usersAffected24h} usuário(s) afetado(s) por erros nas últimas 24h`}
+          headline={overview.onboardingStuck > 0 ? `${overview.onboardingStuck} onboarding(s) pendente(s)` : "Nenhum onboarding pendente"}
+          href="/admin/usuarios"
+          status={usersStatus}
+          title="Usuários"
+        />
+        <CockpitBlockCard
+          ctaLabel="Ver notificações"
+          description={`${overview.deliveriesRetry} deliveries em nova tentativa`}
+          headline={overview.campaignsFailed24h > 0 ? `${overview.campaignsFailed24h} campanha(s) falharam` : "Nenhuma campanha falhou"}
+          href="/admin/notificacoes"
+          status={notificationsStatus}
+          title="Notificações"
+        />
+        <CockpitBlockCard
+          ctaLabel="Ver compartilhamentos"
+          description={contentFailures > 0 ? "Veja Erros recentes para detalhes" : "Uploads e cards funcionando normalmente"}
+          headline={contentFailures > 0 ? `${contentFailures} falha(s) de conteúdo` : "Nenhum upload ou card falhou"}
+          href="/admin/compartilhamentos"
+          status={contentStatus}
+          title="Conteúdo"
+        />
       </section>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <section className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
-          <h2 className="text-base font-semibold text-foreground">Saúde dos cards</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <AdminMetricCard label="Falhas de geração (24h)" value={overview.cardsFailed24h.toLocaleString("pt-BR")} />
-            <AdminMetricCard
-              hint="Somente leitura"
-              label="Auditoria de Storage"
-              value="Ver Compartilhamentos"
+      <div className="space-y-3">
+        <ObservabilitySection
+          badge={<Badge tone={sectionBadgeTone[notificationsStatus]}>{sectionBadgeLabel[notificationsStatus]}</Badge>}
+          cta={
+            <Button as="a" href="/admin/notificacoes" size="sm" variant="ghost">
+              Ver notificações
+            </Button>
+          }
+          defaultOpen={notificationsStatus !== "saudavel"}
+          title="Notificações"
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <StatLine
+              text={overview.campaignsFailed24h > 0 ? `${overview.campaignsFailed24h} campanha(s) falharam` : "Nenhuma campanha falhou"}
+              tone={overview.campaignsFailed24h > 0 ? "attention" : "positive"}
+            />
+            <StatLine
+              text={overview.campaignsPartial24h > 0 ? `${overview.campaignsPartial24h} campanha(s) parcialmente falhas` : "Nenhuma campanha parcialmente falha"}
+              tone={overview.campaignsPartial24h > 0 ? "attention" : "positive"}
+            />
+            <StatLine
+              text={overview.deliveriesRetry > 0 ? `${overview.deliveriesRetry} entrega(s) aguardando nova tentativa` : "Nenhuma entrega aguardando nova tentativa"}
+              tone={overview.deliveriesRetry >= 10 ? "attention" : "neutral"}
+            />
+            <StatLine text={`${overview.deliveriesPending} entrega(s) pendente(s)`} tone="neutral" />
+            <StatLine
+              text={overview.subscriptionsRevoked24h > 0 ? `${overview.subscriptionsRevoked24h} dispositivo(s) revogaram push nas últimas 24h` : "Nenhuma revogação de push nas últimas 24h"}
+              tone={overview.subscriptionsRevoked24h >= 10 ? "attention" : "neutral"}
+            />
+            <StatLine text={`${overview.subscriptionsActive} subscription(s) de push ativa(s)`} tone="neutral" />
+            <StatLine text={`Cron: ${cronEvidenceLabel}`} tone={cronHealth.status === "saudavel" ? "positive" : cronHealth.status === "critico" ? "attention" : "neutral"} />
+          </div>
+          <p className="text-xs leading-5 text-muted-2">
+            {notificationsStatus === "saudavel"
+              ? "Notificações funcionando normalmente."
+              : "Revise os pontos destacados antes de ativar novas campanhas."}
+          </p>
+        </ObservabilitySection>
+
+        <ObservabilitySection
+          badge={<Badge tone={sectionBadgeTone[contentStatus]}>{sectionBadgeLabel[contentStatus]}</Badge>}
+          cta={
+            <Button as="a" href="/admin/compartilhamentos" size="sm" variant="ghost">
+              Ver compartilhamentos
+            </Button>
+          }
+          defaultOpen={contentStatus !== "saudavel"}
+          title="Compartilhamentos e uploads"
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <StatLine
+              text={overview.cardsFailed24h > 0 ? `${overview.cardsFailed24h} card(s) com falha` : "Cards com falha: nenhum"}
+              tone={overview.cardsFailed24h > 0 ? "attention" : "positive"}
+            />
+            <StatLine
+              text={overview.uploadsFailed24h > 0 ? `${overview.uploadsFailed24h} upload(s) com falha` : "Uploads com falha: nenhum"}
+              tone={overview.uploadsFailed24h > 0 ? "attention" : "positive"}
+            />
+            <StatLine text="Auditoria de Storage: ainda não disponível" tone="neutral" />
+          </div>
+        </ObservabilitySection>
+
+        <ObservabilitySection
+          badge={<Badge tone={sectionBadgeTone[usersStatus]}>{sectionBadgeLabel[usersStatus]}</Badge>}
+          cta={
+            <Button as="a" href="/admin/usuarios?onboardingCompleted=false" size="sm" variant="ghost">
+              Ver usuários
+            </Button>
+          }
+          defaultOpen={usersStatus !== "saudavel"}
+          title="Usuários e onboarding"
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            <StatLine
+              text={overview.onboardingStuck > 0 ? `${overview.onboardingStuck} onboarding(s) pendente(s) há mais de 48h` : "Nenhum onboarding pendente"}
+              tone={overview.onboardingStuck > 0 ? "attention" : "positive"}
+            />
+            <StatLine
+              text={overview.usersAffected24h > 0 ? `${overview.usersAffected24h} usuário(s) afetado(s) por erros` : "Nenhum usuário afetado por erros"}
+              tone={overview.usersAffected24h > 0 ? "attention" : "positive"}
             />
           </div>
-          <Button as="a" className="mt-4" href="/admin/compartilhamentos" size="sm" variant="ghost">
-            Ver compartilhamentos
-          </Button>
-        </section>
+        </ObservabilitySection>
 
-        <section className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
-          <h2 className="text-base font-semibold text-foreground">Uploads e onboarding</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <AdminMetricCard label="Uploads falhos (24h)" value={overview.uploadsFailed24h.toLocaleString("pt-BR")} />
-            <AdminMetricCard label="Onboarding preso (48h+)" value={overview.onboardingStuck.toLocaleString("pt-BR")} />
-          </div>
-          <Button as="a" className="mt-4" href="/admin/usuarios?onboardingCompleted=false" size="sm" variant="ghost">
-            Ver usuários
-          </Button>
-        </section>
+        <ObservabilitySection
+          badge={<CopyDiagnosticButton label="Copiar versão" text={versionCopyText} />}
+          defaultOpen
+          title="Versão e deploy"
+        >
+          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+            <div className="min-w-0">
+              <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Versão</dt>
+              <dd className="mt-1 truncate text-foreground">{APP_VERSION}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Ambiente</dt>
+              <dd className="mt-1 truncate text-foreground">{deployInfo.environment}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Commit</dt>
+              <dd className="mt-1 truncate font-mono text-foreground">{deployInfo.commitShaShort ?? "desconhecido"}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Service Worker</dt>
+              <dd className="mt-1 truncate text-foreground">{SERVICE_WORKER_VERSION}</dd>
+            </div>
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Última migration</dt>
+              <dd className="mt-1 truncate font-mono text-foreground">{LATEST_MIGRATION_ID}</dd>
+            </div>
+          </dl>
+        </ObservabilitySection>
       </div>
 
-      <section className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-foreground">Versão e deploy</h2>
-          <CopyDiagnosticButton label="Copiar informações da versão" text={versionCopyText} />
-        </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Versão</dt>
-            <dd className="mt-1 text-foreground">{APP_VERSION}</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Ambiente</dt>
-            <dd className="mt-1 text-foreground">{deployInfo.environment}</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Commit</dt>
-            <dd className="mt-1 text-foreground">{deployInfo.commitShaShort ?? "desconhecido"}</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Service Worker</dt>
-            <dd className="mt-1 text-foreground">{SERVICE_WORKER_VERSION}</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Última migration</dt>
-            <dd className="mt-1 text-foreground">{LATEST_MIGRATION_ID}</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="space-y-3">
+      <section className="space-y-3" id="erros-recentes">
         <h2 className="text-base font-semibold text-foreground">Erros recentes</h2>
 
-        <form
-          className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:flex-wrap"
-          method="get"
-        >
-          <select
-            aria-label="Filtrar por área"
-            className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-52"
-            defaultValue={area ?? ""}
-            name="area"
-          >
-            <option value="">Todas as áreas</option>
-            {SYSTEM_ERROR_AREAS.map((value) => (
-              <option key={value} value={value}>
-                {SYSTEM_ERROR_AREA_LABELS[value]}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Filtrar por severidade"
-            className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-44"
-            defaultValue={severity ?? ""}
-            name="severity"
-          >
-            <option value="">Toda severidade</option>
-            {SYSTEM_ERROR_SEVERITIES.map((value) => (
-              <option key={value} value={value}>
-                {SYSTEM_ERROR_SEVERITY_LABELS[value]}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Filtrar por status"
-            className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-44"
-            defaultValue={status ?? ""}
-            name="status"
-          >
-            <option value="">Todo status</option>
-            {SYSTEM_ERROR_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {SYSTEM_ERROR_STATUS_LABELS[value]}
-              </option>
-            ))}
-          </select>
-          <Button size="md" type="submit">
-            Filtrar
-          </Button>
-          <Button as="a" href="/admin/observabilidade" size="md" variant="ghost">
-            Limpar
-          </Button>
-        </form>
-
-        {rows.length === 0 ? (
-          <EmptyState
-            description="Nenhuma ocorrência corresponde aos filtros atuais - bom sinal."
-            title="Nenhum erro encontrado"
-          />
+        {!hasEverHadErrors ? (
+          <div className="rounded-[var(--radius-card)] border border-success/22 bg-success-wash p-4 text-sm text-success sm:p-5">
+            Nenhum erro registrado nas últimas 24 horas.
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-[var(--radius-card)] border border-white/[0.08]">
-            <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="bg-white/[0.035] text-xs uppercase tracking-[0.08em] text-muted-2">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Código</th>
-                  <th className="px-4 py-3 font-medium">Área</th>
-                  <th className="px-4 py-3 font-medium">Operação</th>
-                  <th className="px-4 py-3 font-medium">Severidade</th>
-                  <th className="px-4 py-3 font-medium">Ocorrências</th>
-                  <th className="px-4 py-3 font-medium">Última vez</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.06]">
+          <>
+            <form
+              className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 sm:flex-row sm:items-center sm:flex-wrap"
+              method="get"
+            >
+              <select
+                aria-label="Filtrar por área"
+                className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-52"
+                defaultValue={area ?? ""}
+                name="area"
+              >
+                <option value="">Todas as áreas</option>
+                {SYSTEM_ERROR_AREAS.map((value) => (
+                  <option key={value} value={value}>
+                    {SYSTEM_ERROR_AREA_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Filtrar por severidade"
+                className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-44"
+                defaultValue={severity ?? ""}
+                name="severity"
+              >
+                <option value="">Toda severidade</option>
+                {SYSTEM_ERROR_SEVERITIES.map((value) => (
+                  <option key={value} value={value}>
+                    {SYSTEM_ERROR_SEVERITY_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Filtrar por status"
+                className="min-h-12 rounded-[var(--radius-control)] border border-white/[0.08] bg-white/[0.055] px-4 text-sm text-foreground shadow-[var(--shadow-hairline)] outline-none sm:w-44"
+                defaultValue={status ?? ""}
+                name="status"
+              >
+                <option value="">Todo status</option>
+                {SYSTEM_ERROR_STATUSES.map((value) => (
+                  <option key={value} value={value}>
+                    {SYSTEM_ERROR_STATUS_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+              <Button size="md" type="submit">
+                Filtrar
+              </Button>
+              <Button as="a" href="/admin/observabilidade" size="md" variant="ghost">
+                Limpar
+              </Button>
+            </form>
+
+            {rows.length === 0 ? (
+              <EmptyState
+                description="Nenhuma ocorrência corresponde aos filtros atuais - bom sinal."
+                title="Nenhum erro encontrado"
+              />
+            ) : (
+              <ul className="space-y-2">
                 {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3">
+                  <li
+                    className="min-w-0 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-3 sm:p-4"
+                    key={row.id}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <Link
                         className="font-mono text-xs font-semibold text-foreground hover:text-action-soft focus-visible:outline-action-soft"
                         href={`/admin/observabilidade/${row.id}`}
                       >
                         {row.error_code}
                       </Link>
-                      <p className="mt-1 max-w-xs truncate text-xs text-muted-2">{row.message_safe}</p>
-                    </td>
-                    <td className="px-4 py-3 text-muted">{SYSTEM_ERROR_AREA_LABELS[row.area] ?? row.area}</td>
-                    <td className="px-4 py-3 text-muted">{row.operation}</td>
-                    <td className="px-4 py-3">
-                      <Badge tone={severityBadgeTone[row.severity]}>{SYSTEM_ERROR_SEVERITY_LABELS[row.severity]}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-muted">{row.occurrence_count.toLocaleString("pt-BR")}</td>
-                    <td className="px-4 py-3 text-muted">{formatDateTime(row.last_seen_at)}</td>
-                    <td className="px-4 py-3">
-                      <Badge tone={statusBadgeTone[row.status]}>{SYSTEM_ERROR_STATUS_LABELS[row.status]}</Badge>
-                    </td>
-                  </tr>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge tone={severityBadgeTone[row.severity]}>{SYSTEM_ERROR_SEVERITY_LABELS[row.severity]}</Badge>
+                        <Badge tone={statusBadgeTone[row.status]}>{SYSTEM_ERROR_STATUS_LABELS[row.status]}</Badge>
+                      </div>
+                    </div>
+                    <p className="mt-2 break-words text-sm text-muted">{row.message_safe}</p>
+                    <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.68rem] text-muted-2">
+                      <span>{SYSTEM_ERROR_AREA_LABELS[row.area] ?? row.area}</span>
+                      <span>{row.occurrence_count}× · última vez {formatDateTime(row.last_seen_at)}</span>
+                    </p>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </ul>
+            )}
 
-        <AdminPagination basePath="/admin/observabilidade" page={Math.min(page, totalPages)} searchParams={rawParams} totalPages={totalPages} />
+            <AdminPagination basePath="/admin/observabilidade" page={Math.min(page, totalPages)} searchParams={rawParams} totalPages={totalPages} />
+          </>
+        )}
       </section>
 
       {!isSuperAdmin ? (
@@ -334,4 +432,3 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
     </div>
   );
 }
-
