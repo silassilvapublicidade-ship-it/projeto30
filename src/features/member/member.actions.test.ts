@@ -53,3 +53,18 @@ describe("OnboardingFlow - explains the reminder/push relationship before submis
     expect(source).not.toMatch(/Notification\.requestPermission|pushManager\.subscribe/);
   });
 });
+
+describe("primaryGoalSchema - alinhamento aos quatro pilares sem quebrar usuários existentes", () => {
+  const source = readSource("src", "features", "member", "member.actions.ts");
+
+  it("still accepts every previously valid value, including 'routine' for users who already chose it", () => {
+    const schemaStart = source.indexOf("const primaryGoalSchema = z.enum([");
+    const schemaBody = source.slice(schemaStart, source.indexOf("]);", schemaStart));
+    expect(schemaBody).toContain('"health"');
+    expect(schemaBody).toContain('"discipline"');
+    expect(schemaBody).toContain('"faith"');
+    expect(schemaBody).toContain('"routine"');
+    expect(schemaBody).toContain('"mind"');
+    expect(schemaBody).toContain('"complete"');
+  });
+});
