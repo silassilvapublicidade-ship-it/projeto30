@@ -35,8 +35,15 @@ export function ProgressShareButton({ dailyLogId, kind, label }: { dailyLogId: s
   const [loadingFormat, setLoadingFormat] = useState<ShareCardFormat | null>(null);
   const [result, setResult] = useState<ShareCardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Guarda o formato tentado INDEPENDENTE de sucesso (Correções
+  // obrigatórias pré-lançamento, Parte C) - "Tentar de novo" usava
+  // result?.format, que so existe apos um sucesso ANTERIOR: numa primeira
+  // falha (nenhum result ainda), o clique virava um no-op silencioso.
+  const [lastAttemptedFormat, setLastAttemptedFormat] = useState<ShareCardFormat | null>(null);
 
   async function handleGenerate(format: ShareCardFormat) {
+    if (loadingFormat) return; // nunca dois requests em voo pelo mesmo clique/duplo-clique
+    setLastAttemptedFormat(format);
     setLoadingFormat(format);
     setError(null);
 
@@ -117,7 +124,7 @@ export function ProgressShareButton({ dailyLogId, kind, label }: { dailyLogId: s
           {loadingFormat === null ? (
             <button
               className="text-xs font-semibold text-action-soft underline"
-              onClick={() => result?.format && handleGenerate(result.format)}
+              onClick={() => lastAttemptedFormat && handleGenerate(lastAttemptedFormat)}
               type="button"
             >
               Tentar de novo

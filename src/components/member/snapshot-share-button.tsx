@@ -43,8 +43,15 @@ export function SnapshotShareButton({
   const [loadingFormat, setLoadingFormat] = useState<ShareCardFormat | null>(null);
   const [result, setResult] = useState<ShareCardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Guarda o formato tentado INDEPENDENTE de sucesso (Correções
+  // obrigatórias pré-lançamento, Parte C) - mesma correção de
+  // progress-share-button.tsx: "Tentar de novo" nunca pode depender de
+  // result?.format, que so existe apos um sucesso ANTERIOR.
+  const [lastAttemptedFormat, setLastAttemptedFormat] = useState<ShareCardFormat | null>(null);
 
   async function handleGenerate(format: ShareCardFormat) {
+    if (loadingFormat) return; // nunca dois requests em voo pelo mesmo clique/duplo-clique
+    setLastAttemptedFormat(format);
     setLoadingFormat(format);
     setError(null);
 
@@ -125,7 +132,7 @@ export function SnapshotShareButton({
           {loadingFormat === null ? (
             <button
               className="text-xs font-semibold text-action-soft underline"
-              onClick={() => result?.format && handleGenerate(result.format)}
+              onClick={() => lastAttemptedFormat && handleGenerate(lastAttemptedFormat)}
               type="button"
             >
               Tentar de novo

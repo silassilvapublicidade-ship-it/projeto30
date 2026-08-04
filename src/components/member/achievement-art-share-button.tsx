@@ -32,8 +32,16 @@ export function AchievementArtShareButton({ userAchievementId }: { userAchieveme
   const [loadingFormat, setLoadingFormat] = useState<ShareCardFormat | null>(null);
   const [result, setResult] = useState<ShareCardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Guarda o formato tentado INDEPENDENTE de sucesso (Correções
+  // obrigatórias pré-lançamento, Parte C) - mesma correção aplicada em
+  // progress-share-button.tsx/snapshot-share-button.tsx: nunca depender de
+  // result?.format (que so existe apos um sucesso ANTERIOR) para saber o
+  // que retentar.
+  const [lastAttemptedFormat, setLastAttemptedFormat] = useState<ShareCardFormat | null>(null);
 
   async function handleGenerate(format: ShareCardFormat) {
+    if (loadingFormat) return; // nunca dois requests em voo pelo mesmo clique/duplo-clique
+    setLastAttemptedFormat(format);
     setLoadingFormat(format);
     setError(null);
 
@@ -108,7 +116,20 @@ export function AchievementArtShareButton({ userAchievementId }: { userAchieveme
         </p>
       ) : null}
 
-      {error ? <p className="text-xs text-red-400">{error}</p> : null}
+      {error ? (
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-red-400">{error}</p>
+          {loadingFormat === null ? (
+            <button
+              className="text-xs font-semibold text-action-soft underline"
+              onClick={() => lastAttemptedFormat && handleGenerate(lastAttemptedFormat)}
+              type="button"
+            >
+              Tentar de novo
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {result ? (
         <div className="flex flex-col gap-2">
