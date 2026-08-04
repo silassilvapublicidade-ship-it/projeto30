@@ -7,7 +7,6 @@ import { AchievementUnlockModal } from "@/components/member/achievement-unlock-m
 import { DailyCompletionCelebration } from "@/components/member/daily-completion-celebration";
 import { useUnsavedChangesGuard } from "@/components/member/use-unsaved-changes-guard";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusCard } from "@/components/ui/feedback";
 import {
@@ -16,8 +15,12 @@ import {
   type FinalizeDaySummary,
 } from "@/features/member/journey.actions";
 import { calculateDailyProgress } from "@/features/journey/progress.core";
-import { resolveDailyChallengeMessage, resolveProgressMotivationalMessage } from "@/features/journey/progress-motivation.core";
-import { describeStreakOutcome } from "@/features/journey/streak-explanation.core";
+import {
+  describeDayOverDayComparison,
+  resolveDailyChallengeMessage,
+  resolveProgressMotivationalMessage,
+} from "@/features/journey/progress-motivation.core";
+import { describeStreakBest, describeStreakOutcome } from "@/features/journey/streak-explanation.core";
 import {
   buildFinalizeResponses,
   buildInitialLocalState,
@@ -154,9 +157,9 @@ function MissionRow({
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Button
               disabled={!editable}
-              leadingIcon={<CheckCircle2 aria-hidden="true" size={12} />}
+              leadingIcon={<CheckCircle2 aria-hidden="true" size={14} />}
               onClick={() => onStatusChange("completed")}
-              size="xs"
+              size="md"
               type="button"
               variant={entry.status === "completed" ? "primary" : "secondary"}
             >
@@ -164,9 +167,9 @@ function MissionRow({
             </Button>
             <Button
               disabled={!editable}
-              leadingIcon={<XCircle aria-hidden="true" size={12} />}
+              leadingIcon={<XCircle aria-hidden="true" size={14} />}
               onClick={() => onStatusChange("not_realized")}
-              size="xs"
+              size="md"
               type="button"
               variant={entry.status === "not_realized" ? "danger" : "ghost"}
             >
@@ -176,7 +179,7 @@ function MissionRow({
               <Button
                 disabled={!editable}
                 onClick={() => onStatusChange("not_applicable")}
-                size="xs"
+                size="md"
                 type="button"
                 variant={entry.status === "not_applicable" ? "secondary" : "ghost"}
               >
@@ -196,6 +199,7 @@ type DisplaySummary = {
   habitResults: FinalizeDaySummary["habitResults"];
   justFinalized: boolean;
   pointsEarned: number;
+  streakBest: number;
   streakCurrent: number;
   streakMinimumCompletion: number;
   unlockedAchievements: FinalizeDaySummary["unlockedAchievements"];
@@ -240,6 +244,10 @@ function FinalizeSummaryPanel({
     streakCurrent: summary.streakCurrent,
     streakMinimumCompletion: summary.streakMinimumCompletion,
   });
+  const streakBestMessage = describeStreakBest({
+    streakBest: summary.streakBest,
+    streakCurrent: summary.streakCurrent,
+  });
 
   return (
     <section className="space-y-3 rounded-xl border border-action/24 bg-action/[0.06] p-4 sm:p-5">
@@ -255,6 +263,7 @@ function FinalizeSummaryPanel({
             size={14}
           />
           {streakOutcome.message}
+          {streakBestMessage ? <span className="text-muted-2"> {streakBestMessage}</span> : null}
         </p>
       </div>
 
@@ -331,11 +340,13 @@ export function TodayInteractiveSection({
   initialFinalized,
   initialFinalizedAt,
   initialPointsEarned,
+  initialStreakBest,
   initialStreakCurrent,
   journalEntry,
   missions,
   pointsPotential,
   streakMinimumCompletion,
+  yesterdayCompletionPercent,
 }: {
   challengeDayMessage: string | null;
   dailyLogId: string | null;
@@ -346,6 +357,7 @@ export function TodayInteractiveSection({
   initialFinalized: boolean;
   initialFinalizedAt: string | null;
   initialPointsEarned: number;
+  initialStreakBest: number;
   initialStreakCurrent: number;
   journalEntry: Pick<
     Tables<"journal_entries">,
@@ -354,6 +366,7 @@ export function TodayInteractiveSection({
   missions: TodayMission[];
   pointsPotential: number;
   streakMinimumCompletion: number;
+  yesterdayCompletionPercent: number | null;
 }) {
   const [baseline] = useState(() =>
     buildInitialLocalState(
@@ -372,7 +385,6 @@ export function TodayInteractiveSection({
   const [pendingModalOpen, setPendingModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false);
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
   const [celebrationOpen, setCelebrationOpen] = useState(false);
 
@@ -409,6 +421,7 @@ export function TodayInteractiveSection({
         habitResults: summary.habitResults,
         justFinalized: true,
         pointsEarned: summary.pointsEarned,
+        streakBest: summary.streakBest,
         streakCurrent: summary.streakCurrent,
         streakMinimumCompletion: summary.streakMinimumCompletion,
         unlockedAchievements: summary.unlockedAchievements,
@@ -423,6 +436,7 @@ export function TodayInteractiveSection({
           })),
           justFinalized: false,
           pointsEarned: initialPointsEarned,
+          streakBest: initialStreakBest,
           streakCurrent: initialStreakCurrent,
           streakMinimumCompletion,
           unlockedAchievements: [],
@@ -482,6 +496,14 @@ export function TodayInteractiveSection({
         streakMinimumCompletion: displaySummary.streakMinimumCompletion,
       })
     : null;
+  const liveStreakBestMessage = describeStreakBest({
+    streakBest: displaySummary?.streakBest ?? initialStreakBest,
+    streakCurrent: displaySummary?.streakCurrent ?? initialStreakCurrent,
+  });
+  const dayOverDayMessage = describeDayOverDayComparison({
+    todayPercent: progress.completionPercent,
+    yesterdayPercent: yesterdayCompletionPercent,
+  });
 
   return (
     <>
@@ -491,6 +513,7 @@ export function TodayInteractiveSection({
         </p>
         <p className="mt-2 text-sm leading-6 text-muted">
           {resolveProgressMotivationalMessage(progress.completionPercent)}
+          {dayOverDayMessage ? ` ${dayOverDayMessage}` : ""}
         </p>
 
         <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1">
@@ -534,6 +557,7 @@ export function TodayInteractiveSection({
             {liveStreakOutcome
               ? liveStreakOutcome.message
               : `${initialStreakCurrent} ${initialStreakCurrent === 1 ? "dia" : "dias"} de sequência`}
+            {liveStreakBestMessage ? <span className="text-muted-2"> {liveStreakBestMessage}</span> : null}
           </span>
         </div>
 
@@ -593,13 +617,18 @@ export function TodayInteractiveSection({
 
       <ReflectionSection dailyLogId={dailyLogId} editable={editable} entry={journalEntry} />
 
-      <section className="mt-4 rounded-xl border border-action/16 bg-action/[0.045] p-3 sm:p-4">
-        {errorMessage ? (
-          <div className="mb-3">
-            <StatusCard description={errorMessage} title="Não foi possível finalizar" tone="error" />
-          </div>
-        ) : null}
+      {errorMessage ? (
+        <div className="mt-4">
+          <StatusCard description={errorMessage} title="Não foi possível finalizar" tone="error" />
+        </div>
+      ) : null}
 
+      {/* Sticky on mobile (safe-fixed-above-nav), reverting to a normal
+          in-flow card at md: - "Finalizar o dia" is the one action the whole
+          app exists for; on a day with several missions plus a 6-field
+          journal above it, it must stay reachable without scrolling all the
+          way back down (auditoria de produto, item 05). */}
+      <section className="safe-fixed-above-nav sticky z-30 mt-4 rounded-xl border border-action/24 bg-background/92 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl transition-[background,box-shadow] duration-[var(--motion-base)] md:static md:z-auto md:border-action/16 md:bg-action/[0.045] md:p-4 md:shadow-none md:backdrop-blur-none">
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           onSubmit={handleFinalizeSubmit}
@@ -611,20 +640,13 @@ export function TodayInteractiveSection({
             hábitos aplicáveis. A finalização calcula pontos, sequência e conquistas no servidor e bloqueia
             edições depois.
           </p>
-          <div className="flex flex-col gap-2 sm:w-64 sm:shrink-0">
-            <Checkbox
-              checked={confirmChecked}
-              description="Entendo que o dia será fechado com as regras atuais do ciclo."
-              disabled={!editable}
-              label="Confirmar finalização"
-              onChange={(event) => setConfirmChecked(event.target.checked)}
-              required
-            />
+          <div className="sm:w-64 sm:shrink-0">
             <Button
+              className="w-full"
               disabled={!editable || isFinalizing}
               leadingIcon={<CheckCircle2 aria-hidden="true" size={14} />}
               loading={isFinalizing}
-              size="sm"
+              size="md"
               type="submit"
             >
               {finalized ? "Dia finalizado" : isFinalizing ? "Finalizando..." : "Finalizar o dia"}

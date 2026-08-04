@@ -54,6 +54,29 @@ export function getDateOnlyInTimeZone(date: Date, timeZone: string) {
   return `${year}-${month}-${day}`;
 }
 
+/**
+ * Formats a UTC-midnight timestamp (as produced by parseDateOnly's own
+ * arithmetic) back into the same YYYY-MM-DD shape every date-only value in
+ * this codebase uses - never delegates to a Date's own local getters, which
+ * would reintroduce the timezone bug this file's own getDateOnlyInTimeZone
+ * exists to avoid.
+ */
+function formatDateOnly(utcMillis: number): string {
+  const date = new Date(utcMillis);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** The calendar day immediately before the given date-only string - used
+ * for day-over-day comparisons (e.g. "hoje você fez mais que ontem"),
+ * never for challenge-day-number math (that stays exclusively in
+ * calculateChallengeDay). */
+export function getPreviousDateOnly(dateOnly: string): string {
+  return formatDateOnly(parseDateOnly(dateOnly) - millisecondsPerDay);
+}
+
 export function calculateChallengeDay(input: ChallengeDayInput): ChallengeDayResult {
   if (!Number.isInteger(input.durationDays) || input.durationDays < 1) {
     throw new Error("durationDays precisa ser um inteiro positivo.");

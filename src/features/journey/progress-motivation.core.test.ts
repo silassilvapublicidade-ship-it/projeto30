@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveDailyChallengeMessage, resolveProgressMotivationalMessage } from "./progress-motivation.core";
+import {
+  describeDayOverDayComparison,
+  resolveDailyChallengeMessage,
+  resolveProgressMotivationalMessage,
+} from "./progress-motivation.core";
 
 describe("resolveProgressMotivationalMessage", () => {
   it("matches every boundary from the brief's own table", () => {
@@ -38,5 +42,33 @@ describe("resolveDailyChallengeMessage", () => {
     expect(resolveDailyChallengeMessage(undefined)).toBe(fallback);
     expect(resolveDailyChallengeMessage("")).toBe(fallback);
     expect(resolveDailyChallengeMessage("   ")).toBe(fallback);
+  });
+});
+
+describe("describeDayOverDayComparison - auditoria de produto, item 03 ('hoje você fez mais que ontem')", () => {
+  it("never fabricates a comparison when there's nothing real to compare against (no finalized log yesterday)", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 80, yesterdayPercent: null })).toBeNull();
+  });
+
+  it("says today is ahead when it genuinely is", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 60, yesterdayPercent: 40 })).toBe(
+      "Hoje você já fez mais que ontem.",
+    );
+  });
+
+  it("says the same pace when tied, rather than staying silent", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 50, yesterdayPercent: 50 })).toBe(
+      "Hoje você está no mesmo ritmo de ontem.",
+    );
+  });
+
+  it("never shows a discouraging message when today is currently behind yesterday - the day isn't over yet", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 20, yesterdayPercent: 80 })).toBeNull();
+  });
+
+  it("handles the zero/zero edge case as a tie, not a fabricated comparison", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 0, yesterdayPercent: 0 })).toBe(
+      "Hoje você está no mesmo ritmo de ontem.",
+    );
   });
 });

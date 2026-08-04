@@ -242,6 +242,16 @@
 @utility safe-scroll-pb {
   padding-bottom: calc(var(--nav-bottom-height) + 1.5rem + var(--safe-area-bottom));
 }
+/* Auditoria de produto, item 05 (mobile): the "Finalizar o dia" bar sticks
+   just above the floating bottom nav instead of requiring a scroll all the
+   way past the mission list + journal to reach it. Same --nav-bottom-height
+   token as safe-scroll-pb, so the two stay in sync if the nav's height ever
+   changes. Only meant to be combined with `sticky` on mobile - callers
+   switch back to `static` at md: (the breakpoint the bottom nav itself
+   disappears at), since desktop has no thumb-zone constraint. */
+@utility safe-fixed-above-nav {
+  bottom: calc(var(--nav-bottom-height) + var(--safe-area-bottom) + 0.75rem);
+}
 
 * {
   box-sizing: border-box;

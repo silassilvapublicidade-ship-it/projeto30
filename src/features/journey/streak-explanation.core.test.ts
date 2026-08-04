@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { describeStreakOutcome } from "./streak-explanation.core";
+import { describeStreakBest, describeStreakOutcome } from "./streak-explanation.core";
 
 describe("describeStreakOutcome", () => {
   it("reports the streak as met when completion is exactly at the minimum", () => {
@@ -54,5 +54,31 @@ describe("describeStreakOutcome", () => {
     expect(result.metMinimum).toBe(false);
     expect(result.message).toContain("50%");
     expect(result.message).toContain("70%");
+  });
+});
+
+describe("describeStreakBest - auditoria de produto, item 03 (streak_best now surfaced to the member)", () => {
+  it("returns null when there is no record yet (brand-new enrollment, streak_best still 0)", () => {
+    expect(describeStreakBest({ streakBest: 0, streakCurrent: 0 })).toBeNull();
+  });
+
+  it("says the user is currently AT their record when streakCurrent equals streakBest", () => {
+    expect(describeStreakBest({ streakBest: 5, streakCurrent: 5 })).toBe("Este é o seu recorde: 5 dias.");
+  });
+
+  it("says the user is currently AT their record even when streakCurrent somehow exceeds the stored best (defensive - never crashes on an inconsistent read)", () => {
+    expect(describeStreakBest({ streakBest: 3, streakCurrent: 4 })).toBe("Este é o seu recorde: 3 dias.");
+  });
+
+  it("references the earlier record when the current streak is below it", () => {
+    expect(describeStreakBest({ streakBest: 12, streakCurrent: 1 })).toBe("Seu recorde: 12 dias.");
+  });
+
+  it("pluralizes 1 dia correctly, singular, at the record", () => {
+    expect(describeStreakBest({ streakBest: 1, streakCurrent: 1 })).toBe("Este é o seu recorde: 1 dia.");
+  });
+
+  it("pluralizes 1 dia correctly, singular, below the record", () => {
+    expect(describeStreakBest({ streakBest: 1, streakCurrent: 0 })).toBe("Seu recorde: 1 dia.");
   });
 });

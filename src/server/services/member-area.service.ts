@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   calculateChallengeDay,
   getDateOnlyInTimeZone,
+  getPreviousDateOnly,
 } from "@/features/challenges/date.core";
 import { resolveDailyPrompt, resolveGoalLabel } from "@/features/journey/habit-daily-prompt.core";
 import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
@@ -99,6 +100,11 @@ export type TodayProgress = {
   pointsPotential: number;
   state: "complete" | "finalized" | "in_progress" | "not_started" | "partial";
   streakMinimumCompletion: number;
+  /** Yesterday's FINAL completion_percent for this enrollment, or null when
+   * there's nothing real to compare against (no log yesterday, or it was
+   * never finalized) - powers "hoje você fez mais que ontem" without ever
+   * fabricating a comparison. */
+  yesterdayCompletionPercent: number | null;
 };
 
 /**
@@ -535,6 +541,14 @@ async function buildEnrollmentDayContext({
     journeyState = "day_finalized";
   }
 
+  const { data: yesterdayLog } = await supabase
+    .from("daily_logs")
+    .select("completion_percent")
+    .eq("enrollment_id", enrollment.id)
+    .eq("log_date", getPreviousDateOnly(today))
+    .eq("status", "finalized")
+    .maybeSingle();
+
   const activeEnrollment: ActiveEnrollment = {
     ...enrollment,
     current_day: dayResult?.dayNumber || enrollment.current_day,
@@ -583,6 +597,7 @@ async function buildEnrollmentDayContext({
       pointsEarned: todayLog?.points_earned ?? 0,
       pointsPotential,
       streakMinimumCompletion: getRuleInt(rulesConfig, "streak_minimum_completion", 70),
+      yesterdayCompletionPercent: yesterdayLog ? Number(yesterdayLog.completion_percent) : null,
     },
   };
 }

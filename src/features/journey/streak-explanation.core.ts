@@ -44,3 +44,28 @@ export function describeStreakOutcome({
     metMinimum: false,
   };
 }
+
+/**
+ * Surfaces streak_best to the member - previously calculated on every
+ * finalize and returned by the RPC, but never rendered anywhere outside the
+ * admin panel (auditoria de produto, item 03). streak_best is guaranteed by
+ * the finalize RPC to always be >= streak_current (`greatest(previous_best,
+ * streak_count)` every call), so there are only two cases: currently AT the
+ * record, or below a record set on an earlier day. Returns null when there
+ * is no record yet (a brand-new enrollment with zero finalized days) -
+ * never shows "recorde: 0 dias".
+ */
+export function describeStreakBest({
+  streakBest,
+  streakCurrent,
+}: {
+  streakBest: number;
+  streakCurrent: number;
+}): string | null {
+  if (streakBest <= 0) {
+    return null;
+  }
+
+  const days = `${streakBest} ${streakBest === 1 ? "dia" : "dias"}`;
+  return streakCurrent >= streakBest ? `Este é o seu recorde: ${days}.` : `Seu recorde: ${days}.`;
+}

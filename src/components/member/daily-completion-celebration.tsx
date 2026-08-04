@@ -6,7 +6,7 @@ import { CheckCircle2, Flame, Route, Sparkles, Trophy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { recordDailyCompletionEventAction } from "@/features/member/journey.actions";
-import { describeStreakOutcome } from "@/features/journey/streak-explanation.core";
+import { describeStreakBest, describeStreakOutcome } from "@/features/journey/streak-explanation.core";
 import type { FinalizeDaySummary } from "@/features/member/journey.actions";
 import type { TodayMission } from "@/server/services/member-area.service";
 
@@ -52,6 +52,10 @@ export function DailyCompletionCelebration({
     completionPercent: summary.completionPercent,
     streakCurrent: summary.streakCurrent,
     streakMinimumCompletion: summary.streakMinimumCompletion,
+  });
+  const streakBestMessage = describeStreakBest({
+    streakBest: summary.streakBest,
+    streakCurrent: summary.streakCurrent,
   });
 
   useEffect(() => {
@@ -134,7 +138,10 @@ export function DailyCompletionCelebration({
             className={streakOutcome.metMinimum ? "text-action-soft" : "text-muted-2"}
             size={18}
           />
-          <p className="text-sm leading-5 text-foreground">{streakOutcome.message}</p>
+          <p className="text-sm leading-5 text-foreground">
+            {streakOutcome.message}
+            {streakBestMessage ? <span className="text-muted"> {streakBestMessage}</span> : null}
+          </p>
         </div>
 
         {hasAchievements ? (

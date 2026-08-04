@@ -54,9 +54,14 @@ describe("DailyCompletionCelebration", () => {
 
   it("shows the streak explanation via the shared describeStreakOutcome helper, never a re-implemented copy", () => {
     expect(source).toContain(
-      'import { describeStreakOutcome } from "@/features/journey/streak-explanation.core";',
+      'import { describeStreakBest, describeStreakOutcome } from "@/features/journey/streak-explanation.core";',
     );
     expect(source).toContain("describeStreakOutcome({");
+  });
+
+  it("also surfaces streak_best (melhor sequência) right alongside the streak outcome, using the same shared helper", () => {
+    expect(source).toContain("const streakBestMessage = describeStreakBest({");
+    expect(source).toContain("streakBestMessage");
   });
 
   it("displays the resolved per-day challenge message (already-resolved-with-fallback, passed in as a prop)", () => {

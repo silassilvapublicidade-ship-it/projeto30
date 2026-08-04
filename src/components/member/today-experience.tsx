@@ -376,11 +376,13 @@ function EnrollmentSection({
         initialFinalized={enrollment.todayLog?.status === "finalized"}
         initialFinalizedAt={enrollment.todayLog?.finalized_at ?? null}
         initialPointsEarned={enrollment.todayLog?.points_earned ?? 0}
+        initialStreakBest={enrollment.streak_best}
         initialStreakCurrent={enrollment.streak_current}
         journalEntry={enrollmentContext.journalEntry}
         missions={enrollmentContext.todayMissions}
         pointsPotential={enrollmentContext.todayProgress.pointsPotential}
         streakMinimumCompletion={enrollmentContext.todayProgress.streakMinimumCompletion}
+        yesterdayCompletionPercent={enrollmentContext.todayProgress.yesterdayCompletionPercent}
       />
     </section>
   );

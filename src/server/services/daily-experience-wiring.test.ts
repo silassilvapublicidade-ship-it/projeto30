@@ -44,6 +44,38 @@ describe("member-area.service.ts - backend-enforced habit visibility (Parte 13)"
   });
 });
 
+describe("member-area.service.ts - yesterday's completion_percent (auditoria de produto, item 03)", () => {
+  const source = readSource("src", "server", "services", "member-area.service.ts");
+
+  it("only reads a FINALIZED log from yesterday - an in-progress log from yesterday is not a real result to compare against", () => {
+    const queryStart = source.indexOf('.from("daily_logs")\n    .select("completion_percent")');
+    expect(queryStart).toBeGreaterThan(-1);
+    const queryEnd = source.indexOf(";", queryStart);
+    const query = source.slice(queryStart, queryEnd);
+    expect(query).toContain('.eq("status", "finalized")');
+    expect(query).toContain("getPreviousDateOnly(today)");
+  });
+
+  it("scopes the yesterday query to this enrollment - never aggregates across a member's other enrollments", () => {
+    const queryStart = source.indexOf('.from("daily_logs")\n    .select("completion_percent")');
+    const queryEnd = source.indexOf(";", queryStart);
+    const query = source.slice(queryStart, queryEnd);
+    expect(query).toContain('.eq("enrollment_id", enrollment.id)');
+  });
+
+  it("returns null (never 0 or undefined) when there's nothing to compare, so the UI never fabricates a comparison", () => {
+    expect(source).toContain(
+      "yesterdayCompletionPercent: yesterdayLog ? Number(yesterdayLog.completion_percent) : null,",
+    );
+  });
+
+  it("imports getPreviousDateOnly from the shared date core, never a re-implemented day-subtraction", () => {
+    expect(source).toContain(
+      'import {\n  calculateChallengeDay,\n  getDateOnlyInTimeZone,\n  getPreviousDateOnly,\n} from "@/features/challenges/date.core";',
+    );
+  });
+});
+
 describe("journey.service.ts - Jornada summary also exposes streakMinimumCompletion", () => {
   const source = readSource("src", "server", "services", "journey.service.ts");
 
