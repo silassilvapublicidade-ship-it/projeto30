@@ -91,8 +91,12 @@ describe("ServiceWorkerManager - controlled update flow", () => {
   });
 });
 
-describe("Perfil page - install section placement", () => {
-  const source = readSource("src", "app", "(member)", "app", "(workspace)", "perfil", "page.tsx");
+describe("Perfil edit page - install section placement", () => {
+  // InstallAppPrompt moved from /app/perfil to /app/perfil/editar when Perfil
+  // became the Dashboard de Evolucao Pessoal - account settings (including
+  // PWA install) now live in the dedicated edit route, per the brief's
+  // requirement to never drop existing functionality.
+  const source = readSource("src", "app", "(member)", "app", "(workspace)", "perfil", "editar", "page.tsx");
 
   it("renders InstallAppPrompt inside a labeled section", () => {
     expect(source).toContain('import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";');
