@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { mapPostgresCodeToSeverity } from "@/features/observability/system-error.core";
 import { requireAuthUser } from "@/server/services/auth-session.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 
 const enrollmentIdSchema = z.uuid("Identificador de inscrição inválido.");
 
@@ -30,7 +32,7 @@ function getSafeErrorMessage(error: { code?: string; message: string } | null) {
 }
 
 export async function abandonChallengeAction(formData: FormData) {
-  await requireAuthUser("/app/desafios");
+  const user = await requireAuthUser("/app/desafios");
 
   const parsedId = enrollmentIdSchema.safeParse(formData.get("enrollmentId"));
 
@@ -44,6 +46,15 @@ export async function abandonChallengeAction(formData: FormData) {
   });
 
   if (error) {
+    await recordSystemError({
+      area: "desafios",
+      operation: "abandon_challenge_enrollment",
+      severity: mapPostgresCodeToSeverity(error.code),
+      message: "Falha ao abandonar a inscrição do usuário no desafio.",
+      postgresCode: error.code,
+      userId: user.id,
+    });
+
     const message = encodeURIComponent(getSafeErrorMessage(error));
     redirect(`/app/desafios?abandonFeedback=error&abandonMessage=${message}`);
   }

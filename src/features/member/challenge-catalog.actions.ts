@@ -3,8 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { mapPostgresCodeToSeverity } from "@/features/observability/system-error.core";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { requireAuthUser } from "@/server/services/auth-session.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 
 import { challengeIdSchema } from "./challenge-catalog.schemas";
 
@@ -29,7 +31,7 @@ function getSafeErrorMessage(error: { code?: string; message: string } | null) {
 }
 
 export async function joinChallengeAction(formData: FormData) {
-  await requireAuthUser("/app/desafios");
+  const user = await requireAuthUser("/app/desafios");
 
   const parsedId = challengeIdSchema.safeParse(formData.get("challengeId"));
   const redirectSlug = formData.get("challengeSlug");
@@ -53,6 +55,15 @@ export async function joinChallengeAction(formData: FormData) {
   });
 
   if (error) {
+    await recordSystemError({
+      area: "desafios",
+      operation: "join_specific_challenge",
+      severity: mapPostgresCodeToSeverity(error.code),
+      message: "Falha ao inscrever o usuário no desafio.",
+      postgresCode: error.code,
+      userId: user.id,
+    });
+
     const message = encodeURIComponent(getSafeErrorMessage(error));
     redirect(`${detailPath}?joinFeedback=error&joinMessage=${message}`);
   }

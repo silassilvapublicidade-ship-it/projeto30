@@ -1,9 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
+import { reportClientErrorAction } from "@/features/observability/report-client-error.actions";
 
-export default function WorkspaceError({ reset }: { reset: () => void }) {
+type WorkspaceErrorProps = {
+  error: Error & { digest?: string };
+  reset: () => void;
+};
+
+export default function WorkspaceError({ error, reset }: WorkspaceErrorProps) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    console.error(`[WORKSPACE_AREA_LOAD_FAILED] route=${pathname} digest=${error.digest ?? "n/a"}:`, error.message);
+    void reportClientErrorAction({
+      area: "app",
+      digest: error.digest,
+      message: error.message || "Erro desconhecido no carregamento da área de membros.",
+      route: pathname,
+    });
+  }, [error, pathname]);
+
   return (
     <div className="mx-auto max-w-xl">
       <StatusCard

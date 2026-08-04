@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminUser } from "@/server/services/admin-session.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 
 import {
   createUserSchema,
@@ -79,6 +80,17 @@ export async function createUserAction(
   });
 
   if (createError || !created?.user) {
+    if (createError?.code !== "email_exists") {
+      await recordSystemError({
+        area: "admin",
+        operation: "admin_create_user",
+        severity: "error",
+        message: "Falha ao criar usuário via auth.admin.createUser.",
+        route: "/admin/usuarios/novo",
+        userId: admin.id,
+      });
+    }
+
     const message =
       createError?.code === "email_exists"
         ? "Já existe uma conta com este e-mail."
@@ -110,6 +122,15 @@ export async function createUserAction(
     });
 
     if (enrollError) {
+      await recordSystemError({
+        area: "admin",
+        operation: "admin_enroll_user_in_challenge",
+        severity: "warning",
+        message: "Usuário criado, mas a inscrição automática no desafio falhou.",
+        route: "/admin/usuarios/novo",
+        postgresCode: enrollError.code,
+        userId: admin.id,
+      });
       redirect(`/admin/usuarios?feedback=create-success-enroll-failed`);
     }
   }

@@ -13,6 +13,7 @@ import { renderProgressShareCardImage } from "@/server/rendering/achievement-sha
 
 import { requireAuthUser } from "./auth-session.service";
 import { getProfileOverview } from "./profile-dashboard.service";
+import { recordSystemError } from "./system-observability.service";
 
 const SHARE_CARD_BUCKET = "achievement-share-cards";
 const TEMPLATE_VERSION = 1;
@@ -206,6 +207,14 @@ export async function generateSnapshotShareCard(
     const image = renderProgressShareCardImage(content, config);
     imageBuffer = await image.arrayBuffer();
   } catch {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "snapshot_card_render",
+      severity: "error",
+      message: "Falha ao renderizar a imagem do card de estado da inscrição.",
+      userId: user.id,
+      metadata: { format, kind },
+    });
     return { error: "Não foi possível gerar a imagem agora.", ok: false };
   }
 
@@ -214,6 +223,14 @@ export async function generateSnapshotShareCard(
     .upload(storagePath, imageBuffer, { contentType: "image/png", upsert: true });
 
   if (uploadError) {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "snapshot_card_upload",
+      severity: "error",
+      message: "Falha ao salvar a imagem do card de estado da inscrição no Storage.",
+      userId: user.id,
+      metadata: { format, kind },
+    });
     return { error: "Não foi possível salvar a imagem gerada.", ok: false };
   }
 
@@ -242,6 +259,14 @@ export async function generateSnapshotShareCard(
   );
 
   if (upsertError) {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "snapshot_card_db_upsert",
+      severity: "error",
+      message: "Falha ao registrar a arte gerada em share_cards.",
+      userId: user.id,
+      metadata: { format, kind },
+    });
     return { error: "Não foi possível registrar a arte gerada.", ok: false };
   }
 

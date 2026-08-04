@@ -9,6 +9,7 @@ import sharp from "sharp";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 import { runNewTipPublishedAutomation } from "@/server/services/notification-automations.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 
 import {
   isRecommendedTipImageRatio,
@@ -157,6 +158,14 @@ export async function createTipCardAction(
     });
 
   if (uploadError) {
+    await recordSystemError({
+      area: "uploads",
+      operation: "tip_image_upload_create",
+      severity: "warning",
+      message: "Falha ao enviar a imagem da dica para o Storage.",
+      route: "/admin/dicas/nova",
+      userId: admin.id,
+    });
     return { ok: false, message: "Não foi possível enviar a imagem agora." };
   }
 
@@ -188,6 +197,18 @@ export async function createTipCardAction(
     // Best-effort cleanup so a failed insert doesn't orphan the file we just
     // uploaded under an id nothing will ever reference.
     await supabase.storage.from("tip-cards").remove([storagePath]);
+
+    if (insertError.code !== "23505") {
+      await recordSystemError({
+        area: "uploads",
+        operation: "tip_card_insert",
+        severity: "warning",
+        message: "Falha ao registrar a dica após enviar a imagem (imagem removida).",
+        route: "/admin/dicas/nova",
+        postgresCode: insertError.code,
+        userId: admin.id,
+      });
+    }
 
     const message =
       insertError.code === "23505" ? "Este slug já está em uso por outra dica." : "Não foi possível salvar agora.";
@@ -306,6 +327,14 @@ export async function uploadTipImageAction(
     });
 
   if (uploadError) {
+    await recordSystemError({
+      area: "uploads",
+      operation: "tip_image_upload_replace",
+      severity: "warning",
+      message: "Falha ao enviar a nova imagem da dica para o Storage.",
+      route: "/admin/dicas",
+      userId: admin.id,
+    });
     return { ok: false, message: "Não foi possível enviar a imagem agora." };
   }
 
@@ -326,6 +355,15 @@ export async function uploadTipImageAction(
 
   if (updateError) {
     await supabase.storage.from("tip-cards").remove([storagePath]);
+    await recordSystemError({
+      area: "uploads",
+      operation: "tip_image_update",
+      severity: "warning",
+      message: "Imagem enviada, mas falhou ao salvar no registro da dica (imagem removida).",
+      route: "/admin/dicas",
+      postgresCode: updateError.code,
+      userId: admin.id,
+    });
     return { ok: false, message: "A imagem foi enviada, mas não foi possível salvar." };
   }
 

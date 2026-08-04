@@ -10,6 +10,7 @@ import {
   getJourneyRpcClient,
   getSafeJourneyErrorMessage,
 } from "@/server/services/journey-rpc.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 
 export type MemberActionResult =
   | {
@@ -108,6 +109,13 @@ export async function completeOnboardingAction(
   });
 
   if (metadataError) {
+    await recordSystemError({
+      area: "onboarding",
+      operation: "onboarding_update_auth_metadata",
+      severity: "error",
+      message: "Falha ao salvar os metadados de onboarding no Auth.",
+      userId: user.id,
+    });
     return {
       ok: false,
       message: "Nao foi possivel salvar seu onboarding agora.",
@@ -162,6 +170,14 @@ export async function completeOnboardingAction(
     .eq("id", user.id);
 
   if (profileError) {
+    await recordSystemError({
+      area: "onboarding",
+      operation: "onboarding_update_profile",
+      severity: "error",
+      message: "Falha ao atualizar o perfil ao concluir o onboarding.",
+      postgresCode: profileError.code,
+      userId: user.id,
+    });
     return {
       ok: false,
       message: "Nao foi possivel atualizar seu perfil agora.",
@@ -176,6 +192,14 @@ export async function completeOnboardingAction(
   });
 
   if (preferencesError) {
+    await recordSystemError({
+      area: "onboarding",
+      operation: "onboarding_upsert_preferences",
+      severity: "error",
+      message: "Falha ao salvar preferências ao concluir o onboarding.",
+      postgresCode: preferencesError.code,
+      userId: user.id,
+    });
     return {
       ok: false,
       message: "Nao foi possivel salvar suas preferencias agora.",

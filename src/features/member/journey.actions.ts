@@ -5,8 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { mapPostgresCodeToSeverity, type SystemErrorArea } from "@/features/observability/system-error.core";
 import { recordAnalyticsEvent, type AnalyticsEventName } from "@/server/services/analytics.service";
 import { requireAuthUser } from "@/server/services/auth-session.service";
+import { recordSystemError } from "@/server/services/system-observability.service";
 import {
   getJourneyRpcClient,
   getSafeJourneyErrorMessage,
@@ -96,12 +98,25 @@ function redirectWithJourneyNotice(
  * INSERT) is invisible server-side and can only be found by manually
  * reproducing the call - exactly what happened before this was added.
  */
-function logJourneyRpcFailure(rpcName: string, error: { code?: string; message: string }) {
+function logJourneyRpcFailure(
+  rpcName: string,
+  error: { code?: string; message: string },
+  context: { area: SystemErrorArea; userId?: string } = { area: "app" },
+) {
   console.error(`[journey-rpc-failed] ${rpcName} code=${error.code ?? "unknown"}: ${error.message}`);
+
+  void recordSystemError({
+    area: context.area,
+    operation: rpcName,
+    severity: mapPostgresCodeToSeverity(error.code),
+    message: `Falha na RPC ${rpcName}.`,
+    postgresCode: error.code,
+    userId: context.userId,
+  });
 }
 
 export async function saveJournalEntryAction(formData: FormData) {
-  await requireAuthUser("/app/hoje");
+  const user = await requireAuthUser("/app/hoje");
 
   const parsed = journalFormSchema.safeParse({
     content: optionalString(formData, "content"),
@@ -130,7 +145,7 @@ export async function saveJournalEntryAction(formData: FormData) {
   });
 
   if (error) {
-    logJourneyRpcFailure("save_journal_entry", error);
+    logJourneyRpcFailure("save_journal_entry", error, { area: "finalizacao", userId: user.id });
     redirectWithJourneyNotice("error", getSafeJourneyErrorMessage(error));
   }
 
@@ -250,6 +265,7 @@ export async function finalizeDayWithResponsesAction(
     logJourneyRpcFailure(
       "finalize_daily_log_with_responses",
       error ?? { message: "RPC returned no data" },
+      { area: "finalizacao", userId: user.id },
     );
 
     // Deliberately always this exact copy, not the per-error-code messages
@@ -282,9 +298,11 @@ export async function finalizeDayWithResponsesAction(
       ),
     );
   } catch (automationError) {
-    logJourneyRpcFailure("achievement_unlocked_automation", {
-      message: automationError instanceof Error ? automationError.message : String(automationError),
-    });
+    logJourneyRpcFailure(
+      "achievement_unlocked_automation",
+      { message: automationError instanceof Error ? automationError.message : String(automationError) },
+      { area: "conquistas", userId: user.id },
+    );
   }
 
   revalidatePath("/app/hoje");

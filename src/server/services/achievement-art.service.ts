@@ -15,6 +15,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { renderAchievementShareCardImage } from "@/server/rendering/achievement-share-card.render";
 
 import { requireAuthUser } from "./auth-session.service";
+import { recordSystemError } from "./system-observability.service";
 
 const SHARE_CARD_BUCKET = "achievement-share-cards";
 const TEMPLATE_VERSION = 1;
@@ -176,6 +177,14 @@ export async function generateAchievementShareCard(
     const image = renderAchievementShareCardImage(content, parsedConfig.data);
     imageBuffer = await image.arrayBuffer();
   } catch {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "achievement_card_render",
+      severity: "error",
+      message: "Falha ao renderizar a imagem do card de conquista.",
+      userId: user.id,
+      metadata: { format },
+    });
     return { error: "Não foi possível gerar a imagem agora.", ok: false };
   }
 
@@ -184,6 +193,14 @@ export async function generateAchievementShareCard(
     .upload(storagePath, imageBuffer, { contentType: "image/png", upsert: true });
 
   if (uploadError) {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "achievement_card_upload",
+      severity: "error",
+      message: "Falha ao salvar a imagem do card de conquista no Storage.",
+      userId: user.id,
+      metadata: { format },
+    });
     return { error: "Não foi possível salvar a imagem gerada.", ok: false };
   }
 
@@ -213,6 +230,14 @@ export async function generateAchievementShareCard(
   );
 
   if (upsertError) {
+    await recordSystemError({
+      area: "compartilhamentos",
+      operation: "achievement_card_db_upsert",
+      severity: "error",
+      message: "Falha ao registrar a arte gerada em share_cards.",
+      userId: user.id,
+      metadata: { format },
+    });
     return { error: "Não foi possível registrar a arte gerada.", ok: false };
   }
 

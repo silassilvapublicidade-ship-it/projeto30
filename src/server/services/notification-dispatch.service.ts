@@ -407,7 +407,7 @@ export async function processNotificationCampaign(campaignId: string): Promise<v
  * never enter this state) and retries just the push side. Called by the
  * cron route on every invocation, after new-campaign dispatch.
  */
-export async function retryDueNotificationDeliveries(): Promise<void> {
+export async function retryDueNotificationDeliveries(): Promise<number> {
   const supabase = createSupabaseAdminClient();
 
   const { data: dueDeliveries } = await supabase
@@ -419,7 +419,7 @@ export async function retryDueNotificationDeliveries(): Promise<void> {
     .limit(500);
 
   if (!dueDeliveries || dueDeliveries.length === 0) {
-    return;
+    return 0;
   }
 
   const affectedCampaignIds = new Set<string>();
@@ -441,6 +441,8 @@ export async function retryDueNotificationDeliveries(): Promise<void> {
   for (const campaignId of affectedCampaignIds) {
     await finalizeCampaignIfDone(supabase, campaignId);
   }
+
+  return dueDeliveries.length;
 }
 
 /**
@@ -448,7 +450,7 @@ export async function retryDueNotificationDeliveries(): Promise<void> {
  * and dispatches them - the single place scheduling actually executes, so
  * it works with zero browser open, driven only by the cron route.
  */
-export async function processDueScheduledCampaigns(): Promise<void> {
+export async function processDueScheduledCampaigns(): Promise<number> {
   const supabase = createSupabaseAdminClient();
 
   const { data: due } = await supabase
@@ -459,7 +461,7 @@ export async function processDueScheduledCampaigns(): Promise<void> {
     .limit(100);
 
   if (!due || due.length === 0) {
-    return;
+    return 0;
   }
 
   for (const { id } of due) {
@@ -473,4 +475,6 @@ export async function processDueScheduledCampaigns(): Promise<void> {
       await processNotificationCampaign(id);
     }
   }
+
+  return due.length;
 }
