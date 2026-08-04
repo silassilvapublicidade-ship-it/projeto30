@@ -20,6 +20,7 @@ const PROFILE_EVENT_NAMES = [
   "evolution_share_completed",
   "evolution_share_downloaded",
   "share_template_previewed",
+  "dashboard_context_message_viewed",
 ] as const satisfies readonly AnalyticsEventName[];
 
 type ProfileEventName = (typeof PROFILE_EVENT_NAMES)[number];

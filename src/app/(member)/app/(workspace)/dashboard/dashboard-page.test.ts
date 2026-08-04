@@ -9,11 +9,10 @@ function readSource(...pathSegments: string[]) {
 describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da area de membros", () => {
   const source = readSource("src", "app", "(member)", "app", "(workspace)", "dashboard", "page.tsx");
 
-  it("orchestrates every dashboard section - header, metrics, highlight, objective, faith, challenges, timeline, achievements, statistics, recent evolution", () => {
+  it("orchestrates every dashboard section - header, metrics, context message, next milestone, faith, challenges, timeline, achievements, statistics, recent evolution", () => {
     expect(source).toContain("<ProfileHeader");
     expect(source).toContain("<ProfileMetricsGrid");
-    expect(source).toContain("<ProfileEvolutionHighlight");
-    expect(source).toContain("<ProfileNextObjective");
+    expect(source).toContain("<DashboardContextMessage");
     expect(source).toContain("<ProfileFaithMessage");
     expect(source).toContain("<ProfileChallengesSection");
     expect(source).toContain("<ProfileTimeline");
@@ -37,8 +36,22 @@ describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da a
     expect(source).toContain('source: "server"');
   });
 
-  it("never surfaces a locked achievement's identity ahead of unlocking it - next objective only names achievements with real numeric progress", () => {
+  it("never surfaces a locked achievement's identity ahead of unlocking it - next milestone only names achievements with real numeric progress", () => {
     expect(source).toContain("findClosestLockedAchievement(achievements.locked)");
+  });
+
+  it("renders the next-milestone block only when a real milestone resolved (never a hardcoded placeholder)", () => {
+    expect(source).toContain("<DashboardNextMilestone");
+    expect(source).toContain("nextMilestone ? (");
+  });
+
+  it("central contextual message uses the 10-tier resolver, never scattered inline conditionals", () => {
+    expect(source).toContain("resolveDashboardContextMessage(");
+  });
+
+  it("records dashboard_context_message_viewed with only the safe category, never the raw message text", () => {
+    expect(source).toContain('eventName: "dashboard_context_message_viewed"');
+    expect(source).toContain("category: contextMessage.category");
   });
 
   it("reuses getMemberAchievements (the same source as /app/conquistas) instead of a duplicate query", () => {

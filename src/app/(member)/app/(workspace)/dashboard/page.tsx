@@ -1,26 +1,29 @@
 import type { Metadata } from "next";
 
+import { DashboardContextMessage } from "@/components/member/dashboard-context-message";
 import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
+import { DashboardNextMilestone } from "@/components/member/dashboard-next-milestone";
 import { ProfileAchievementsSummary } from "@/components/member/profile-achievements-summary";
 import { ProfileChallengesSection } from "@/components/member/profile-challenges-section";
-import { ProfileEvolutionHighlight } from "@/components/member/profile-evolution-highlight";
 import { ProfileFaithMessage } from "@/components/member/profile-faith-message";
 import { ProfileHeader } from "@/components/member/profile-header";
 import { ProfileMetricsGrid } from "@/components/member/profile-metrics-grid";
 import { ProfileNextAchievement } from "@/components/member/profile-next-achievement";
-import { ProfileNextObjective } from "@/components/member/profile-next-objective";
 import { ProfileRecentEvolution } from "@/components/member/profile-recent-evolution";
 import { ProfileStatistics } from "@/components/member/profile-statistics";
 import { ProfileTimeline } from "@/components/member/profile-timeline";
 import { getDateOnlyInTimeZone, getPreviousDateOnly } from "@/features/challenges/date.core";
+import { resolveDashboardContextMessage } from "@/features/dashboard/dashboard-context-message.core";
 import {
   describeMissionCountdown,
   describeMissionState,
   describePointsContext,
 } from "@/features/dashboard/dashboard-mission.core";
 import {
-  describeEvolutionHighlight,
-  describeNextObjective,
+  resolveNextMilestone,
+  type NextMilestoneKind,
+} from "@/features/dashboard/dashboard-next-milestone.core";
+import {
   findClosestLockedAchievement,
   getTimelineFilterTypes,
   TIMELINE_FILTERS,
@@ -44,6 +47,16 @@ export const metadata: Metadata = {
 };
 
 const TIMELINE_PAGE_SIZE = 15;
+
+/** Cada tipo de marco leva a uma tela diferente - nunca um href fixo para todos. */
+const NEXT_MILESTONE_CTA_HREF: Record<NextMilestoneKind, string> = {
+  complete_challenge: "/app/hoje",
+  final_week: "/app/jornada",
+  finish_day: "/app/hoje",
+  reach_halfway: "/app/jornada",
+  tie_record: "/app/jornada",
+  unlock_achievement: "/app/conquistas",
+};
 
 function isTimelineFilterKey(value: string | undefined): value is TimelineFilterKey {
   return TIMELINE_FILTERS.some((filter) => filter.key === value);
@@ -91,11 +104,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return rank(a.enrollment.status) - rank(b.enrollment.status);
   });
   const primaryMission = missionEnrollments[0] ?? null;
-  const primaryMissionNeedsFinalizing = Boolean(
-    primaryMission &&
-      primaryMission.journeyState === "day_available" &&
-      primaryMission.todayProgress.state !== "finalized",
-  );
   const missionNeedsGenericMessage = missionEnrollments.some(
     (enrollment) => !enrollment.todayChallengeDay?.message?.trim(),
   );
@@ -187,26 +195,44 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   });
   const pointsContextHint = pointsContext.todayLabel ?? pointsContext.weekLabel;
 
-  const evolutionHighlight = describeEvolutionHighlight({
+  const daysRemainingInChallenge =
+    primaryEnrollment && primaryEnrollment.status === "active"
+      ? primaryEnrollment.durationDays - primaryEnrollment.currentDay
+      : null;
+
+  const contextMessage = resolveDashboardContextMessage({
+    challengeDayMessage: primaryMission?.todayChallengeDay?.message ?? null,
+    closestLockedAchievement,
     currentDay: primaryEnrollment?.currentDay ?? null,
     dayOverDayMessage,
     daysFinalized: overview.totals.daysFinalized,
-    daysRemainingInChallenge:
-      primaryEnrollment && primaryEnrollment.status === "active"
-        ? primaryEnrollment.durationDays - primaryEnrollment.currentDay
-        : null,
+    daysRemainingInChallenge,
     durationDays: primaryEnrollment?.durationDays ?? null,
+    faithMessage: faithMessage?.body ?? null,
     streakBest: overview.totals.streakBestMax,
     streakCurrent: overview.totals.streakCurrentMax,
+    todayCompletionPercent: primaryMission?.todayProgress.completionPercent ?? null,
+    todayFinalized: primaryMission?.todayProgress.state === "finalized",
   });
 
-  const nextObjective = describeNextObjective({
+  void recordAnalyticsEvent({
+    challengeId: primaryEnrollment?.challengeId ?? null,
+    enrollmentId: primaryEnrollment?.enrollmentId ?? null,
+    eventName: "dashboard_context_message_viewed",
+    metadata: { category: contextMessage.category },
+    source: "server",
+  });
+
+  const nextMilestone = resolveNextMilestone({
+    applicableHabits: primaryMission?.todayProgress.applicableHabits ?? 0,
     closestLockedAchievement,
+    completedHabits: primaryMission?.todayProgress.completedHabits ?? 0,
     currentDay: primaryEnrollment?.currentDay ?? null,
+    daysRemainingInChallenge,
     durationDays: primaryEnrollment?.durationDays ?? null,
     streakBest: overview.totals.streakBestMax,
     streakCurrent: overview.totals.streakCurrentMax,
-    todayNeedsFinalizing: primaryMissionNeedsFinalizing,
+    todayFinalized: primaryMission?.todayProgress.state === "finalized",
   });
 
   return (
@@ -222,6 +248,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       <DashboardMissionBlock cards={missionCards} />
 
+      <DashboardContextMessage message={contextMessage} />
+
       <ProfileMetricsGrid
         achievementsTotal={achievementsTotal}
         enrollments={overview.enrollments}
@@ -230,10 +258,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         totals={overview.totals}
       />
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <ProfileEvolutionHighlight message={evolutionHighlight} />
-        <ProfileNextObjective message={nextObjective} />
-      </div>
+      {nextMilestone ? (
+        <DashboardNextMilestone
+          challengeId={primaryEnrollment?.challengeId}
+          ctaHref={NEXT_MILESTONE_CTA_HREF[nextMilestone.kind]}
+          enrollmentId={primaryEnrollment?.enrollmentId}
+          milestone={nextMilestone}
+        />
+      ) : null}
 
       <ProfileNextAchievement achievement={closestLockedAchievement} />
 

@@ -1,13 +1,29 @@
 import Link from "next/link";
 
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { cn } from "@/lib/utils";
 import type { ProfileEnrollmentSummary, ProfileOverview } from "@/server/services/profile-dashboard.service";
 
-function MetricCard({ hint, label, value }: { hint?: string | undefined; label: string; value: string }) {
+function MetricCard({
+  hint,
+  label,
+  storageKey,
+  suffix,
+  value,
+}: {
+  hint?: string | undefined;
+  label: string;
+  storageKey: string;
+  suffix?: string | undefined;
+  value: number;
+}) {
   return (
-    <div className="rounded-[1.1rem] border border-white/[0.08] bg-white/[0.03] p-3.5 sm:p-4">
+    <div className="rounded-[1.1rem] border border-white/[0.08] bg-white/[0.03] p-3.5 transition-[border-color] duration-[var(--motion-hover)] sm:p-4">
       <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted-2">{label}</p>
-      <p className="mt-1.5 font-display text-2xl leading-none text-foreground sm:text-3xl">{value}</p>
+      <p className="mt-1.5 font-display text-2xl leading-none text-foreground sm:text-3xl">
+        <AnimatedNumber storageKey={storageKey} value={value} />
+        {suffix ? <span aria-hidden="true">{suffix}</span> : null}
+      </p>
       {hint ? <p className="mt-1 text-[0.7rem] text-muted-2">{hint}</p> : null}
     </div>
   );
@@ -78,15 +94,35 @@ export function ProfileMetricsGrid({
       {selected ? (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           <MetricCard
-            label="Dia atual"
-            value={`${selected.currentDay}`}
             hint={`de ${selected.durationDays}`}
+            label="Dia atual"
+            storageKey={`day:${selected.enrollmentId}`}
+            value={selected.currentDay}
           />
-          <MetricCard label="Sequência atual" value={`${selected.streakCurrent}`} hint="dias" />
-          <MetricCard label="Melhor sequência" value={`${selected.streakBest}`} hint="dias" />
-          <MetricCard label="Pontos" value={selected.pointsTotal.toLocaleString("pt-BR")} />
-          <MetricCard label="Conquistas" value={`${selected.achievementsUnlocked}`} />
-          <MetricCard label="Progresso do ciclo" value={`${Math.round(selected.completionPercent)}%`} />
+          <MetricCard
+            hint="dias"
+            label="Sequência atual"
+            storageKey={`streak-current:${selected.enrollmentId}`}
+            value={selected.streakCurrent}
+          />
+          <MetricCard
+            hint="dias"
+            label="Melhor sequência"
+            storageKey={`streak-best:${selected.enrollmentId}`}
+            value={selected.streakBest}
+          />
+          <MetricCard label="Pontos" storageKey={`points:${selected.enrollmentId}`} value={selected.pointsTotal} />
+          <MetricCard
+            label="Conquistas"
+            storageKey={`achievements:${selected.enrollmentId}`}
+            value={selected.achievementsUnlocked}
+          />
+          <MetricCard
+            label="Progresso do ciclo"
+            storageKey={`completion:${selected.enrollmentId}`}
+            suffix="%"
+            value={Math.round(selected.completionPercent)}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
@@ -99,10 +135,21 @@ export function ProfileMetricsGrid({
               enrollments.length === 1 ? `de ${enrollments[0]!.durationDays} dias` : undefined
             }
             label="Dias finalizados"
-            value={`${totals.daysFinalized}`}
+            storageKey="days-finalized"
+            value={totals.daysFinalized}
           />
-          <MetricCard label="Sequência atual" value={`${totals.streakCurrentMax}`} hint="dias" />
-          <MetricCard label="Melhor sequência" value={`${totals.streakBestMax}`} hint="dias" />
+          <MetricCard
+            hint="dias"
+            label="Sequência atual"
+            storageKey="streak-current-max"
+            value={totals.streakCurrentMax}
+          />
+          <MetricCard
+            hint="dias"
+            label="Melhor sequência"
+            storageKey="streak-best-max"
+            value={totals.streakBestMax}
+          />
           <MetricCard
             hint={
               // So mistura "+N hoje/nesta semana" (sempre de UM desafio
@@ -112,21 +159,20 @@ export function ProfileMetricsGrid({
               enrollments.length <= 1 && pointsContextHint ? pointsContextHint : undefined
             }
             label="Pontos totais"
-            value={totals.pointsTotal.toLocaleString("pt-BR")}
+            storageKey="points-total"
+            value={totals.pointsTotal}
           />
           <MetricCard
             hint={achievementsTotal !== null ? `de ${achievementsTotal}` : undefined}
             label="Conquistas"
-            value={`${totals.achievementsUnlocked}`}
+            storageKey="achievements-total"
+            value={totals.achievementsUnlocked}
           />
           <MetricCard
-            hint={
-              totals.challengesActive > 0
-                ? `${totals.challengesActive} em andamento`
-                : undefined
-            }
+            hint={totals.challengesActive > 0 ? `${totals.challengesActive} em andamento` : undefined}
             label="Desafios concluídos"
-            value={`${totals.challengesCompleted}`}
+            storageKey="challenges-completed"
+            value={totals.challengesCompleted}
           />
         </div>
       )}

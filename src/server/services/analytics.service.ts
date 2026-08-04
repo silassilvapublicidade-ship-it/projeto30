@@ -44,7 +44,10 @@ export type AnalyticsEventName =
   | "evolution_share_started"
   | "evolution_share_completed"
   | "evolution_share_downloaded"
-  | "share_template_previewed";
+  | "share_template_previewed"
+  // Refinamento premium (Parte G) - unico evento genuinamente novo; os
+  // demais pedidos no briefing ja existem sob outro nome (ver 0069).
+  | "dashboard_context_message_viewed";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;

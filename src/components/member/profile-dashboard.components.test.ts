@@ -233,15 +233,15 @@ describe("ProfileRecentEvolution - evolucao recente (Parte 11)", () => {
   });
 });
 
-describe("ProfileEvolutionHighlight / ProfileNextObjective / ProfileFaithMessage", () => {
-  it("evolution highlight renders a single message block, never two stacked", () => {
-    const source = readSource("src", "components", "member", "profile-evolution-highlight.tsx");
-    expect((source.match(/\{message\}/g) ?? []).length).toBe(1);
+describe("DashboardContextMessage / DashboardNextMilestone / ProfileFaithMessage", () => {
+  it("context message renders a single message block, never two stacked", () => {
+    const source = readSource("src", "components", "member", "dashboard-context-message.tsx");
+    expect((source.match(/\{message\.text\}/g) ?? []).length).toBe(1);
   });
 
-  it("next objective never hardcodes a surprise achievement reveal", () => {
-    const source = readSource("src", "components", "member", "profile-next-objective.tsx");
-    const body = source.slice(source.indexOf("export function ProfileNextObjective"));
+  it("next milestone never hardcodes a surprise achievement reveal", () => {
+    const source = readSource("src", "components", "member", "dashboard-next-milestone.tsx");
+    const body = source.slice(source.indexOf("export function DashboardNextMilestone"));
     expect(body).not.toMatch(/surpresa|secreta/i);
   });
 

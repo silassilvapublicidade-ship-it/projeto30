@@ -1,9 +1,11 @@
 /**
- * Dashboard de Evolucao Pessoal - toda a logica de mensagem dinamica em um
- * unico lugar puro/testavel, nunca inline nos componentes. Nenhuma funcao
- * aqui inventa dado: cada mensagem so aparece quando o dado real que ela
- * descreve existe (ver o fallback de describeNextObjective/
- * describeEvolutionHighlight - nunca uma frase vaga no lugar de silencio).
+ * Dashboard de Evolucao Pessoal - logica de timeline/conquistas em um unico
+ * lugar puro/testavel, nunca inline nos componentes. A mensagem contextual
+ * central e o "proximo marco" (antigos describeEvolutionHighlight/
+ * describeNextObjective, que viviam aqui) foram substituidos por
+ * resolveDashboardContextMessage e resolveNextMilestone em
+ * src/features/dashboard/ (Refinamento premium, Parte C) - priorizacao fixa
+ * de 10/7 tiers em vez de "menor distancia primeiro".
  */
 
 export type TimelineEventType =
@@ -213,111 +215,6 @@ export function groupTimelineEventsByDate(
   }
 
   return groups;
-}
-
-/**
- * Bloco de destaque (Parte 5) - uma unica mensagem, escolhida por
- * prioridade entre as que tem dado real por tras. Nunca combina duas
- * mensagens, nunca usa comparacao social.
- */
-export function describeEvolutionHighlight(input: {
-  currentDay: number | null;
-  daysFinalized: number;
-  daysRemainingInChallenge: number | null;
-  dayOverDayMessage: string | null;
-  durationDays: number | null;
-  streakBest: number;
-  streakCurrent: number;
-}): string {
-  if (input.streakCurrent > 0 && input.streakCurrent === input.streakBest) {
-    return "Você bateu sua melhor sequência.";
-  }
-
-  if (input.dayOverDayMessage) {
-    return input.dayOverDayMessage;
-  }
-
-  if (input.daysRemainingInChallenge !== null && input.daysRemainingInChallenge > 0 && input.daysRemainingInChallenge <= 5) {
-    return `Faltam ${input.daysRemainingInChallenge} ${input.daysRemainingInChallenge === 1 ? "dia" : "dias"} para concluir este desafio.`;
-  }
-
-  if (input.currentDay !== null && input.durationDays !== null) {
-    const halfway = Math.ceil(input.durationDays / 2);
-    if (input.currentDay === halfway) {
-      return "Você está na metade do caminho.";
-    }
-  }
-
-  if (input.streakBest > 0) {
-    return `Seu recorde atual é de ${input.streakBest} ${input.streakBest === 1 ? "dia" : "dias"}.`;
-  }
-
-  if (input.daysFinalized > 0) {
-    return `Você já concluiu ${input.daysFinalized} ${input.daysFinalized === 1 ? "dia" : "dias"}.`;
-  }
-
-  return "Sua jornada está prestes a começar.";
-}
-
-/**
- * "Proximo objetivo" (Parte 12 da rodada anterior; reordenado pela lista de
- * prioridade da rodada "Dashboard como alma do app", Parte B item 11):
- * 1) finalizar o dia atual (sempre vence os demais quando aplicavel - nunca
- *    faz sentido sugerir "metade do desafio" para quem ainda nem terminou
- *    hoje); 2) manter/recuperar sequencia; 3-4) metas semanal/mensal (fora
- *    de escopo, exigiriam consulta extra por habito - pendencia
- *    documentada, igual a rodada anterior); 5) igualar recorde (mesmo item
- *    2, ja coberto); 6) metade do desafio; 7) conquista mais proxima;
- *    8) finalizar o desafio (nao adicionado - "faltam N dias" ja e o
- *    destaque de evolucao, duplicar aqui seria dois objetivos concorrentes
- *    na mesma dobra, o que o briefing pede para evitar).
- */
-export function describeNextObjective(input: {
-  closestLockedAchievement: { current: number; name: string; target: number } | null;
-  currentDay: number | null;
-  durationDays: number | null;
-  streakBest: number;
-  streakCurrent: number;
-  todayNeedsFinalizing?: boolean;
-}): string {
-  if (input.todayNeedsFinalizing) {
-    return "Finalize seu dia para manter o progresso.";
-  }
-
-  const candidates: Array<{ gap: number; message: string }> = [];
-
-  if (input.streakBest > input.streakCurrent) {
-    const gap = input.streakBest - input.streakCurrent;
-    candidates.push({
-      gap,
-      message: `Complete mais ${gap} ${gap === 1 ? "dia" : "dias"} para igualar seu recorde de ${input.streakBest} ${
-        input.streakBest === 1 ? "dia" : "dias"
-      }.`,
-    });
-  }
-
-  if (input.currentDay !== null && input.durationDays !== null) {
-    const halfway = Math.ceil(input.durationDays / 2);
-    if (input.currentDay < halfway) {
-      const gap = halfway - input.currentDay;
-      candidates.push({ gap, message: `Faltam ${gap} ${gap === 1 ? "dia" : "dias"} para a metade do desafio.` });
-    }
-  }
-
-  if (input.closestLockedAchievement && input.closestLockedAchievement.current < input.closestLockedAchievement.target) {
-    const gap = input.closestLockedAchievement.target - input.closestLockedAchievement.current;
-    candidates.push({
-      gap,
-      message: `Faltam ${gap} ${gap === 1 ? "passo" : "passos"} para desbloquear "${input.closestLockedAchievement.name}".`,
-    });
-  }
-
-  if (candidates.length === 0) {
-    return "Continue registrando sua jornada. Cada dia conta.";
-  }
-
-  candidates.sort((a, b) => a.gap - b.gap);
-  return candidates[0]!.message;
 }
 
 export type ClosestLockedAchievement = {
