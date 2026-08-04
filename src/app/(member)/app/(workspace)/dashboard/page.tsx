@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DashboardContextMessage } from "@/components/member/dashboard-context-message";
 import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
+import { DashboardNarrativeSummary } from "@/components/member/dashboard-narrative-summary";
 import { DashboardNextMilestone } from "@/components/member/dashboard-next-milestone";
 import { ProfileAchievementsSummary } from "@/components/member/profile-achievements-summary";
 import { ProfileChallengesSection } from "@/components/member/profile-challenges-section";
@@ -14,6 +15,7 @@ import { ProfileStatistics } from "@/components/member/profile-statistics";
 import { ProfileTimeline } from "@/components/member/profile-timeline";
 import { getDateOnlyInTimeZone, getPreviousDateOnly } from "@/features/challenges/date.core";
 import { resolveDashboardContextMessage } from "@/features/dashboard/dashboard-context-message.core";
+import { buildNarrativeSummary } from "@/features/dashboard/dashboard-narrative-summary.core";
 import {
   describeMissionCountdown,
   describeMissionState,
@@ -223,6 +225,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     source: "server",
   });
 
+  const narrativeSummary = buildNarrativeSummary({
+    achievementsUnlocked: overview.totals.achievementsUnlocked,
+    daysFinalized: overview.totals.daysFinalized,
+    pointsTotal: overview.totals.pointsTotal,
+    streakCurrent: overview.totals.streakCurrentMax,
+    todayFinalized: primaryMission?.todayProgress.state === "finalized",
+  });
+
   const nextMilestone = resolveNextMilestone({
     applicableHabits: primaryMission?.todayProgress.applicableHabits ?? 0,
     closestLockedAchievement,
@@ -250,13 +260,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       <DashboardContextMessage message={contextMessage} />
 
-      <ProfileMetricsGrid
-        achievementsTotal={achievementsTotal}
-        enrollments={overview.enrollments}
-        pointsContextHint={pointsContextHint}
-        selectedChallengeId={selectedChallengeId}
-        totals={overview.totals}
-      />
+      <DashboardNarrativeSummary summary={narrativeSummary} />
 
       {nextMilestone ? (
         <DashboardNextMilestone
@@ -266,6 +270,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           milestone={nextMilestone}
         />
       ) : null}
+
+      <ProfileMetricsGrid
+        achievementsTotal={achievementsTotal}
+        enrollments={overview.enrollments}
+        pointsContextHint={pointsContextHint}
+        selectedChallengeId={selectedChallengeId}
+        totals={overview.totals}
+      />
 
       <ProfileNextAchievement achievement={closestLockedAchievement} />
 

@@ -110,60 +110,68 @@ export function formatHabitTitlesSummary(titles: string[] | null): string | null
  * desbloqueou no mesmo instante em um unico card) - simplificacao
  * deliberada: os dois aparecem adjacentes na lista (mesmo event_at),
  * transmitindo a mesma informacao sem a complexidade de agrupamento.
+ *
+ * Titulos em primeira pessoa narrativa (Refinamento premium, Parte D item
+ * 16) - "Você finalizou o Dia 3 e conquistou 80 pontos." em vez de
+ * linguagem de sistema/banco ("day_finalized", "challenge_started"). A
+ * descricao carrega so o detalhe complementar (percentual, habitos), nunca
+ * repete o que o titulo ja disse.
  */
 export function describeTimelineEvent(event: TimelineEventRow): TimelineEventDisplay {
   switch (event.event_type) {
     case "day_finalized": {
       const percent = event.completion_percent !== null ? Math.round(event.completion_percent) : null;
       const habitsSummary = formatHabitTitlesSummary(event.habit_titles);
-      const parts = [
-        formatPoints(event.points),
-        percent !== null ? `${percent}% concluído` : null,
-        habitsSummary,
-      ].filter((part): part is string => Boolean(part));
+      const pointsPart = formatPoints(event.points);
+      const dayLabel = event.day_number !== null ? `o Dia ${event.day_number}` : "seu dia";
+      const descriptionParts = [percent !== null ? `${percent}% concluído` : null, habitsSummary].filter(
+        (part): part is string => Boolean(part),
+      );
       return {
-        description: parts.length > 0 ? parts.join(" · ") : "Dia registrado.",
+        description: descriptionParts.length > 0 ? descriptionParts.join(" · ") : "Dia registrado.",
         iconKey: "day",
-        title: event.day_number !== null ? `Dia ${event.day_number} finalizado` : "Dia finalizado",
+        title: pointsPart ? `Você finalizou ${dayLabel} e conquistou ${pointsPart}.` : `Você finalizou ${dayLabel}.`,
       };
     }
     case "achievement_unlocked":
       return {
         description: formatPoints(event.points) ?? "Sem pontos de bônus.",
         iconKey: "achievement",
-        title: event.achievement_name ? `Conquista desbloqueada: ${event.achievement_name}` : "Conquista desbloqueada",
+        title: event.achievement_name ? `Você desbloqueou ${event.achievement_name}.` : "Você desbloqueou uma conquista.",
       };
     case "challenge_started":
       return {
         description: event.challenge_name ?? "",
         iconKey: "challenge_start",
-        title: "Desafio iniciado",
+        title: event.challenge_name ? `Você iniciou o ${event.challenge_name}.` : "Você iniciou um desafio.",
       };
     case "challenge_completed":
       return {
         description: event.challenge_name ?? "",
         iconKey: "challenge_complete",
-        title: "Desafio concluído",
+        title: event.challenge_name ? `Você concluiu o ${event.challenge_name}.` : "Você concluiu um desafio.",
       };
     case "challenge_abandoned":
       return {
         description: event.challenge_name ?? "",
         iconKey: "challenge_abandon",
-        title: "Desafio abandonado",
+        title: event.challenge_name
+          ? `Você encerrou sua participação no ${event.challenge_name}.`
+          : "Você encerrou sua participação neste desafio.",
       };
     case "streak_record": {
       const days = event.streak_value !== null ? `${event.streak_value} ${event.streak_value === 1 ? "dia" : "dias"}` : null;
       return {
         description: days ? `${days} seguidos - o maior desde que você começou.` : "Novo recorde de sequência.",
         iconKey: "record",
-        title: "Novo recorde de sequência",
+        title: "Você bateu um novo recorde de sequência.",
       };
     }
     case "halfway_reached":
       return {
         description: event.challenge_name ?? "",
         iconKey: "halfway",
-        title: "Você chegou à metade do desafio",
+        title: "Você chegou à metade do desafio.",
       };
   }
 }

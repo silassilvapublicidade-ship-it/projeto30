@@ -54,6 +54,25 @@ describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da a
     expect(source).toContain("category: contextMessage.category");
   });
 
+  it("the narrative summary block exists and uses the dedicated pure builder, never inline copy", () => {
+    expect(source).toContain("<DashboardNarrativeSummary");
+    expect(source).toContain("buildNarrativeSummary(");
+  });
+
+  it("first fold follows the brief's exact order: mission, message, narrative summary, next milestone, metrics (Parte D item 12)", () => {
+    const missionAt = source.indexOf("<DashboardMissionBlock");
+    const messageAt = source.indexOf("<DashboardContextMessage");
+    const summaryAt = source.indexOf("<DashboardNarrativeSummary");
+    const milestoneAt = source.indexOf("<DashboardNextMilestone");
+    const metricsAt = source.indexOf("<ProfileMetricsGrid");
+
+    expect(missionAt).toBeGreaterThan(-1);
+    expect(missionAt).toBeLessThan(messageAt);
+    expect(messageAt).toBeLessThan(summaryAt);
+    expect(summaryAt).toBeLessThan(milestoneAt);
+    expect(milestoneAt).toBeLessThan(metricsAt);
+  });
+
   it("reuses getMemberAchievements (the same source as /app/conquistas) instead of a duplicate query", () => {
     expect(source).toContain(
       'import { getMemberAchievements } from "@/server/services/achievements.service";',

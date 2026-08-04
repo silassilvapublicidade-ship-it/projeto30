@@ -31,58 +31,67 @@ function baseEvent(overrides: Partial<TimelineEventRow>): TimelineEventRow {
   };
 }
 
-describe("describeTimelineEvent", () => {
-  it("day_finalized: shows day number, points and percent when all present", () => {
+describe("describeTimelineEvent - titulos narrativos em primeira pessoa (Refinamento premium, Parte D item 16)", () => {
+  it("day_finalized: narrates day number and points together in the title, percent/habits stay in the description", () => {
     const result = describeTimelineEvent(
       baseEvent({ completion_percent: 80, day_number: 3, event_type: "day_finalized", points: 110 }),
     );
-    expect(result.title).toBe("Dia 3 finalizado");
-    expect(result.description).toBe("110 pontos · 80% concluído");
+    expect(result.title).toBe("Você finalizou o Dia 3 e conquistou 110 pontos.");
+    expect(result.description).toBe("80% concluído");
     expect(result.iconKey).toBe("day");
   });
 
-  it("day_finalized: singular 'ponto' for exactly 1 point, and falls back to a neutral description when both points and percent are absent", () => {
+  it("day_finalized: singular 'ponto' for exactly 1 point in the title, and a neutral description when nothing else is available", () => {
     const withOnePoint = describeTimelineEvent(baseEvent({ day_number: 1, event_type: "day_finalized", points: 1 }));
-    expect(withOnePoint.description).toBe("1 ponto");
+    expect(withOnePoint.title).toBe("Você finalizou o Dia 1 e conquistou 1 ponto.");
 
     const withNothing = describeTimelineEvent(
       baseEvent({ completion_percent: null, day_number: 1, event_type: "day_finalized", points: null }),
     );
+    expect(withNothing.title).toBe("Você finalizou o Dia 1.");
     expect(withNothing.description).toBe("Dia registrado.");
   });
 
-  it("day_finalized: never shows '0 pontos' as if it were a real number - 0 reads the same as absent", () => {
+  it("day_finalized: never claims '0 pontos' as if it were a real reward - 0 reads the same as absent", () => {
     const result = describeTimelineEvent(baseEvent({ day_number: 2, event_type: "day_finalized", points: 0 }));
-    expect(result.description).not.toContain("0 pontos");
+    expect(result.title).not.toContain("pontos");
+    expect(result.title).toBe("Você finalizou o Dia 2.");
   });
 
-  it("achievement_unlocked: uses the real achievement name, never a placeholder", () => {
+  it("achievement_unlocked: names the real achievement in a first-person sentence, never a placeholder or system label", () => {
     const result = describeTimelineEvent(
       baseEvent({ achievement_name: "Retorno forte", event_type: "achievement_unlocked", points: 20 }),
     );
-    expect(result.title).toBe("Conquista desbloqueada: Retorno forte");
+    expect(result.title).toBe("Você desbloqueou Retorno forte.");
     expect(result.description).toBe("20 pontos");
     expect(result.iconKey).toBe("achievement");
   });
 
-  it("challenge_started/completed/abandoned: title is fixed, description carries the real challenge name", () => {
-    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_started" })).title).toBe("Desafio iniciado");
-    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_completed" })).title).toBe("Desafio concluído");
-    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_abandoned" })).title).toBe("Desafio abandonado");
-    expect(describeTimelineEvent(baseEvent({ challenge_name: "Desafio X", event_type: "challenge_started" })).description).toBe(
-      "Desafio X",
+  it("challenge_started/completed/abandoned: narrate the real challenge name in the title, never raw system language", () => {
+    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_started" })).title).toBe(
+      "Você iniciou o Desafio de Agosto.",
+    );
+    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_completed" })).title).toBe(
+      "Você concluiu o Desafio de Agosto.",
+    );
+    expect(describeTimelineEvent(baseEvent({ event_type: "challenge_abandoned" })).title).toBe(
+      "Você encerrou sua participação no Desafio de Agosto.",
+    );
+    expect(describeTimelineEvent(baseEvent({ challenge_name: "Desafio X", event_type: "challenge_started" })).title).toBe(
+      "Você iniciou o Desafio X.",
     );
   });
 
-  it("streak_record: pluralizes correctly and never a bare number without context", () => {
+  it("streak_record: fixed first-person title, description pluralizes correctly and never a bare number without context", () => {
     const plural = describeTimelineEvent(baseEvent({ event_type: "streak_record", streak_value: 5 }));
+    expect(plural.title).toBe("Você bateu um novo recorde de sequência.");
     expect(plural.description).toContain("5 dias seguidos");
 
     const singular = describeTimelineEvent(baseEvent({ event_type: "streak_record", streak_value: 1 }));
     expect(singular.description).toMatch(/^1 dia seguidos/);
   });
 
-  it("day_finalized: appends a truncated habit-titles summary when present, alongside points/percent", () => {
+  it("day_finalized: appends a truncated habit-titles summary to the description, alongside percent", () => {
     const result = describeTimelineEvent(
       baseEvent({
         completion_percent: 80,
@@ -92,14 +101,14 @@ describe("describeTimelineEvent", () => {
         points: 110,
       }),
     );
-    expect(result.description).toBe("110 pontos · 80% concluído · Treino, Bíblia, Oração e mais 2 hábitos.");
+    expect(result.description).toBe("80% concluído · Treino, Bíblia, Oração e mais 2 hábitos.");
   });
 
-  it("halfway_reached: fixed title, description carries the challenge name", () => {
+  it("halfway_reached: fixed first-person title, description carries the challenge name", () => {
     const result = describeTimelineEvent(
       baseEvent({ challenge_name: "Desafio de Agosto", event_type: "halfway_reached" }),
     );
-    expect(result.title).toBe("Você chegou à metade do desafio");
+    expect(result.title).toBe("Você chegou à metade do desafio.");
     expect(result.description).toBe("Desafio de Agosto");
     expect(result.iconKey).toBe("halfway");
   });
