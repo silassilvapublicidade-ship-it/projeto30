@@ -21,6 +21,44 @@ describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da a
     expect(source).toContain("<ProfileRecentEvolution");
   });
 
+  it("distinguishes the 3 dashboard states (Correções obrigatórias pré-lançamento, Parte A) from real enrollment data, never a second status heuristic", () => {
+    expect(source).toContain("const hasAnyHistory = overview.enrollments.length > 0;");
+    expect(source).toContain("const hasOngoingEnrollment = missionEnrollments.length > 0;");
+  });
+
+  it("state 1 (no history at all): renders only the premium hero, never the zeroed metrics/context-message/narrative-summary stack", () => {
+    expect(source).toContain("{!hasAnyHistory ? (\n        <DashboardNewJourneyHero />");
+  });
+
+  it("state 2 (history, no ongoing enrollment): shows the explore-challenges banner but still renders the real history sections below it", () => {
+    const bannerAt = source.indexOf("<DashboardExploreChallengesBanner");
+    const metricsAt = source.indexOf("<ProfileMetricsGrid");
+    const challengesAt = source.indexOf("<ProfileChallengesSection");
+    const achievementsAt = source.indexOf("<ProfileAchievementsSummary");
+    expect(source).toContain("{!hasOngoingEnrollment ? <DashboardExploreChallengesBanner /> : null}");
+    expect(bannerAt).toBeGreaterThan(-1);
+    expect(bannerAt).toBeLessThan(metricsAt);
+    expect(metricsAt).toBeLessThan(challengesAt);
+    expect(challengesAt).toBeLessThan(achievementsAt);
+  });
+
+  it("state 2 never renders the ongoing-cycle blocks (context message, narrative summary, next milestone, weekly share) - they'd describe a cycle that isn't happening", () => {
+    const contextMessageAt = source.indexOf("<DashboardContextMessage");
+    const guardAt = source.indexOf("{hasOngoingEnrollment ? (");
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(guardAt).toBeLessThan(contextMessageAt);
+  });
+
+  it("state 3 (ongoing enrollment) is untouched: mission, context message, narrative summary, next milestone, metrics all still render for an active/paused user", () => {
+    expect(source).toContain("<DashboardMissionBlock cards={missionCards} />");
+    expect(source).toContain("<DashboardContextMessage message={contextMessage} />");
+    expect(source).toContain("<DashboardNarrativeSummary summary={narrativeSummary} />");
+  });
+
+  it("only fires dashboard_context_message_viewed when the message actually rendered - never for a component the user never saw", () => {
+    expect(source).toContain('if (hasOngoingEnrollment) {\n    void recordAnalyticsEvent({');
+  });
+
   it("the primary enrollment is the same representative pick used elsewhere (status-ranked, RPC-ordered) - never a second competing heuristic", () => {
     expect(source).toContain("const primaryEnrollment = overview.enrollments[0] ?? null;");
   });

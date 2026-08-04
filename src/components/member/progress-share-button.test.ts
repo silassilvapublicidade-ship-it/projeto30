@@ -40,6 +40,44 @@ describe("ProgressShareButton (Parte D/23)", () => {
     expect(source).toContain("Tentar de novo");
   });
 
+  describe("retry fix (Correções obrigatórias pré-lançamento, Parte C)", () => {
+    it("tracks the attempted format independently, set BEFORE the request fires - never derived from a previous success", () => {
+      const fnStart = source.indexOf("async function handleGenerate");
+      const fnBody = source.slice(fnStart, source.indexOf("\n  }\n", fnStart));
+      const setAttemptAt = fnBody.indexOf("setLastAttemptedFormat(format)");
+      const fetchAt = fnBody.indexOf("await fetch(");
+      expect(setAttemptAt).toBeGreaterThan(-1);
+      expect(fetchAt).toBeGreaterThan(-1);
+      expect(setAttemptAt).toBeLessThan(fetchAt);
+    });
+
+    it("retry replays the exact last attempted format - works on a FIRST failure, not just after a prior success", () => {
+      expect(source).toContain("onClick={() => lastAttemptedFormat && handleGenerate(lastAttemptedFormat)}");
+      expect(source).not.toContain("onClick={() => result?.format && handleGenerate(result.format)}");
+    });
+
+    it("switching format after an error attempts the NEW format, not a stale one - lastAttemptedFormat updates on every generate call", () => {
+      const fnStart = source.indexOf("async function handleGenerate(format: ShareCardFormat) {");
+      const fnBody = source.slice(fnStart, fnStart + 300);
+      expect(fnBody).toContain("setLastAttemptedFormat(format);");
+    });
+
+    it("guards against a double click firing two requests for the same click", () => {
+      expect(source).toContain("if (loadingFormat) return;");
+    });
+
+    it("a successful retry still updates result/error state the same way as a first-try success - same handleGenerate path, no separate retry logic to drift", () => {
+      const fnStart = source.indexOf("async function handleGenerate");
+      const fnBody = source.slice(fnStart, source.indexOf("\n  }\n", fnStart));
+      expect(fnBody).toContain("setResult(data);");
+      expect(fnBody).toContain("setError(");
+    });
+
+    it("does not fire a second analytics event pair for a retry - the route (not the button) owns evolution_share_started/completed, called once per actual fetch", () => {
+      expect(source).not.toMatch(/recordAnalyticsEvent|evolution_share_started/);
+    });
+  });
+
   it("keeps a textual fallback visible so sharing never fully breaks when no image has been generated yet", () => {
     expect(source).toContain("Prefere só compartilhar o texto?");
   });
