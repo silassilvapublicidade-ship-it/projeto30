@@ -62,8 +62,15 @@ describe("describeDayOverDayComparison - auditoria de produto, item 03 ('hoje vo
     );
   });
 
-  it("never shows a discouraging message when today is currently behind yesterday - the day isn't over yet", () => {
-    expect(describeDayOverDayComparison({ todayPercent: 20, yesterdayPercent: 80 })).toBeNull();
+  it("never shows a discouraging message when today is currently behind yesterday - invites the user to keep going instead (Dashboard como alma do app, Parte B item 9)", () => {
+    expect(describeDayOverDayComparison({ todayPercent: 20, yesterdayPercent: 80 })).toBe(
+      "Você ainda pode avançar hoje.",
+    );
+  });
+
+  it("never uses the words 'pior' or 'menos' in any branch - the comparison never reads as a penalty", () => {
+    const behind = describeDayOverDayComparison({ todayPercent: 0, yesterdayPercent: 100 });
+    expect(behind).not.toMatch(/pior|menos/i);
   });
 
   it("handles the zero/zero edge case as a tie, not a fabricated comparison", () => {

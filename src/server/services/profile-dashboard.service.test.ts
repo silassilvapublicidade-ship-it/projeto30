@@ -96,3 +96,38 @@ describe("profile-dashboard.service.ts - faith message (Parte 13/18)", () => {
     expect(fnBody).toContain("return raw.title && raw.body ? raw : null;");
   });
 });
+
+describe("profile-dashboard.service.ts - points this week (Dashboard como alma do app, Parte B item 7)", () => {
+  const source = readSource("src", "server", "services", "profile-dashboard.service.ts");
+  const fnBody = sliceDeclaration(source, "export async function getPointsEarnedThisWeek");
+
+  it("scopes to a single enrollment and only finalized days - never in-progress points", () => {
+    expect(fnBody).toContain('.eq("enrollment_id", input.enrollmentId)');
+    expect(fnBody).toContain('.eq("status", "finalized")');
+  });
+
+  it("reuses getHabitPeriodRange for the week boundary - never a second definition of 'week'", () => {
+    expect(fnBody).toContain('getHabitPeriodRange(today, "weekly")');
+  });
+
+  it("returns null (never a fabricated 0) when there is no finalized day this week", () => {
+    expect(fnBody).toContain("if (!data || data.length === 0) {\n    return null;\n  }");
+  });
+});
+
+describe("profile-dashboard.service.ts - mission message (Dashboard como alma do app, Parte A item 6)", () => {
+  const source = readSource("src", "server", "services", "profile-dashboard.service.ts");
+  const fnBody = sliceDeclaration(source, "export async function getDailyMissionMessage");
+
+  it("goes through the dedicated RPC, never reading daily_motivation_messages directly", () => {
+    expect(fnBody).toContain('supabase.rpc("member_pick_daily_mission_message")');
+  });
+
+  it("requires an authenticated session", () => {
+    expect(fnBody).toContain('await requireAuthUser("/app/dashboard");');
+  });
+
+  it("never renders a partial message - both title and body are required", () => {
+    expect(fnBody).toContain("return raw.title && raw.body ? raw : null;");
+  });
+});

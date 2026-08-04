@@ -13,9 +13,9 @@ describe("profile-dashboard.actions.ts (Parte 21)", () => {
     expect(source.trimStart().startsWith('"use server";')).toBe(true);
   });
 
-  it("narrows to exactly the 5 events named in the brief - no more, no less", () => {
+  it("narrows to exactly the 13 events named across both rounds - no more, no less", () => {
     expect(source).toContain(
-      'const PROFILE_EVENT_NAMES = [\n  "profile_dashboard_viewed",\n  "profile_timeline_filter_changed",\n  "profile_challenge_opened",\n  "profile_achievement_shared",\n  "profile_edit_clicked",\n] as const satisfies readonly AnalyticsEventName[];',
+      'const PROFILE_EVENT_NAMES = [\n  "profile_dashboard_viewed",\n  "profile_timeline_filter_changed",\n  "profile_challenge_opened",\n  "profile_achievement_shared",\n  "profile_edit_clicked",\n  "dashboard_mission_opened",\n  "dashboard_continue_day_clicked",\n  "dashboard_next_goal_clicked",\n  "timeline_event_expanded",\n  "evolution_share_started",\n  "evolution_share_completed",\n  "evolution_share_downloaded",\n  "share_template_previewed",\n] as const satisfies readonly AnalyticsEventName[];',
     );
   });
 

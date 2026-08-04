@@ -5,7 +5,9 @@ import {
   describeNextObjective,
   describeTimelineEvent,
   findClosestLockedAchievement,
+  formatHabitTitlesSummary,
   getTimelineFilterTypes,
+  groupTimelineEventsByDate,
   TIMELINE_FILTERS,
   type TimelineEventRow,
 } from "./profile-evolution.core";
@@ -24,6 +26,7 @@ function baseEvent(overrides: Partial<TimelineEventRow>): TimelineEventRow {
     event_at: "2026-08-03T20:54:38.382408+00:00",
     event_source_id: "source-1",
     event_type: "day_finalized",
+    habit_titles: null,
     points: null,
     streak_value: null,
     ...overrides,
@@ -80,6 +83,28 @@ describe("describeTimelineEvent", () => {
     const singular = describeTimelineEvent(baseEvent({ event_type: "streak_record", streak_value: 1 }));
     expect(singular.description).toMatch(/^1 dia seguidos/);
   });
+
+  it("day_finalized: appends a truncated habit-titles summary when present, alongside points/percent", () => {
+    const result = describeTimelineEvent(
+      baseEvent({
+        completion_percent: 80,
+        day_number: 3,
+        event_type: "day_finalized",
+        habit_titles: ["Treino", "Bíblia", "Oração", "Água", "Sono"],
+        points: 110,
+      }),
+    );
+    expect(result.description).toBe("110 pontos · 80% concluído · Treino, Bíblia, Oração e mais 2 hábitos.");
+  });
+
+  it("halfway_reached: fixed title, description carries the challenge name", () => {
+    const result = describeTimelineEvent(
+      baseEvent({ challenge_name: "Desafio de Agosto", event_type: "halfway_reached" }),
+    );
+    expect(result.title).toBe("Você chegou à metade do desafio");
+    expect(result.description).toBe("Desafio de Agosto");
+    expect(result.iconKey).toBe("halfway");
+  });
 });
 
 describe("TIMELINE_FILTERS / getTimelineFilterTypes", () => {
@@ -96,8 +121,8 @@ describe("TIMELINE_FILTERS / getTimelineFilterTypes", () => {
     ]);
   });
 
-  it("'Recordes' maps only to streak_record, never bleeding into achievements", () => {
-    expect(getTimelineFilterTypes("records")).toEqual(["streak_record"]);
+  it("'Recordes' maps to streak_record and halfway_reached (both milestones) - never bleeding into achievements", () => {
+    expect(getTimelineFilterTypes("records")).toEqual(["streak_record", "halfway_reached"]);
   });
 });
 
@@ -254,6 +279,30 @@ describe("describeNextObjective", () => {
     });
     expect(result).toBe("Continue registrando sua jornada. Cada dia conta.");
   });
+
+  it("finalizing today always wins over every other candidate (Dashboard como alma do app, Parte B item 11, prioridade 1)", () => {
+    const result = describeNextObjective({
+      closestLockedAchievement: { current: 6, name: "Sete leituras", target: 7 },
+      currentDay: 10,
+      durationDays: 31,
+      streakBest: 5,
+      streakCurrent: 4,
+      todayNeedsFinalizing: true,
+    });
+    expect(result).toBe("Finalize seu dia para manter o progresso.");
+  });
+
+  it("todayNeedsFinalizing=false behaves exactly like the flag being absent", () => {
+    const result = describeNextObjective({
+      closestLockedAchievement: null,
+      currentDay: null,
+      durationDays: null,
+      streakBest: 5,
+      streakCurrent: 4,
+      todayNeedsFinalizing: false,
+    });
+    expect(result).toBe("Complete mais 1 dia para igualar seu recorde de 5 dias.");
+  });
 });
 
 describe("findClosestLockedAchievement", () => {
@@ -277,5 +326,114 @@ describe("findClosestLockedAchievement", () => {
   it("returns null when every locked achievement is boolean-only or the list is empty", () => {
     expect(findClosestLockedAchievement([{ name: "Retorno forte", progress: null }])).toBeNull();
     expect(findClosestLockedAchievement([])).toBeNull();
+  });
+
+  it("carries description/icon/challengeName through for the dedicated 'Próxima conquista' block, defaulting to null when absent", () => {
+    const withExtras = findClosestLockedAchievement([
+      {
+        challengeName: "Desafio de Agosto",
+        description: "Leia por 7 dias.",
+        icon: "book-open",
+        name: "Sete leituras",
+        progress: { current: 6, target: 7 },
+      },
+    ]);
+    expect(withExtras).toEqual({
+      challengeName: "Desafio de Agosto",
+      current: 6,
+      description: "Leia por 7 dias.",
+      icon: "book-open",
+      name: "Sete leituras",
+      target: 7,
+    });
+
+    const withoutExtras = findClosestLockedAchievement([
+      { name: "Sete leituras", progress: { current: 6, target: 7 } },
+    ]);
+    expect(withoutExtras).toEqual({
+      challengeName: null,
+      current: 6,
+      description: null,
+      icon: null,
+      name: "Sete leituras",
+      target: 7,
+    });
+  });
+});
+
+describe("formatHabitTitlesSummary", () => {
+  it("returns null for empty/absent lists - never an empty string rendered as if it were real", () => {
+    expect(formatHabitTitlesSummary(null)).toBeNull();
+    expect(formatHabitTitlesSummary([])).toBeNull();
+  });
+
+  it("joins the full list when at or under the display limit", () => {
+    expect(formatHabitTitlesSummary(["Treino", "Bíblia", "Oração"])).toBe("Treino, Bíblia, Oração");
+  });
+
+  it("truncates and counts the remainder, correct singular/plural", () => {
+    expect(formatHabitTitlesSummary(["Treino", "Bíblia", "Oração", "Água", "Leitura"])).toBe(
+      "Treino, Bíblia, Oração e mais 2 hábitos.",
+    );
+    expect(formatHabitTitlesSummary(["Treino", "Bíblia", "Oração", "Água"])).toBe(
+      "Treino, Bíblia, Oração e mais 1 hábito.",
+    );
+  });
+});
+
+describe("groupTimelineEventsByDate", () => {
+  const today = "2026-08-03";
+  const yesterday = "2026-08-02";
+
+  function eventAt(iso: string, overrides: Partial<TimelineEventRow> = {}): TimelineEventRow {
+    return {
+      achievement_icon: null,
+      achievement_name: null,
+      achievement_rarity: null,
+      achievement_slug: null,
+      challenge_id: "challenge-1",
+      challenge_name: "Desafio de Agosto",
+      completion_percent: null,
+      day_number: null,
+      enrollment_id: "enrollment-1",
+      event_at: iso,
+      event_source_id: iso,
+      event_type: "day_finalized",
+      habit_titles: null,
+      points: null,
+      streak_value: null,
+      ...overrides,
+    };
+  }
+
+  it("groups same-day events under one 'Hoje' entry, in the original order", () => {
+    const events = [
+      eventAt("2026-08-03T20:54:38.382408+00:00", { event_type: "achievement_unlocked" }),
+      eventAt("2026-08-03T20:54:38.382408+00:00", { event_type: "day_finalized" }),
+    ];
+    const groups = groupTimelineEventsByDate(events, today, yesterday);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.dateLabel).toBe("Hoje");
+    expect(groups[0]?.events).toHaveLength(2);
+  });
+
+  it("labels yesterday's group 'Ontem', never repeating the raw date", () => {
+    const groups = groupTimelineEventsByDate([eventAt("2026-08-02T10:00:00.000000+00:00")], today, yesterday);
+    expect(groups[0]?.dateLabel).toBe("Ontem");
+  });
+
+  it("labels any other date as DD/MM", () => {
+    const groups = groupTimelineEventsByDate([eventAt("2026-07-30T02:03:01.772465+00:00")], today, yesterday);
+    expect(groups[0]?.dateLabel).toBe("30/07");
+  });
+
+  it("preserves chronological group order (already-sorted input, never re-sorted)", () => {
+    const events = [
+      eventAt("2026-08-03T20:54:38.382408+00:00"),
+      eventAt("2026-08-02T10:00:00.000000+00:00"),
+      eventAt("2026-07-30T02:03:01.772465+00:00"),
+    ];
+    const groups = groupTimelineEventsByDate(events, today, yesterday);
+    expect(groups.map((group) => group.dateLabel)).toEqual(["Hoje", "Ontem", "30/07"]);
   });
 });
