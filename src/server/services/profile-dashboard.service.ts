@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getDateOnlyInTimeZone, getPreviousDateOnly } from "@/features/challenges/date.core";
+import { getHabitPeriodRange } from "@/features/journey/habit-period.core";
 import { describeDayOverDayComparison } from "@/features/journey/progress-motivation.core";
 import type { TimelineEventRow, TimelineEventType } from "@/features/profile/profile-evolution.core";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -267,6 +268,38 @@ export async function getRecentEvolutionDays(input: {
   }));
 }
 
+/**
+ * Pontos ganhos NA SEMANA CORRENTE (Parte B item 7, "+160 nesta semana") -
+ * uma unica query somando daily_logs.points_earned de dias finalizados de
+ * UMA inscricao, no intervalo de getHabitPeriodRange (mesma logica de
+ * semana ja usada pelas metas semanais de habito - nunca uma segunda
+ * definicao de "semana"). Retorna null quando o enrollment nao tem nenhum
+ * dia finalizado na semana (o chamador decide nao mostrar "+0 nesta
+ * semana").
+ */
+export async function getPointsEarnedThisWeek(input: {
+  enrollmentId: string;
+  timezone: string;
+}): Promise<number | null> {
+  const supabase = await createSupabaseServerClient();
+  const today = getDateOnlyInTimeZone(new Date(), input.timezone);
+  const { end, start } = getHabitPeriodRange(today, "weekly");
+
+  const { data } = await supabase
+    .from("daily_logs")
+    .select("points_earned")
+    .eq("enrollment_id", input.enrollmentId)
+    .eq("status", "finalized")
+    .gte("log_date", start)
+    .lte("log_date", end);
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  return data.reduce((total, row) => total + (row.points_earned ?? 0), 0);
+}
+
 export type FaithMessage = {
   body: string;
   title: string;
@@ -284,6 +317,27 @@ export async function getFaithMessage(): Promise<FaithMessage | null> {
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("member_pick_faith_message");
+
+  if (error || !data) {
+    return null;
+  }
+
+  const raw = data as unknown as FaithMessage;
+  return raw.title && raw.body ? raw : null;
+}
+
+/**
+ * Mensagem motivacional da "Sua missao de hoje" (Dashboard como alma do
+ * app, Parte A item 6) - so chamada quando o dia do desafio NAO tem
+ * challenge_days.message proprio (tier 1, ja incluido em
+ * todayChallengeDay). Prioriza categorias fora de "fe", cai para "fe" por
+ * ultimo - tudo resolvido dentro da propria RPC (nunca duas idas ao banco).
+ */
+export async function getDailyMissionMessage(): Promise<FaithMessage | null> {
+  await requireAuthUser("/app/dashboard");
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase.rpc("member_pick_daily_mission_message");
 
   if (error || !data) {
     return null;

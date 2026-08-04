@@ -12,13 +12,22 @@ const PROFILE_EVENT_NAMES = [
   "profile_challenge_opened",
   "profile_achievement_shared",
   "profile_edit_clicked",
+  "dashboard_mission_opened",
+  "dashboard_continue_day_clicked",
+  "dashboard_next_goal_clicked",
+  "timeline_event_expanded",
+  "evolution_share_started",
+  "evolution_share_completed",
+  "evolution_share_downloaded",
+  "share_template_previewed",
 ] as const satisfies readonly AnalyticsEventName[];
 
 type ProfileEventName = (typeof PROFILE_EVENT_NAMES)[number];
 
 /**
- * Unico ponto de entrada de analytics do dashboard - narrowed aos 5 eventos
- * pedidos (Parte 21), best-effort (recordAnalyticsEvent nunca lanca).
+ * Unico ponto de entrada de analytics do dashboard - narrowed aos eventos
+ * do Dashboard/Timeline/Compartilhamento (Parte 21 da rodada anterior +
+ * Parte F desta rodada), best-effort (recordAnalyticsEvent nunca lanca).
  * Nenhum metadata pessoal e enviado.
  */
 export async function recordProfileDashboardEventAction(

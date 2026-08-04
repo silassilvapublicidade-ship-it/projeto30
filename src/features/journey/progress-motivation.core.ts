@@ -35,14 +35,16 @@ export function resolveDailyChallengeMessage(message: string | null | undefined)
 
 /**
  * Day-over-day comparison (auditoria de produto, item 03 - "hoje você fez
- * mais que ontem"). Only ever returns a positive-or-neutral message, never
- * a discouraging one: the day being compared against "today" isn't over
- * yet, so telling someone they're currently behind yesterday's FINAL result
- * would be premature and against this app's own tone rules (never
- * aggressive, always encouraging - see notification-automations.service.ts's
- * own tone principles). yesterdayPercent is null whenever there's nothing
- * real to compare against (no log yesterday, or it was never finalized) -
- * that case renders no message at all rather than a fabricated one.
+ * mais que ontem"; Dashboard como alma do app, Parte B item 9 - 3 estados
+ * explícitos, nunca "hoje você foi pior"). The day being compared against
+ * "today" isn't over yet, so telling someone they're currently behind
+ * yesterday's FINAL result would be premature and against this app's own
+ * tone rules (never aggressive, always encouraging - see
+ * notification-automations.service.ts's own tone principles) - the "behind"
+ * case gets an invitation to keep going, never a comparison framed as a
+ * loss. yesterdayPercent is null whenever there's nothing real to compare
+ * against (no log yesterday, or it was never finalized) - that case renders
+ * no message at all rather than a fabricated one.
  */
 export function describeDayOverDayComparison({
   todayPercent,
@@ -63,5 +65,5 @@ export function describeDayOverDayComparison({
     return "Hoje você está no mesmo ritmo de ontem.";
   }
 
-  return null;
+  return "Você ainda pode avançar hoje.";
 }

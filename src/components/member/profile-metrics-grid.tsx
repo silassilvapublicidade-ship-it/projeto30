@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { ProfileEnrollmentSummary, ProfileOverview } from "@/server/services/profile-dashboard.service";
 
-function MetricCard({ hint, label, value }: { hint?: string; label: string; value: string }) {
+function MetricCard({ hint, label, value }: { hint?: string | undefined; label: string; value: string }) {
   return (
     <div className="rounded-[1.1rem] border border-white/[0.08] bg-white/[0.03] p-3.5 sm:p-4">
       <p className="font-mono text-[0.62rem] uppercase tracking-[0.1em] text-muted-2">{label}</p>
@@ -22,11 +22,15 @@ function MetricCard({ hint, label, value }: { hint?: string; label: string; valu
  * qual.
  */
 export function ProfileMetricsGrid({
+  achievementsTotal,
   enrollments,
+  pointsContextHint,
   selectedChallengeId,
   totals,
 }: {
+  achievementsTotal: number | null;
   enrollments: ProfileEnrollmentSummary[];
+  pointsContextHint: string | null;
   selectedChallengeId: string | null;
   totals: ProfileOverview["totals"];
 }) {
@@ -86,12 +90,44 @@ export function ProfileMetricsGrid({
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricCard label="Dias finalizados" value={`${totals.daysFinalized}`} />
+          <MetricCard
+            hint={
+              // "3 de 31 dias" so faz sentido sem ambiguidade quando ha
+              // exatamente 1 desafio - com varios, cada um pode ter uma
+              // duracao diferente, e o total agregado nao tem um
+              // denominador unico honesto.
+              enrollments.length === 1 ? `de ${enrollments[0]!.durationDays} dias` : undefined
+            }
+            label="Dias finalizados"
+            value={`${totals.daysFinalized}`}
+          />
           <MetricCard label="Sequência atual" value={`${totals.streakCurrentMax}`} hint="dias" />
           <MetricCard label="Melhor sequência" value={`${totals.streakBestMax}`} hint="dias" />
-          <MetricCard label="Pontos totais" value={totals.pointsTotal.toLocaleString("pt-BR")} />
-          <MetricCard label="Conquistas" value={`${totals.achievementsUnlocked}`} />
-          <MetricCard label="Desafios concluídos" value={`${totals.challengesCompleted}`} />
+          <MetricCard
+            hint={
+              // So mistura "+N hoje/nesta semana" (sempre de UM desafio
+              // especifico) com o total agregado quando ha no maximo 1
+              // inscricao - evita ambiguidade de "de qual desafio" quando
+              // ha varias.
+              enrollments.length <= 1 && pointsContextHint ? pointsContextHint : undefined
+            }
+            label="Pontos totais"
+            value={totals.pointsTotal.toLocaleString("pt-BR")}
+          />
+          <MetricCard
+            hint={achievementsTotal !== null ? `de ${achievementsTotal}` : undefined}
+            label="Conquistas"
+            value={`${totals.achievementsUnlocked}`}
+          />
+          <MetricCard
+            hint={
+              totals.challengesActive > 0
+                ? `${totals.challengesActive} em andamento`
+                : undefined
+            }
+            label="Desafios concluídos"
+            value={`${totals.challengesCompleted}`}
+          />
         </div>
       )}
     </section>

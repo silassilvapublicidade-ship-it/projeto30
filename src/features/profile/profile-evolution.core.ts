@@ -12,6 +12,7 @@ export type TimelineEventType =
   | "challenge_completed"
   | "challenge_started"
   | "day_finalized"
+  | "halfway_reached"
   | "streak_record";
 
 export const TIMELINE_EVENT_TYPES: readonly TimelineEventType[] = [
@@ -21,6 +22,7 @@ export const TIMELINE_EVENT_TYPES: readonly TimelineEventType[] = [
   "challenge_completed",
   "challenge_abandoned",
   "streak_record",
+  "halfway_reached",
 ];
 
 export type TimelineFilterKey = "achievements" | "all" | "challenges" | "days" | "records";
@@ -34,7 +36,10 @@ export const TIMELINE_FILTERS: ReadonlyArray<{
   { key: "days", label: "Dias", types: ["day_finalized"] },
   { key: "achievements", label: "Conquistas", types: ["achievement_unlocked"] },
   { key: "challenges", label: "Desafios", types: ["challenge_started", "challenge_completed", "challenge_abandoned"] },
-  { key: "records", label: "Recordes", types: ["streak_record"] },
+  // halfway_reached agrupado aqui com streak_record (ambos "marcos" da
+  // jornada) em vez de um sexto chip de filtro - decisao de escopo
+  // documentada no relatorio final.
+  { key: "records", label: "Recordes", types: ["streak_record", "halfway_reached"] },
 ];
 
 export function getTimelineFilterTypes(key: TimelineFilterKey): TimelineEventType[] | null {
@@ -54,6 +59,7 @@ export type TimelineEventRow = {
   event_at: string;
   event_source_id: string;
   event_type: TimelineEventType;
+  habit_titles: string[] | null;
   points: number | null;
   streak_value: number | null;
 };
@@ -64,6 +70,7 @@ export type TimelineEventIconKey =
   | "challenge_complete"
   | "challenge_start"
   | "day"
+  | "halfway"
   | "record";
 
 export type TimelineEventDisplay = {
@@ -72,9 +79,28 @@ export type TimelineEventDisplay = {
   title: string;
 };
 
+const MAX_HABIT_TITLES_SHOWN = 3;
+
 function formatPoints(points: number | null): string | null {
   if (points === null || points <= 0) return null;
   return `${points} ${points === 1 ? "ponto" : "pontos"}`;
+}
+
+/**
+ * "Treino, Bíblia, Oração e mais 4 hábitos." (Parte C item 15) - limita a
+ * quantidade exibida em vez de listar todos, nunca um evento por habito
+ * (poluiria a timeline).
+ */
+export function formatHabitTitlesSummary(titles: string[] | null): string | null {
+  if (!titles || titles.length === 0) return null;
+
+  if (titles.length <= MAX_HABIT_TITLES_SHOWN) {
+    return titles.join(", ");
+  }
+
+  const shown = titles.slice(0, MAX_HABIT_TITLES_SHOWN);
+  const remaining = titles.length - MAX_HABIT_TITLES_SHOWN;
+  return `${shown.join(", ")} e mais ${remaining} ${remaining === 1 ? "hábito" : "hábitos"}.`;
 }
 
 /**
@@ -87,9 +113,12 @@ export function describeTimelineEvent(event: TimelineEventRow): TimelineEventDis
   switch (event.event_type) {
     case "day_finalized": {
       const percent = event.completion_percent !== null ? Math.round(event.completion_percent) : null;
-      const parts = [formatPoints(event.points), percent !== null ? `${percent}% concluído` : null].filter(
-        (part): part is string => Boolean(part),
-      );
+      const habitsSummary = formatHabitTitlesSummary(event.habit_titles);
+      const parts = [
+        formatPoints(event.points),
+        percent !== null ? `${percent}% concluído` : null,
+        habitsSummary,
+      ].filter((part): part is string => Boolean(part));
       return {
         description: parts.length > 0 ? parts.join(" · ") : "Dia registrado.",
         iconKey: "day",
@@ -128,7 +157,62 @@ export function describeTimelineEvent(event: TimelineEventRow): TimelineEventDis
         title: "Novo recorde de sequência",
       };
     }
+    case "halfway_reached":
+      return {
+        description: event.challenge_name ?? "",
+        iconKey: "halfway",
+        title: "Você chegou à metade do desafio",
+      };
   }
+}
+
+export type TimelineDateGroup = {
+  dateKey: string;
+  dateLabel: string;
+  events: TimelineEventRow[];
+};
+
+function toDateOnlyKey(isoTimestamp: string): string {
+  return isoTimestamp.slice(0, 10);
+}
+
+/**
+ * Agrupamento por data (Parte C item 14) - puro, so reorganiza os eventos
+ * ja recebidos de uma pagina da timeline, nunca refaz a ordenacao ou busca
+ * mais dados. "today"/"yesterday" (date-only, mesmo fuso do resto do
+ * dashboard) definem os rotulos especiais "Hoje"/"Ontem"; qualquer outra
+ * data usa DD/MM.
+ */
+export function groupTimelineEventsByDate(
+  events: readonly TimelineEventRow[],
+  today: string,
+  yesterday: string,
+): TimelineDateGroup[] {
+  const groups: TimelineDateGroup[] = [];
+  const groupByKey = new Map<string, TimelineDateGroup>();
+
+  for (const event of events) {
+    const dateKey = toDateOnlyKey(event.event_at);
+    let group = groupByKey.get(dateKey);
+
+    if (!group) {
+      const dateLabel =
+        dateKey === today
+          ? "Hoje"
+          : dateKey === yesterday
+            ? "Ontem"
+            : new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" }).format(
+                new Date(`${dateKey}T00:00:00Z`),
+              );
+      group = { dateKey, dateLabel, events: [] };
+      groupByKey.set(dateKey, group);
+      groups.push(group);
+    }
+
+    group.events.push(event);
+  }
+
+  return groups;
 }
 
 /**
@@ -176,11 +260,17 @@ export function describeEvolutionHighlight(input: {
 }
 
 /**
- * "Proximo objetivo" (Parte 12) - so objetivos calculaveis com o dado que
- * ja temos (sequencia, metade do desafio, conquista mais proxima). Metas
- * semanais/mensais especificas por habito (ex.: "faltam 2 treinos") ficam
- * de fora nesta rodada - exigiriam uma consulta extra por habito que o
- * overview nao traz, documentado como pendencia no relatorio final.
+ * "Proximo objetivo" (Parte 12 da rodada anterior; reordenado pela lista de
+ * prioridade da rodada "Dashboard como alma do app", Parte B item 11):
+ * 1) finalizar o dia atual (sempre vence os demais quando aplicavel - nunca
+ *    faz sentido sugerir "metade do desafio" para quem ainda nem terminou
+ *    hoje); 2) manter/recuperar sequencia; 3-4) metas semanal/mensal (fora
+ *    de escopo, exigiriam consulta extra por habito - pendencia
+ *    documentada, igual a rodada anterior); 5) igualar recorde (mesmo item
+ *    2, ja coberto); 6) metade do desafio; 7) conquista mais proxima;
+ *    8) finalizar o desafio (nao adicionado - "faltam N dias" ja e o
+ *    destaque de evolucao, duplicar aqui seria dois objetivos concorrentes
+ *    na mesma dobra, o que o briefing pede para evitar).
  */
 export function describeNextObjective(input: {
   closestLockedAchievement: { current: number; name: string; target: number } | null;
@@ -188,7 +278,12 @@ export function describeNextObjective(input: {
   durationDays: number | null;
   streakBest: number;
   streakCurrent: number;
+  todayNeedsFinalizing?: boolean;
 }): string {
+  if (input.todayNeedsFinalizing) {
+    return "Finalize seu dia para manter o progresso.";
+  }
+
   const candidates: Array<{ gap: number; message: string }> = [];
 
   if (input.streakBest > input.streakCurrent) {
@@ -225,16 +320,36 @@ export function describeNextObjective(input: {
   return candidates[0]!.message;
 }
 
+export type ClosestLockedAchievement = {
+  challengeName: string | null;
+  current: number;
+  description: string | null;
+  icon: string | null;
+  name: string;
+  target: number;
+};
+
+type LockedAchievementCandidate = {
+  challengeName?: string | null;
+  description?: string | null;
+  icon?: string | null;
+  name: string;
+  progress: { current: number; target: number } | null;
+};
+
 /**
  * Escolhe, entre as conquistas ainda bloqueadas (com progresso numerico
  * real - achievements.core.ts's getAchievementProgress ja devolve null
- * para criterios booleanos como "retorno-forte", que nunca entram aqui),
- * a que esta mais perto de ser desbloqueada.
+ * para criterios booleanos como "retorno-forte", que nunca entram aqui, e
+ * portanto nunca aparecem como "proxima conquista" - nunca revela uma
+ * conquista de criterio secreto/nao medivel), a que esta mais perto de ser
+ * desbloqueada. Usado tanto pelo bloco "Proximo objetivo" quanto pelo novo
+ * bloco dedicado "Proxima conquista" (Parte B item 10).
  */
 export function findClosestLockedAchievement(
-  locked: ReadonlyArray<{ name: string; progress: { current: number; target: number } | null }>,
-): { current: number; name: string; target: number } | null {
-  let closest: { current: number; name: string; target: number } | null = null;
+  locked: ReadonlyArray<LockedAchievementCandidate>,
+): ClosestLockedAchievement | null {
+  let closest: ClosestLockedAchievement | null = null;
   let closestGap = Infinity;
 
   for (const achievement of locked) {
@@ -242,7 +357,14 @@ export function findClosestLockedAchievement(
     const gap = achievement.progress.target - achievement.progress.current;
     if (gap < closestGap) {
       closestGap = gap;
-      closest = { current: achievement.progress.current, name: achievement.name, target: achievement.progress.target };
+      closest = {
+        challengeName: achievement.challengeName ?? null,
+        current: achievement.progress.current,
+        description: achievement.description ?? null,
+        icon: achievement.icon ?? null,
+        name: achievement.name,
+        target: achievement.progress.target,
+      };
     }
   }
 

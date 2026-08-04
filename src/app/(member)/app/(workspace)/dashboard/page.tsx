@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 
+import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
 import { ProfileAchievementsSummary } from "@/components/member/profile-achievements-summary";
 import { ProfileChallengesSection } from "@/components/member/profile-challenges-section";
 import { ProfileEvolutionHighlight } from "@/components/member/profile-evolution-highlight";
 import { ProfileFaithMessage } from "@/components/member/profile-faith-message";
 import { ProfileHeader } from "@/components/member/profile-header";
 import { ProfileMetricsGrid } from "@/components/member/profile-metrics-grid";
+import { ProfileNextAchievement } from "@/components/member/profile-next-achievement";
 import { ProfileNextObjective } from "@/components/member/profile-next-objective";
 import { ProfileRecentEvolution } from "@/components/member/profile-recent-evolution";
 import { ProfileStatistics } from "@/components/member/profile-statistics";
 import { ProfileTimeline } from "@/components/member/profile-timeline";
+import { getDateOnlyInTimeZone, getPreviousDateOnly } from "@/features/challenges/date.core";
+import {
+  describeMissionCountdown,
+  describeMissionState,
+  describePointsContext,
+} from "@/features/dashboard/dashboard-mission.core";
 import {
   describeEvolutionHighlight,
   describeNextObjective,
@@ -22,7 +30,9 @@ import { getMemberAchievements } from "@/server/services/achievements.service";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getMemberContext } from "@/server/services/member-area.service";
 import {
+  getDailyMissionMessage,
   getFaithMessage,
+  getPointsEarnedThisWeek,
   getPrimaryEnrollmentDayOverDayMessage,
   getProfileOverview,
   getProfileTimeline,
@@ -44,15 +54,17 @@ type DashboardPageProps = {
 };
 
 /**
- * Dashboard de Evolucao Pessoal - entrada principal da area de membros
- * (rodada de navegacao: antes vivia em /app/perfil, que agora e so um
- * redirect permanente para ca). Uma unica RPC agregada
- * (member_profile_overview) cobre cabecalho + metricas + "meus desafios"; a
+ * Dashboard de Evolucao Pessoal - entrada principal da area de membros.
+ * "Sua missao de hoje" reaproveita getMemberContext() por inteiro (mesma
+ * fonte que /app/hoje ja usa - context.enrollments) para responder "o que
+ * eu preciso fazer agora?" na primeira dobra, sem nenhuma consulta nova:
+ * so 2 leituras adicionais e pequenas quando fazem falta (pontos da
+ * semana e a mensagem motivacional generica, so quando o dia nao tem
+ * challenge_days.message proprio). member_profile_overview continua a
+ * unica RPC agregada para cabecalho + metricas + "meus desafios"; a
  * timeline usa sua propria RPC paginada por cursor composto; conquistas e
- * estatisticas reaproveitam getMemberAchievements (mesma fonte de /app/
- * conquistas, nunca duplicada). Filtros de desafio/periodo/timeline vivem
- * na URL - nunca estado de cliente - para o dashboard inteiro continuar
- * navegavel e compartilhavel.
+ * estatisticas reaproveitam getMemberAchievements. Filtros de desafio/
+ * periodo/timeline vivem na URL - nunca estado de cliente.
  */
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const { desafio, periodo, timeline } = await searchParams;
@@ -63,6 +75,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const profile = context.profile;
   const displayName = profile.display_name || profile.name || profile.email;
   const timezone = profile.timezone || "America/Sao_Paulo";
+  const today = getDateOnlyInTimeZone(new Date(), timezone);
+  const yesterday = getPreviousDateOnly(today);
 
   const [overview, achievements] = await Promise.all([getProfileOverview(), getMemberAchievements()]);
 
@@ -70,7 +84,30 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const selectedChallengeId =
     desafio && overview.enrollments.some((enrollment) => enrollment.challengeId === desafio) ? desafio : null;
 
-  const [dayOverDayMessage, recentEvolutionDays, faithMessage, timelinePage] = await Promise.all([
+  // Missao de hoje - ativos primeiro, depois pausados, cada um com seus
+  // proprios dados (nunca soma habitos/pontos entre desafios diferentes).
+  const missionEnrollments = [...context.enrollments].sort((a, b) => {
+    const rank = (status: string) => (status === "active" ? 0 : 1);
+    return rank(a.enrollment.status) - rank(b.enrollment.status);
+  });
+  const primaryMission = missionEnrollments[0] ?? null;
+  const primaryMissionNeedsFinalizing = Boolean(
+    primaryMission &&
+      primaryMission.journeyState === "day_available" &&
+      primaryMission.todayProgress.state !== "finalized",
+  );
+  const missionNeedsGenericMessage = missionEnrollments.some(
+    (enrollment) => !enrollment.todayChallengeDay?.message?.trim(),
+  );
+
+  const [
+    dayOverDayMessage,
+    recentEvolutionDays,
+    faithMessage,
+    timelinePage,
+    pointsThisWeek,
+    genericMissionMessage,
+  ] = await Promise.all([
     primaryEnrollment
       ? getPrimaryEnrollmentDayOverDayMessage({ enrollmentId: primaryEnrollment.enrollmentId, timezone })
       : Promise.resolve(null),
@@ -83,8 +120,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       limit: TIMELINE_PAGE_SIZE,
       types: getTimelineFilterTypes(timelineFilter) ?? undefined,
     }),
+    primaryMission
+      ? getPointsEarnedThisWeek({ enrollmentId: primaryMission.enrollment.id, timezone })
+      : Promise.resolve(null),
+    missionNeedsGenericMessage ? getDailyMissionMessage() : Promise.resolve(null),
   ]);
 
+  void recordAnalyticsEvent({
+    challengeId: primaryEnrollment?.challengeId ?? null,
+    enrollmentId: primaryEnrollment?.enrollmentId ?? null,
+    eventName: "dashboard_mission_opened",
+    source: "server",
+  });
   void recordAnalyticsEvent({
     challengeId: primaryEnrollment?.challengeId ?? null,
     enrollmentId: primaryEnrollment?.enrollmentId ?? null,
@@ -92,7 +139,53 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     source: "server",
   });
 
+  const missionCards: MissionCardData[] = missionEnrollments.map((dayContext) => {
+    const enrollment = dayContext.enrollment;
+    const challenge = enrollment.challenge;
+    const isActive =
+      enrollment.status === "active" &&
+      (dayContext.journeyState === "day_available" || dayContext.journeyState === "day_finalized");
+
+    const state = describeMissionState({
+      challengeStartDate: challenge?.start_date ?? null,
+      completionPercent: dayContext.todayProgress.completionPercent,
+      journeyState: dayContext.journeyState,
+      streakMinimumCompletion: dayContext.todayProgress.streakMinimumCompletion,
+      todayProgressState: dayContext.todayProgress.state,
+    });
+
+    return {
+      applicableHabits: dayContext.todayProgress.applicableHabits,
+      challengeId: enrollment.challenge_id,
+      challengeName: challenge?.name ?? "Desafio",
+      completedHabits: dayContext.todayProgress.completedHabits,
+      countdownMessage: describeMissionCountdown({
+        currentDay: enrollment.current_day,
+        durationDays: challenge?.duration_days ?? enrollment.current_day,
+        isActive,
+      }),
+      cta: state.cta,
+      currentDay: enrollment.current_day,
+      durationDays: challenge?.duration_days ?? enrollment.current_day,
+      enrollmentId: enrollment.id,
+      motivationalMessage: dayContext.todayChallengeDay?.message?.trim() || genericMissionMessage?.body || null,
+      pointsEarnedToday: dayContext.todayProgress.pointsEarned,
+      stateKind: state.kind,
+      streakBest: enrollment.streak_best,
+      streakCurrent: enrollment.streak_current,
+      title: state.title,
+      todayDailyLogId: enrollment.todayLog?.id ?? null,
+    };
+  });
+
   const closestLockedAchievement = findClosestLockedAchievement(achievements.locked);
+  const achievementsTotal = achievements.locked.length + achievements.unlocked.length;
+  const pointsContext = describePointsContext({
+    pointsThisWeek,
+    pointsToday: primaryMission?.todayProgress.pointsEarned ?? null,
+    pointsTotal: overview.totals.pointsTotal,
+  });
+  const pointsContextHint = pointsContext.todayLabel ?? pointsContext.weekLabel;
 
   const evolutionHighlight = describeEvolutionHighlight({
     currentDay: primaryEnrollment?.currentDay ?? null,
@@ -113,6 +206,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     durationDays: primaryEnrollment?.durationDays ?? null,
     streakBest: overview.totals.streakBestMax,
     streakCurrent: overview.totals.streakCurrentMax,
+    todayNeedsFinalizing: primaryMissionNeedsFinalizing,
   });
 
   return (
@@ -126,8 +220,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         role={profile.role}
       />
 
+      <DashboardMissionBlock cards={missionCards} />
+
       <ProfileMetricsGrid
+        achievementsTotal={achievementsTotal}
         enrollments={overview.enrollments}
+        pointsContextHint={pointsContextHint}
         selectedChallengeId={selectedChallengeId}
         totals={overview.totals}
       />
@@ -136,6 +234,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <ProfileEvolutionHighlight message={evolutionHighlight} />
         <ProfileNextObjective message={nextObjective} />
       </div>
+
+      <ProfileNextAchievement achievement={closestLockedAchievement} />
 
       <ProfileFaithMessage message={faithMessage} />
 
@@ -148,6 +248,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         initialItems={timelinePage.items}
         initialNextCursorAt={timelinePage.nextCursorAt}
         initialNextCursorId={timelinePage.nextCursorId}
+        today={today}
+        yesterday={yesterday}
       />
 
       <ProfileAchievementsSummary

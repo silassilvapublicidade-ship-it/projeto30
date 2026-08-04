@@ -34,7 +34,17 @@ export type AnalyticsEventName =
   | "profile_timeline_filter_changed"
   | "profile_challenge_opened"
   | "profile_achievement_shared"
-  | "profile_edit_clicked";
+  | "profile_edit_clicked"
+  // Dashboard como alma do app / Timeline rica / Compartilhamento premium
+  // (Parte F). Nenhum dado pessoal no metadata.
+  | "dashboard_mission_opened"
+  | "dashboard_continue_day_clicked"
+  | "dashboard_next_goal_clicked"
+  | "timeline_event_expanded"
+  | "evolution_share_started"
+  | "evolution_share_completed"
+  | "evolution_share_downloaded"
+  | "share_template_previewed";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;

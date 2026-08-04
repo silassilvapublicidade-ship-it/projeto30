@@ -2162,6 +2162,7 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      member_pick_daily_mission_message: { Args: never; Returns: Json }
       member_pick_faith_message: { Args: never; Returns: Json }
       member_profile_overview: { Args: never; Returns: Json }
       member_profile_timeline: {
