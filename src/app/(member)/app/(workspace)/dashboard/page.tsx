@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DashboardContextMessage } from "@/components/member/dashboard-context-message";
+import { DashboardExploreChallengesBanner, DashboardNewJourneyHero } from "@/components/member/dashboard-empty-state";
 import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
 import { DashboardNarrativeSummary } from "@/components/member/dashboard-narrative-summary";
 import { DashboardNextMilestone } from "@/components/member/dashboard-next-milestone";
@@ -107,6 +108,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return rank(a.enrollment.status) - rank(b.enrollment.status);
   });
   const primaryMission = missionEnrollments[0] ?? null;
+  // Distingue os 3 estados do Dashboard (Correções obrigatórias
+  // pré-lançamento, Parte A): sem historico nenhum (nunca se inscreveu),
+  // com historico mas sem ciclo em andamento (so concluidos/abandonados),
+  // e com ciclo em andamento (ativo ou pausado). missionEnrollments ja vem
+  // de context.enrollments, que a RPC ja filtra para status in
+  // ('active','paused') - nunca uma segunda heuristica de status aqui.
+  const hasAnyHistory = overview.enrollments.length > 0;
+  const hasOngoingEnrollment = missionEnrollments.length > 0;
   const missionNeedsGenericMessage = missionEnrollments.some(
     (enrollment) => !enrollment.todayChallengeDay?.message?.trim(),
   );
@@ -218,13 +227,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     todayFinalized: primaryMission?.todayProgress.state === "finalized",
   });
 
-  void recordAnalyticsEvent({
-    challengeId: primaryEnrollment?.challengeId ?? null,
-    enrollmentId: primaryEnrollment?.enrollmentId ?? null,
-    eventName: "dashboard_context_message_viewed",
-    metadata: { category: contextMessage.category },
-    source: "server",
-  });
+  if (hasOngoingEnrollment) {
+    void recordAnalyticsEvent({
+      challengeId: primaryEnrollment?.challengeId ?? null,
+      enrollmentId: primaryEnrollment?.enrollmentId ?? null,
+      eventName: "dashboard_context_message_viewed",
+      metadata: { category: contextMessage.category },
+      source: "server",
+    });
+  }
 
   const narrativeSummary = buildNarrativeSummary({
     achievementsUnlocked: overview.totals.achievementsUnlocked,
@@ -257,59 +268,71 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         role={profile.role}
       />
 
-      <DashboardMissionBlock cards={missionCards} />
+      {!hasAnyHistory ? (
+        <DashboardNewJourneyHero />
+      ) : (
+        <>
+          {!hasOngoingEnrollment ? <DashboardExploreChallengesBanner /> : null}
 
-      <DashboardContextMessage message={contextMessage} />
+          <DashboardMissionBlock cards={missionCards} />
 
-      <DashboardNarrativeSummary summary={narrativeSummary} />
+          {hasOngoingEnrollment ? (
+            <>
+              <DashboardContextMessage message={contextMessage} />
 
-      {primaryEnrollment && recentEvolutionDays.slice(-7).some((day) => day.finalized) ? (
-        <SnapshotShareButton enrollmentId={primaryEnrollment.enrollmentId} kind="weekly_summary" label="Sua semana em resumo" />
-      ) : null}
+              <DashboardNarrativeSummary summary={narrativeSummary} />
 
-      {nextMilestone ? (
-        <DashboardNextMilestone
-          challengeId={primaryEnrollment?.challengeId}
-          ctaHref={NEXT_MILESTONE_CTA_HREF[nextMilestone.kind]}
-          enrollmentId={primaryEnrollment?.enrollmentId}
-          milestone={nextMilestone}
-        />
-      ) : null}
+              {primaryEnrollment && recentEvolutionDays.slice(-7).some((day) => day.finalized) ? (
+                <SnapshotShareButton enrollmentId={primaryEnrollment.enrollmentId} kind="weekly_summary" label="Sua semana em resumo" />
+              ) : null}
 
-      <ProfileMetricsGrid
-        achievementsTotal={achievementsTotal}
-        enrollments={overview.enrollments}
-        pointsContextHint={pointsContextHint}
-        selectedChallengeId={selectedChallengeId}
-        totals={overview.totals}
-      />
+              {nextMilestone ? (
+                <DashboardNextMilestone
+                  challengeId={primaryEnrollment?.challengeId}
+                  ctaHref={NEXT_MILESTONE_CTA_HREF[nextMilestone.kind]}
+                  enrollmentId={primaryEnrollment?.enrollmentId}
+                  milestone={nextMilestone}
+                />
+              ) : null}
+            </>
+          ) : null}
 
-      <ProfileNextAchievement achievement={closestLockedAchievement} />
+          <ProfileMetricsGrid
+            achievementsTotal={achievementsTotal}
+            enrollments={overview.enrollments}
+            pointsContextHint={pointsContextHint}
+            selectedChallengeId={selectedChallengeId}
+            totals={overview.totals}
+          />
 
-      <ProfileFaithMessage message={faithMessage} />
+          <ProfileNextAchievement achievement={closestLockedAchievement} />
 
-      <ProfileChallengesSection enrollments={overview.enrollments} />
+          <ProfileFaithMessage message={faithMessage} />
 
-      <ProfileTimeline
-        activeFilter={timelineFilter}
-        challengeId={selectedChallengeId}
-        initialHasMore={timelinePage.hasMore}
-        initialItems={timelinePage.items}
-        initialNextCursorAt={timelinePage.nextCursorAt}
-        initialNextCursorId={timelinePage.nextCursorId}
-        today={today}
-        yesterday={yesterday}
-      />
+          <ProfileChallengesSection enrollments={overview.enrollments} />
 
-      <ProfileAchievementsSummary
-        displayName={displayName}
-        recent={achievements.unlocked.slice(0, 3)}
-        totalUnlocked={achievements.unlocked.length}
-      />
+          <ProfileTimeline
+            activeFilter={timelineFilter}
+            challengeId={selectedChallengeId}
+            initialHasMore={timelinePage.hasMore}
+            initialItems={timelinePage.items}
+            initialNextCursorAt={timelinePage.nextCursorAt}
+            initialNextCursorId={timelinePage.nextCursorId}
+            today={today}
+            yesterday={yesterday}
+          />
 
-      <ProfileStatistics totals={overview.totals} />
+          <ProfileAchievementsSummary
+            displayName={displayName}
+            recent={achievements.unlocked.slice(0, 3)}
+            totalUnlocked={achievements.unlocked.length}
+          />
 
-      <ProfileRecentEvolution days={recentEvolutionDays} period={period} />
+          <ProfileStatistics totals={overview.totals} />
+
+          <ProfileRecentEvolution days={recentEvolutionDays} period={period} />
+        </>
+      )}
     </div>
   );
 }
