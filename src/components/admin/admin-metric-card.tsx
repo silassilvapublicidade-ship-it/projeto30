@@ -3,7 +3,7 @@ export function AdminMetricCard({
   label,
   value,
 }: {
-  hint?: string;
+  hint?: string | undefined;
   label: string;
   value: string;
 }) {

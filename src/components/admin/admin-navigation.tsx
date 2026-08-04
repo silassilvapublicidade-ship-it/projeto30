@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Award, Bell, ImageIcon, LayoutDashboard, Lightbulb, Settings, Trophy, UserCog } from "lucide-react";
+import { Activity, Award, Bell, ImageIcon, LayoutDashboard, Lightbulb, Settings, Trophy, UserCog } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,12 @@ import { cn } from "@/lib/utils";
 // progress/points/streak only make sense in that context, so there's no
 // standalone "Participantes" destination anymore. See
 // admin/desafios/[challengeId]/participantes for the real flow.
+//
+// mobileLabel: opcional, só usado pela barra inferior (já apertada com 8
+// itens). "Observabilidade" é o único item que define um rótulo mais curto
+// ("Diagnóstico" - o próprio nome alternativo sugerido para a área) para
+// não comprimir ainda mais os outros rótulos no mobile; todo o resto
+// continua usando `label` em ambos os modos, sem mudança de comportamento.
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Visão geral" },
   { href: "/admin/desafios", icon: Trophy, label: "Desafios" },
@@ -18,6 +24,7 @@ const navItems = [
   { href: "/admin/conquistas", icon: Award, label: "Conquistas" },
   { href: "/admin/compartilhamentos", icon: ImageIcon, label: "Compartilhamentos" },
   { href: "/admin/notificacoes", icon: Bell, label: "Notificações" },
+  { href: "/admin/observabilidade", icon: Activity, label: "Observabilidade", mobileLabel: "Diagnóstico" },
   { href: "/admin/usuarios", icon: UserCog, label: "Usuários" },
   { href: "/admin/configuracoes", icon: Settings, label: "Configurações" },
 ];
@@ -34,11 +41,13 @@ function NavLink({
   href,
   icon: Icon,
   label,
+  mobileLabel,
   mode,
 }: {
   href: string;
   icon: typeof LayoutDashboard;
   label: string;
+  mobileLabel?: string;
   mode: "desktop" | "mobile";
 }) {
   const pathname = usePathname();
@@ -61,7 +70,7 @@ function NavLink({
           className={active ? "text-action-soft" : undefined}
           size={18}
         />
-        <span>{label}</span>
+        <span>{mobileLabel ?? label}</span>
         {active ? (
           <span
             aria-hidden="true"
