@@ -21,13 +21,35 @@ const initialActionState: MemberActionResult = {
 
 const steps = ["Boas-vindas", "Identificacao", "Objetivo", "Preferencias", "Confirmacao"];
 
+// Os 4 pilares do Projeto 30 (documento institucional). "routine" segue
+// aceito no schema/valores existentes para nao quebrar quem ja escolheu
+// esse objetivo no onboarding, mas deixa de ser oferecido como opcao nova.
 const goalOptions = [
-  { label: "Melhorar minha saude", value: "health" },
-  { label: "Criar disciplina", value: "discipline" },
-  { label: "Fortalecer minha fe", value: "faith" },
-  { label: "Organizar minha rotina", value: "routine" },
-  { label: "Cuidar da minha mente", value: "mind" },
-  { label: "Evoluir de forma completa", value: "complete" },
+  {
+    label: "Corpo",
+    description: "Quero cuidar melhor da saude, energia e rotina fisica.",
+    value: "health",
+  },
+  {
+    label: "Mente",
+    description: "Quero desenvolver foco, leitura, presenca e organizacao.",
+    value: "mind",
+  },
+  {
+    label: "Carater",
+    description: "Quero fortalecer disciplina, constancia, gratidao e responsabilidade.",
+    value: "discipline",
+  },
+  {
+    label: "Espirito",
+    description: "Quero cultivar oracao, fe, proposito e aproximacao de Deus.",
+    value: "faith",
+  },
+  {
+    label: "Evolucao completa",
+    description: "Quero trabalhar diferentes areas da minha vida.",
+    value: "complete",
+  },
 ];
 
 const timezones = [
@@ -229,7 +251,7 @@ export function OnboardingFlow({
                   return (
                     <label
                       className={[
-                        "flex cursor-pointer items-center gap-3 rounded-[var(--radius-card)] border p-4 transition-[background,border-color,transform] duration-[var(--motion-base)]",
+                        "flex cursor-pointer items-start gap-3 rounded-[var(--radius-card)] border p-4 transition-[background,border-color,transform] duration-[var(--motion-base)]",
                         checked
                           ? "border-action/55 bg-action/12 text-foreground"
                           : "border-white/[0.08] bg-white/[0.035] text-muted hover:border-white/14 hover:bg-white/[0.055]",
@@ -238,12 +260,17 @@ export function OnboardingFlow({
                     >
                       <input
                         checked={checked}
-                        className="size-5 accent-[var(--p30-orange)]"
+                        className="mt-0.5 size-5 shrink-0 accent-[var(--p30-orange)]"
                         name="primaryGoalLocal"
                         onChange={() => updateField("primaryGoal", goal.value)}
                         type="radio"
                       />
-                      <span className="text-sm font-semibold">{goal.label}</span>
+                      <span>
+                        <span className="block text-sm font-semibold">{goal.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-muted-2">
+                          {goal.description}
+                        </span>
+                      </span>
                     </label>
                   );
                 })}
