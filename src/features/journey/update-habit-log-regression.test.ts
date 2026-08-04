@@ -165,8 +165,13 @@ describe("journey.actions.ts - RPC failures are now logged server-side", () => {
     expect(source).toContain("console.error(");
   });
 
+  it("also persists a system_error_event alongside the console log, for the Observabilidade panel", () => {
+    expect(source).toContain("void recordSystemError({");
+    expect(source).toContain("severity: mapPostgresCodeToSeverity(error.code)");
+  });
+
   it("logs before redirecting on the save_journal_entry failure path", () => {
-    expect(source).toContain('logJourneyRpcFailure("save_journal_entry", error)');
+    expect(source).toContain('logJourneyRpcFailure("save_journal_entry", error, { area: "finalizacao", userId: user.id })');
   });
 
   it("logs the finalize_daily_log_with_responses failure path too (batched finalize replaced the old per-habit/finalize actions)", () => {

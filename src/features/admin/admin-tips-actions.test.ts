@@ -75,7 +75,7 @@ describe("admin-tips.actions - single-screen creation (image + fields together)"
 
   it("cleans up the uploaded file if the row insert fails, never leaving an orphan", () => {
     const start = source.indexOf("export async function createTipCardAction");
-    const body = source.slice(start, start + 4000);
+    const body = source.slice(start, start + 4800);
     expect(body).toContain("if (insertError) {");
     const insertErrorIndex = body.indexOf("if (insertError) {");
     const cleanupIndex = body.indexOf("storage.from(\"tip-cards\").remove([storagePath])", insertErrorIndex);
