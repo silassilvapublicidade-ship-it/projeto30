@@ -7,8 +7,15 @@ export type ChallengeEditorHabit = Tables<"habits"> & {
   notificationConfig: Tables<"challenge_habit_notifications"> | null;
 };
 
+export type ChallengeEditorDay = {
+  dayNumber: number;
+  id: string;
+  message: string | null;
+};
+
 export type ChallengeEditorData = {
   challenge: Tables<"challenges">;
+  days: ChallengeEditorDay[];
   daysCount: number;
   habits: ChallengeEditorHabit[];
   hasParticipants: boolean;
@@ -25,7 +32,7 @@ export type ChallengeEditorData = {
 export async function getChallengeEditorData(challengeId: string): Promise<ChallengeEditorData | null> {
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: challenge }, { data: habits }, { count: daysCount }, { count: participantCount }] =
+  const [{ data: challenge }, { data: habits }, { data: dayRows }, { count: participantCount }] =
     await Promise.all([
       supabase.from("challenges").select("*").eq("id", challengeId).maybeSingle(),
       supabase
@@ -33,10 +40,14 @@ export async function getChallengeEditorData(challengeId: string): Promise<Chall
         .select("*")
         .eq("challenge_id", challengeId)
         .order("sort_order", { ascending: true }),
+      // "Mensagens do ciclo" (Correções obrigatórias pré-lançamento, Parte
+      // D) precisa da linha inteira (nunca so a contagem) para listar
+      // dia+mensagem - mesma query que ja existia, so sem o head:true.
       supabase
         .from("challenge_days")
-        .select("id", { count: "exact", head: true })
-        .eq("challenge_id", challengeId),
+        .select("id, day_number, message")
+        .eq("challenge_id", challengeId)
+        .order("day_number", { ascending: true }),
       supabase
         .from("challenge_enrollments")
         .select("id", { count: "exact", head: true })
@@ -56,9 +67,16 @@ export async function getChallengeEditorData(challengeId: string): Promise<Chall
       : { data: [] as Tables<"challenge_habit_notifications">[] };
   const configByHabitId = new Map((notificationConfigs ?? []).map((config) => [config.habit_id, config]));
 
+  const days: ChallengeEditorDay[] = (dayRows ?? []).map((row) => ({
+    dayNumber: row.day_number,
+    id: row.id,
+    message: row.message,
+  }));
+
   return {
     challenge,
-    daysCount: daysCount ?? 0,
+    days,
+    daysCount: days.length,
     habits: (habits ?? []).map((habit) => ({
       ...habit,
       notificationConfig: configByHabitId.get(habit.id) ?? null,

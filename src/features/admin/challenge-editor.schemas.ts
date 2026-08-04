@@ -103,6 +103,37 @@ export type HabitInput = z.infer<typeof habitSchema>;
 export const challengeIdParamSchema = z.uuid("Identificador de desafio inválido.");
 export const habitIdParamSchema = z.uuid("Identificador de hábito inválido.");
 
+// "Mensagens do ciclo" (Correções obrigatórias pré-lançamento, Parte D) -
+// mensagem editorial por dia (challenge_days.message). 500 caracteres é
+// generoso para um texto motivacional/contextual de UMA frase-parágrafo
+// (mesma ordem de grandeza do heroMessage acima, so um pouco maior porque
+// esta mensagem também é reaproveitada como texto completo em telas
+// diferentes - Dashboard, missão do dia, celebração). Nunca obrigatória:
+// string vazia é uma limpeza válida (volta a usar o fallback automático).
+export const DAY_MESSAGE_MAX_LENGTH = 500;
+
+const dayNumberSchema = z.coerce.number().int().positive("Informe um dia válido.");
+
+export const challengeDayMessageSchema = z.object({
+  dayNumber: dayNumberSchema,
+  message: z.string().max(DAY_MESSAGE_MAX_LENGTH, "Mensagem muito longa.").optional(),
+});
+
+export type ChallengeDayMessageInput = z.infer<typeof challengeDayMessageSchema>;
+
+export const challengeDayMessageRangeSchema = z
+  .object({
+    sourceDayNumber: dayNumberSchema,
+    targetRangeEnd: dayNumberSchema,
+    targetRangeStart: dayNumberSchema,
+  })
+  .refine((data) => data.targetRangeStart <= data.targetRangeEnd, {
+    error: "O dia inicial precisa ser igual ou anterior ao dia final.",
+    path: ["targetRangeEnd"],
+  });
+
+export type ChallengeDayMessageRangeInput = z.infer<typeof challengeDayMessageRangeSchema>;
+
 // Mirrors habits_visibility_config_check (migration 0050) - the 6 types the
 // engine actually understands. "Uma versao robusta primeiro": nao oferece
 // dias da semana/mensal/condicional/calendario manual do briefing original,

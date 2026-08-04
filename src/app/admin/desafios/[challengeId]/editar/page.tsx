@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 
+import { ChallengeDayMessagesEditor } from "@/components/admin/challenge-day-messages-editor";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
 import { HabitNotificationFields } from "@/components/admin/habit-notification-fields";
 import { HabitVisibilityFields } from "@/components/admin/habit-visibility-fields";
@@ -64,6 +65,22 @@ const feedbackMessages: Record<string, { description: string; title: string; ton
   },
   "identity-success": { description: "Identidade atualizada.", title: "Salvo", tone: "success" },
   invalid: { description: "Revise os campos e tente novamente.", title: "Dados inválidos", tone: "error" },
+  "message-saved": { description: "Mensagem do dia atualizada.", title: "Salvo", tone: "success" },
+  "message-copied": {
+    description: "Mensagem copiada para os dias do intervalo selecionado.",
+    title: "Mensagens atualizadas",
+    tone: "success",
+  },
+  "message-invalid": {
+    description: "Revise o dia e o texto da mensagem antes de salvar.",
+    title: "Dados inválidos",
+    tone: "error",
+  },
+  "message-day-not-found": {
+    description: "Este dia não existe na estrutura atual do ciclo.",
+    title: "Dia não encontrado",
+    tone: "error",
+  },
   "rules-success": { description: "Calendário e regras atualizados.", title: "Salvo", tone: "success" },
   "slug-taken": { description: "Já existe um desafio com esse slug.", title: "Slug em uso", tone: "error" },
   "structural-blocked": {
@@ -484,6 +501,21 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
             Gerar estrutura dos dias
           </Button>
         </form>
+      </Card>
+
+      <Card id="mensagens-do-ciclo" tone="glass">
+        <CardHeader>
+          <CardTitle>Mensagens do ciclo</CardTitle>
+          <CardDescription>
+            Mensagem editorial por dia - aparece no Dashboard, na missão do dia e na
+            celebração quando o dia tem uma definida. Sempre editável, mesmo com
+            participantes; nunca altera duração, hábitos ou regras. Nenhum dia precisa ter
+            mensagem própria.
+          </CardDescription>
+        </CardHeader>
+        <div className="mt-4">
+          <ChallengeDayMessagesEditor challengeId={challenge.id} days={editorData.days} durationDays={challenge.duration_days} />
+        </div>
       </Card>
 
       {challenge.status === "draft" ? (
