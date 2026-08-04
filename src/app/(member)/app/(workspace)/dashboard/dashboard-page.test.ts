@@ -54,6 +54,11 @@ describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da a
     expect(source).toContain("category: contextMessage.category");
   });
 
+  it("only offers the weekly-summary share button when a real finalized day exists in the last 7 days, never unconditionally", () => {
+    expect(source).toContain("recentEvolutionDays.slice(-7).some((day) => day.finalized)");
+    expect(source).toContain('kind="weekly_summary"');
+  });
+
   it("the narrative summary block exists and uses the dedicated pure builder, never inline copy", () => {
     expect(source).toContain("<DashboardNarrativeSummary");
     expect(source).toContain("buildNarrativeSummary(");

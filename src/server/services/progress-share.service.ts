@@ -4,7 +4,6 @@ import {
   buildProgressCardContent,
   buildProgressShareCardStoragePath,
   computeProgressSharePayloadHash,
-  type ProgressCardKind,
 } from "@/features/achievements/progress-card.core";
 import type { ShareCardFormat } from "@/features/achievements/achievement-art.schemas";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -16,13 +15,18 @@ import { requireAuthUser } from "./auth-session.service";
 const SHARE_CARD_BUCKET = "achievement-share-cards";
 const TEMPLATE_VERSION = 1;
 
-const TEMPLATE_SLUGS: Record<ProgressCardKind, Record<ShareCardFormat, string>> = {
+/** So os 3 tipos ancorados em daily_log_id - os 5 de fotografia da inscricao vivem em enrollment-snapshot-share.service.ts. */
+type DayAnchoredProgressCardKind = "day_completed" | "streak_reached" | "streak_record";
+
+const TEMPLATE_SLUGS: Record<DayAnchoredProgressCardKind, Record<ShareCardFormat, string>> = {
   day_completed: { feed: "progress_day_feed", story: "progress_day_story" },
+  streak_reached: { feed: "streak_reached_feed", story: "streak_reached_story" },
   streak_record: { feed: "streak_record_feed", story: "streak_record_story" },
 };
 
-const CARD_TYPE_BY_KIND: Record<ProgressCardKind, "progress" | "streak_record"> = {
+const CARD_TYPE_BY_KIND: Record<DayAnchoredProgressCardKind, "progress" | "streak_reached" | "streak_record"> = {
   day_completed: "progress",
+  streak_reached: "streak_reached",
   streak_record: "streak_record",
 };
 
@@ -32,15 +36,16 @@ export type ProgressShareCardResult =
 
 /**
  * Gera (ou reaproveita, por payload_hash) o card de progresso de UM
- * daily_log especifico - "dia concluido" ou "novo recorde de sequencia".
- * Mesma estrutura de generateAchievementShareCard (achievement-art.service.ts):
- * a query de posse E a autorizacao (so encontra a linha se o daily_log
- * pertencer, via a inscricao, ao usuario autenticado), nunca confia em um
- * id vindo do cliente sem revalidar no servidor.
+ * daily_log especifico - "dia concluido", "novo recorde de sequencia" ou
+ * "sequencia em alta". Mesma estrutura de generateAchievementShareCard
+ * (achievement-art.service.ts): a query de posse E a autorizacao (so
+ * encontra a linha se o daily_log pertencer, via a inscricao, ao usuario
+ * autenticado), nunca confia em um id vindo do cliente sem revalidar no
+ * servidor.
  */
 export async function generateProgressShareCard(
   dailyLogId: string,
-  kind: ProgressCardKind,
+  kind: DayAnchoredProgressCardKind,
   format: ShareCardFormat,
 ): Promise<ProgressShareCardResult> {
   const user = await requireAuthUser("/app/dashboard");
@@ -62,6 +67,13 @@ export async function generateProgressShareCard(
 
   if (kind === "streak_record" && dailyLog.streak_at_finalize === null) {
     return { error: "Este dia não representa um novo recorde de sequência.", ok: false };
+  }
+
+  // "Sequencia em alta" (Parte E item 18) - so quando ha uma sequencia real
+  // (>= 3 dias, mesmo piso ja usado pela conquista "tres-dias-seguidos"),
+  // nunca um streak de 1 dia inflado como se fosse um marco.
+  if (kind === "streak_reached" && (dailyLog.streak_at_finalize === null || dailyLog.streak_at_finalize < 3)) {
+    return { error: "Este dia não representa uma sequência válida para compartilhar.", ok: false };
   }
 
   const enrollment = dailyLog.enrollment;
@@ -104,16 +116,27 @@ export async function generateProgressShareCard(
   const habitTitles = (habitRows ?? []).sort((a, b) => a.sort_order - b.sort_order).map((habit) => habit.title);
 
   const content = buildProgressCardContent({
+    achievementsUnlocked: null,
     challengeName,
     completionPercent: dailyLog.completion_percent !== null ? Number(dailyLog.completion_percent) : null,
     dayNumber: challengeDay?.day_number ?? null,
+    daysFinalized: null,
+    daysRemaining: null,
     durationDays: enrollment.challenge?.duration_days ?? null,
+    finalMessage: null,
     habitTitles: habitTitles.length > 0 ? habitTitles : null,
     kind,
     logDate: dailyLog.log_date,
     pointsEarned: dailyLog.points_earned,
+    pointsTotal: null,
     previousStreakBest: previousBestRow?.streak_at_finalize ?? null,
+    streakBest: null,
     streakValue: dailyLog.streak_at_finalize,
+    weekAverageCompletion: null,
+    weekBestStreak: null,
+    weekDaysFinalized: null,
+    weekHabitsCompleted: null,
+    weekPoints: null,
   });
 
   const templateSlug = TEMPLATE_SLUGS[kind][format];
@@ -132,8 +155,8 @@ export async function generateProgressShareCard(
   const config = templateRow.config as unknown as { format: ShareCardFormat; height: number; width: number };
 
   const payloadHash = computeProgressSharePayloadHash({
+    anchorId: dailyLog.id,
     content,
-    dailyLogId: dailyLog.id,
     templateSlug: templateRow.slug ?? templateSlug,
     templateVersion: TEMPLATE_VERSION,
   });

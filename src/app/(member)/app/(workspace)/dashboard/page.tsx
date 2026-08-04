@@ -4,6 +4,7 @@ import { DashboardContextMessage } from "@/components/member/dashboard-context-m
 import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
 import { DashboardNarrativeSummary } from "@/components/member/dashboard-narrative-summary";
 import { DashboardNextMilestone } from "@/components/member/dashboard-next-milestone";
+import { SnapshotShareButton } from "@/components/member/snapshot-share-button";
 import { ProfileAchievementsSummary } from "@/components/member/profile-achievements-summary";
 import { ProfileChallengesSection } from "@/components/member/profile-challenges-section";
 import { ProfileFaithMessage } from "@/components/member/profile-faith-message";
@@ -261,6 +262,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <DashboardContextMessage message={contextMessage} />
 
       <DashboardNarrativeSummary summary={narrativeSummary} />
+
+      {primaryEnrollment && recentEvolutionDays.slice(-7).some((day) => day.finalized) ? (
+        <SnapshotShareButton enrollmentId={primaryEnrollment.enrollmentId} kind="weekly_summary" label="Sua semana em resumo" />
+      ) : null}
 
       {nextMilestone ? (
         <DashboardNextMilestone

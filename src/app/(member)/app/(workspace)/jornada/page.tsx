@@ -5,11 +5,12 @@ import { JourneyCalendar } from "@/components/member/journey-calendar";
 import { JourneyDayDetailPanel } from "@/components/member/journey-day-detail";
 import { JourneyRecurringHabits } from "@/components/member/journey-recurring-habits";
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
+import { SnapshotShareButton } from "@/components/member/snapshot-share-button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatusCard } from "@/components/ui/feedback";
 import { cn } from "@/lib/utils";
-import { getJourneyDetail, getJourneyOverview } from "@/server/services/journey.service";
+import { getJourneyDetail, getJourneyOverview, type JourneySummary } from "@/server/services/journey.service";
 
 type JornadaPageProps = {
   searchParams: Promise<{ desafio?: string; dia?: string }>;
@@ -38,6 +39,48 @@ function buildHref({
   }
 
   return `/app/jornada?${params.toString()}`;
+}
+
+/**
+ * Compartilhamento premium na Jornada (Refinamento premium, Parte E item
+ * 22) - so oferece um botao quando o marco correspondente e GENUINO
+ * segundo os mesmos dados ja carregados nesta pagina (nunca indiscriminado
+ * em todo card). O backend (generateSnapshotShareCard) sempre revalida do
+ * zero - esta checagem aqui e so para nao oferecer um botao que o servidor
+ * recusaria.
+ */
+function JourneyShareRow({ enrollmentId, summary }: { enrollmentId: string; summary: JourneySummary }) {
+  const halfwayDay = Math.ceil(summary.durationDays / 2);
+  const daysRemaining = summary.durationDays - summary.currentDay;
+
+  const canShareHalfway = summary.currentDay >= halfwayDay;
+  const canShareLast7Days = daysRemaining >= 0 && daysRemaining <= 6;
+  const canShareProgress = summary.completionPercent > 0;
+  const canShareCompleted = summary.status === "completed";
+
+  if (!canShareHalfway && !canShareLast7Days && !canShareProgress && !canShareCompleted) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+      {canShareCompleted ? (
+        <SnapshotShareButton enrollmentId={enrollmentId} kind="challenge_completed" label="Desafio concluído" />
+      ) : (
+        <>
+          {canShareHalfway ? (
+            <SnapshotShareButton enrollmentId={enrollmentId} kind="halfway" label="Você chegou à metade do desafio" />
+          ) : null}
+          {canShareLast7Days ? (
+            <SnapshotShareButton enrollmentId={enrollmentId} kind="last_7_days" label="Reta final" />
+          ) : null}
+          {canShareProgress ? (
+            <SnapshotShareButton enrollmentId={enrollmentId} kind="challenge_progress" label="Progresso do desafio" />
+          ) : null}
+        </>
+      )}
+    </div>
+  );
 }
 
 export default async function JornadaPage({ searchParams }: JornadaPageProps) {
@@ -155,7 +198,10 @@ async function JornadaContent({
                 tone="success"
               />
             ) : (
-              <Progress label="Conclusão do ciclo" value={Math.round(detail.summary.completionPercent)} />
+              <>
+                <Progress label="Conclusão do ciclo" value={Math.round(detail.summary.completionPercent)} />
+                <JourneyShareRow enrollmentId={selectedEnrollmentId} summary={detail.summary} />
+              </>
             )}
           </Card>
 

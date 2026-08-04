@@ -8,7 +8,7 @@ import type { AchievementCardContent } from "@/features/achievements/achievement
 import { RARITY_TIERS, type RarityTierConfig } from "@/features/achievements/achievement-rarity.core";
 import type { SceneId } from "@/features/achievements/achievement-scene.core";
 import type { ShareCardTemplateConfig } from "@/features/achievements/achievement-art.schemas";
-import type { ProgressCardContent } from "@/features/achievements/progress-card.core";
+import type { ProgressCardContent, ProgressCardIcon } from "@/features/achievements/progress-card.core";
 
 import { AchievementIcon, CheckCircleIcon } from "./achievement-icons";
 
@@ -771,7 +771,7 @@ export function renderAchievementShareCardImage(
 // Sem sistema de raridade (nao se aplica a progresso diario) - usa sempre
 // o tom "ouro" da marca como acento premium fixo.
 
-function ProgressBadge({ icon, tier }: { icon: "flame" | "sunrise"; tier: RarityTierConfig }) {
+function ProgressBadge({ icon, tier }: { icon: ProgressCardIcon; tier: RarityTierConfig }) {
   const size = 220;
   const innerSize = size - tier.ringWidth * 2;
 

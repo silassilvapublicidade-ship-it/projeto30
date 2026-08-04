@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { recordProfileDashboardEventAction } from "@/features/member/profile-dashboard.actions";
 
 type ShareCardFormat = "story" | "feed";
-type ProgressCardKind = "day_completed" | "streak_reached" | "streak_record";
+type SnapshotProgressCardKind = "challenge_completed" | "challenge_progress" | "halfway" | "last_7_days" | "weekly_summary";
 
 type ShareCardResponse = {
   format: ShareCardFormat;
@@ -22,15 +22,23 @@ const formatLabels: Record<ShareCardFormat, string> = {
 };
 
 /**
- * Compartilhamento premium de progresso, para os 3 tipos ANCORADOS EM UM
- * DIA especifico - dia concluído, novo recorde ou sequência em alta
- * (dailyLogId serve como âncora nos 3). Os 5 tipos que fotografam o ESTADO
- * da inscrição usam SnapshotShareButton, mesma UI, âncora diferente. Mesmo
- * fluxo do card de conquista: escolher Story/Feed -> gerar ou reaproveitar
- * (idempotente por payload_hash) -> preview -> Web Share API -> fallback de
- * download. Nunca gera automaticamente sem uma ação explícita do usuário.
+ * Mesma UI/fluxo de ProgressShareButton, para os 5 tipos que fotografam o
+ * ESTADO da inscrição (metade do ciclo, últimos 7 dias, resumo semanal,
+ * progresso do desafio, desafio concluído) - âncora enrollmentId em vez de
+ * dailyLogId, rota /api/progress-share/enrollment/[enrollmentId]. A
+ * disponibilidade real (Parte E item 18) é sempre revalidada no servidor:
+ * este botão só aparece nos pontos da UI onde já sabemos que o marco é
+ * genuíno, mas o backend nunca confia só nisso.
  */
-export function ProgressShareButton({ dailyLogId, kind, label }: { dailyLogId: string; kind: ProgressCardKind; label: string }) {
+export function SnapshotShareButton({
+  enrollmentId,
+  kind,
+  label,
+}: {
+  enrollmentId: string;
+  kind: SnapshotProgressCardKind;
+  label: string;
+}) {
   const [open, setOpen] = useState(false);
   const [loadingFormat, setLoadingFormat] = useState<ShareCardFormat | null>(null);
   const [result, setResult] = useState<ShareCardResponse | null>(null);
@@ -41,7 +49,7 @@ export function ProgressShareButton({ dailyLogId, kind, label }: { dailyLogId: s
     setError(null);
 
     try {
-      const response = await fetch(`/api/progress-share/${dailyLogId}?kind=${kind}&format=${format}`);
+      const response = await fetch(`/api/progress-share/enrollment/${enrollmentId}?kind=${kind}&format=${format}`);
       const data = (await response.json()) as ShareCardResponse | { error: string };
 
       if (!response.ok || "error" in data) {

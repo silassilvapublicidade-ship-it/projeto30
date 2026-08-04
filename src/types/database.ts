@@ -1451,6 +1451,7 @@ export type Database = {
           payload_hash: string | null
           share_config: Json
           shared_at: string | null
+          snapshot_enrollment_id: string | null
           storage_path: string | null
           template_id: string | null
           template_version: number
@@ -1470,6 +1471,7 @@ export type Database = {
           payload_hash?: string | null
           share_config?: Json
           shared_at?: string | null
+          snapshot_enrollment_id?: string | null
           storage_path?: string | null
           template_id?: string | null
           template_version?: number
@@ -1489,6 +1491,7 @@ export type Database = {
           payload_hash?: string | null
           share_config?: Json
           shared_at?: string | null
+          snapshot_enrollment_id?: string | null
           storage_path?: string | null
           template_id?: string | null
           template_version?: number
@@ -1516,6 +1519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenge_enrollments"
             referencedColumns: ["id", "user_id", "challenge_id"]
+          },
+          {
+            foreignKeyName: "share_cards_snapshot_enrollment_id_fkey"
+            columns: ["snapshot_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_enrollments"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "share_cards_template_id_fkey"
@@ -1763,8 +1773,8 @@ export type Database = {
           p_action_label?: string | undefined
           p_audience_type: string
           p_challenge_id?: string | undefined
-          p_channel_internal?: boolean | undefined
-          p_channel_push?: boolean | undefined
+          p_channel_internal?: boolean
+          p_channel_push?: boolean
           p_destination_reference_id?: string | undefined
           p_destination_type: string
           p_habit_keyword?: string | undefined
@@ -1825,11 +1835,11 @@ export type Database = {
       }
       admin_list_challenges: {
         Args: {
-          p_limit?: number | undefined
-          p_offset?: number | undefined
+          p_limit?: number
+          p_offset?: number
           p_search?: string | undefined
-          p_sort_by?: string | undefined
-          p_sort_dir?: string | undefined
+          p_sort_by?: string
+          p_sort_dir?: string
           p_status?: Database["public"]["Enums"]["challenge_status"] | undefined
         }
         Returns: {
@@ -1849,8 +1859,8 @@ export type Database = {
       }
       admin_list_notification_campaigns: {
         Args: {
-          p_limit?: number | undefined
-          p_offset?: number | undefined
+          p_limit?: number
+          p_offset?: number
           p_search?: string | undefined
           p_sort_by?: string | undefined
           p_sort_dir?: string | undefined
@@ -1882,13 +1892,13 @@ export type Database = {
         Args: {
           p_activity?: string | undefined
           p_challenge_id: string
-          p_limit?: number | undefined
+          p_limit?: number
           p_max_progress?: number | undefined
           p_min_progress?: number | undefined
-          p_offset?: number | undefined
+          p_offset?: number
           p_search?: string | undefined
-          p_sort_by?: string | undefined
-          p_sort_dir?: string | undefined
+          p_sort_by?: string
+          p_sort_dir?: string
           p_status?: Database["public"]["Enums"]["enrollment_status"] | undefined
         }
         Returns: {
@@ -1911,9 +1921,9 @@ export type Database = {
       admin_list_users: {
         Args: {
           p_has_active_challenge?: boolean | undefined
-          p_limit?: number | undefined
+          p_limit?: number
           p_must_change_password?: boolean | undefined
-          p_offset?: number | undefined
+          p_offset?: number
           p_profile_complete?: boolean | undefined
           p_role?: Database["public"]["Enums"]["user_role"] | undefined
           p_search?: string | undefined
@@ -1956,6 +1966,10 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
+      admin_recompute_finalized_daily_log: {
+        Args: { target_daily_log_id: string }
+        Returns: Json
+      }
       admin_require_admin: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1995,8 +2009,8 @@ export type Database = {
           p_audience_type: string
           p_campaign_id: string
           p_challenge_id?: string | undefined
-          p_channel_internal?: boolean | undefined
-          p_channel_push?: boolean | undefined
+          p_channel_internal?: boolean
+          p_channel_push?: boolean
           p_destination_reference_id?: string | undefined
           p_destination_type: string
           p_habit_keyword?: string | undefined
@@ -2170,7 +2184,7 @@ export type Database = {
           p_challenge_id?: string | undefined
           p_cursor_at?: string | undefined
           p_cursor_id?: string | undefined
-          p_limit?: number | undefined
+          p_limit?: number
           p_types?: string[] | undefined
         }
         Returns: Json
