@@ -45,7 +45,8 @@ describe("public/sw.js - safety contract", () => {
     expect(activateBody).toContain("!CURRENT_CACHES.includes(key)");
   });
 
-  it("uses an allowlist for Network-First pages, matching exactly the round's spec (Hoje, Jornada, Desafios, Perfil, Conquistas, Dicas)", () => {
+  it("uses an allowlist for Network-First pages, matching exactly the round's spec (Dashboard, Hoje, Jornada, Desafios, Perfil, Conquistas, Dicas)", () => {
+    expect(code).toContain('"/app/dashboard"');
     expect(code).toContain('"/app/hoje"');
     expect(code).toContain('"/app/jornada"');
     expect(code).toContain('"/app/desafios"');

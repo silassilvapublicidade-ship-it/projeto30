@@ -21,9 +21,9 @@ describe("profile-dashboard.service.ts - overview (Parte 4/17)", () => {
     expect(source).toContain('supabase.rpc("member_profile_overview")');
   });
 
-  it("requires an authenticated session before touching data", () => {
+  it("requires an authenticated session before touching data, redirecting back to the canonical /app/dashboard route", () => {
     const fnBody = sliceDeclaration(source, "export async function getProfileOverview");
-    expect(fnBody).toContain('await requireAuthUser("/app/perfil");');
+    expect(fnBody).toContain('await requireAuthUser("/app/dashboard");');
   });
 
   it("returns a fully zeroed overview (never an error page) when the RPC fails - empty states must stay honest, not broken", () => {

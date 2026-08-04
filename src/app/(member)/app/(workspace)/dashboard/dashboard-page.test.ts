@@ -6,16 +6,8 @@ function readSource(...pathSegments: string[]) {
   return readFileSync(join(process.cwd(), ...pathSegments), "utf8");
 }
 
-describe("/app/perfil - Dashboard de Evolucao Pessoal wiring (Partes 2-13)", () => {
-  const source = readSource(
-    "src",
-    "app",
-    "(member)",
-    "app",
-    "(workspace)",
-    "perfil",
-    "page.tsx",
-  );
+describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da area de membros", () => {
+  const source = readSource("src", "app", "(member)", "app", "(workspace)", "dashboard", "page.tsx");
 
   it("orchestrates every dashboard section - header, metrics, highlight, objective, faith, challenges, timeline, achievements, statistics, recent evolution", () => {
     expect(source).toContain("<ProfileHeader");
@@ -63,18 +55,14 @@ describe("/app/perfil - Dashboard de Evolucao Pessoal wiring (Partes 2-13)", () 
   it("recent-evolution period defaults to 7 and only accepts 30 explicitly - never an arbitrary caller-supplied window", () => {
     expect(source).toContain('const period = periodo === "30" ? 30 : 7;');
   });
+
+  it("titles the tab 'Dashboard', not 'Perfil' - the route's own identity now, not a leftover from the old settings page", () => {
+    expect(source).toContain('title: "Dashboard"');
+  });
 });
 
-describe("/app/perfil - dedicated loading skeleton (Parte 20)", () => {
-  const source = readSource(
-    "src",
-    "app",
-    "(member)",
-    "app",
-    "(workspace)",
-    "perfil",
-    "loading.tsx",
-  );
+describe("/app/dashboard - dedicated loading skeleton", () => {
+  const source = readSource("src", "app", "(member)", "app", "(workspace)", "dashboard", "loading.tsx");
 
   it("exists as its own file, never re-exporting or importing the Hoje skeleton", () => {
     expect(source).not.toContain("HojeLoading");
@@ -84,37 +72,5 @@ describe("/app/perfil - dedicated loading skeleton (Parte 20)", () => {
   it("mirrors the real dashboard's section shapes (metrics grid, challenge cards, timeline) to avoid layout shift", () => {
     expect(source).toContain("grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6");
     expect(source).toContain("grid gap-3 sm:grid-cols-2 lg:grid-cols-3");
-  });
-});
-
-describe("/app/perfil/editar - configuracoes da conta (Parte 14)", () => {
-  const source = readSource(
-    "src",
-    "app",
-    "(member)",
-    "app",
-    "(workspace)",
-    "perfil",
-    "editar",
-    "page.tsx",
-  );
-
-  it("keeps every field the brief requires: photo, name/display name/city, read-only email, password, PWA install", () => {
-    expect(source).toContain("<ProfilePhotoForm");
-    expect(source).toContain("<ProfileDetailsForm");
-    expect(source).toContain("<ProfileSecurityForm");
-    expect(source).toContain("<InstallAppPrompt");
-  });
-
-  it("surfaces admin access only for admin roles, never unconditionally", () => {
-    expect(source).toContain("{isAdminRole(profile.role) ? (");
-  });
-
-  it("links back to the dashboard - editing is never a dead end", () => {
-    expect(source).toContain('href="/app/perfil"');
-  });
-
-  it("makes notification preferences discoverable from account settings", () => {
-    expect(source).toContain('href="/app/configuracoes/notificacoes"');
   });
 });

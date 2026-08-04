@@ -26,14 +26,14 @@ describe("profile-dashboard.actions.ts (Parte 21)", () => {
   it("requires auth before recording, and never forwards personal data in metadata", () => {
     const fnStart = source.indexOf("export async function recordProfileDashboardEventAction");
     const fnBody = source.slice(fnStart, source.indexOf("\n}\n", fnStart));
-    expect(fnBody).toContain('await requireAuthUser("/app/perfil");');
+    expect(fnBody).toContain('await requireAuthUser("/app/dashboard");');
     expect(fnBody).not.toMatch(/email|diary|diário/i);
   });
 
   it("load-more delegates straight to the paginated service, never re-implements pagination in the action layer", () => {
     const fnStart = source.indexOf("export async function loadMoreProfileTimelineAction");
     const fnBody = source.slice(fnStart, source.indexOf("\n}\n", fnStart));
-    expect(fnBody).toContain('await requireAuthUser("/app/perfil");');
+    expect(fnBody).toContain('await requireAuthUser("/app/dashboard");');
     expect(fnBody).toContain("return getProfileTimeline({");
   });
 });

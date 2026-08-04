@@ -27,7 +27,7 @@ describe("member navigation content", () => {
     expect(source).toMatch(/label:\s*"Dicas"/);
   });
 
-  it("keeps exactly five items in the shared main navigation (desktop + mobile bar)", () => {
+  it("keeps exactly five items in the shared main navigation (desktop + mobile bar) - never a sixth without an explicit density audit", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     expect(mainItemsMatch).not.toBeNull();
 
@@ -35,19 +35,32 @@ describe("member navigation content", () => {
     expect(entryMatches).toHaveLength(5);
   });
 
-  it("keeps Hoje, Desafios, Jornada and Conquistas alongside Dicas", () => {
-    for (const href of [
-      "/app/hoje",
-      "/app/desafios",
-      "/app/jornada",
-      "/app/dicas",
-      "/app/conquistas",
-    ]) {
-      expect(source).toContain(href);
+  it("Dashboard is first, Hoje stays right next to it as a clearly separate destination", () => {
+    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
+    const body = mainItemsMatch?.[1] ?? "";
+    const dashboardIndex = body.indexOf('href: "/app/dashboard"');
+    const hojeIndex = body.indexOf('href: "/app/hoje"');
+    expect(dashboardIndex).toBeGreaterThan(-1);
+    expect(hojeIndex).toBeGreaterThan(-1);
+    expect(dashboardIndex).toBeLessThan(hojeIndex);
+  });
+
+  it("keeps Hoje, Desafios, Jornada and Dicas in the main navigation alongside Dashboard", () => {
+    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
+    const body = mainItemsMatch?.[1] ?? "";
+    for (const href of ["/app/dashboard", "/app/hoje", "/app/desafios", "/app/jornada", "/app/dicas"]) {
+      expect(body).toContain(href);
     }
   });
 
-  it("removes Perfil from the main navigation - it stays reachable via the avatar block", () => {
+  it("moves Conquistas to the secondary items - still reachable, just not one of the 5 main mobile slots", () => {
+    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
+    const secondaryItemsMatch = source.match(/const secondaryItems = \[([\s\S]*?)\];/);
+    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/conquistas");
+    expect(secondaryItemsMatch?.[1] ?? "").toContain("/app/conquistas");
+  });
+
+  it("removes Perfil from the main navigation entirely - it's now a redirect, reachable via the avatar block instead", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/perfil");
     expect(source).not.toMatch(/label:\s*"Perfil"/);

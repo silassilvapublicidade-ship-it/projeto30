@@ -18,8 +18,8 @@ describe("Web App Manifest", () => {
     expect(result.lang).toBe("pt-BR");
   });
 
-  it("opens straight into the app, not the marketing site", () => {
-    expect(result.start_url).toBe("/app/hoje");
+  it("opens straight into the Dashboard, the primary member landing page - not the marketing site, not Hoje directly", () => {
+    expect(result.start_url).toBe("/app/dashboard");
     expect(result.scope).toBe("/");
   });
 

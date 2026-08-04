@@ -73,7 +73,7 @@ describe("ProfileMetricsGrid - resumo principal (Parte 4)", () => {
   });
 
   it("the challenge filter is a real navigable URL (?desafio=), never client state", () => {
-    expect(source).toContain("href={`/app/perfil?desafio=${enrollment.challengeId}`}");
+    expect(source).toContain("href={`/app/dashboard?desafio=${enrollment.challengeId}`}");
   });
 });
 
@@ -126,6 +126,10 @@ describe("ProfileTimeline - linha do tempo (Parte 7/8)", () => {
 
   it("filter links preserve the current challenge scope", () => {
     expect(source).toContain('if (challengeId) params.set("desafio", challengeId);');
+  });
+
+  it("filter links point at /app/dashboard - the timeline's canonical home, not the old /app/perfil route", () => {
+    expect(source).toContain("`/app/dashboard${query");
   });
 
   it("keys each row on event_type + event_source_id, never a plain index - required for the composite cursor's tied timestamps", () => {
@@ -215,8 +219,8 @@ describe("ProfileRecentEvolution - evolucao recente (Parte 11)", () => {
   });
 
   it("period toggle is a real navigable URL (?periodo=7|30), never client state", () => {
-    expect(source).toContain('href="/app/perfil?periodo=7"');
-    expect(source).toContain('href="/app/perfil?periodo=30"');
+    expect(source).toContain('href="/app/dashboard?periodo=7"');
+    expect(source).toContain('href="/app/dashboard?periodo=30"');
   });
 
   it("exposes an accessible aggregate label plus a per-bar label for screen readers", () => {
