@@ -8,6 +8,7 @@ import type { AchievementCardContent } from "@/features/achievements/achievement
 import { RARITY_TIERS, type RarityTierConfig } from "@/features/achievements/achievement-rarity.core";
 import type { SceneId } from "@/features/achievements/achievement-scene.core";
 import type { ShareCardTemplateConfig } from "@/features/achievements/achievement-art.schemas";
+import type { ProgressCardContent } from "@/features/achievements/progress-card.core";
 
 import { AchievementIcon, CheckCircleIcon } from "./achievement-icons";
 
@@ -731,6 +732,210 @@ export function renderAchievementShareCardImage(
               }}
             >
               {microDetails.join("   ·   ")}
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              color: P30_MUTED_2,
+              display: "flex",
+              fontFamily: FONT_MONO,
+              fontSize: 21,
+              letterSpacing: 3,
+              marginTop: 20,
+              opacity: 0.7,
+            }}
+          >
+            {content.footerLine.toUpperCase()}
+          </div>
+        </div>
+      </div>
+    ),
+    {
+      fonts: [
+        { data: FONT_FILES.displayBold, name: FONT_DISPLAY, style: "normal", weight: 700 },
+        { data: FONT_FILES.sansRegular, name: FONT_BODY, style: "normal", weight: 400 },
+        { data: FONT_FILES.sansBold, name: FONT_BODY, style: "normal", weight: 700 },
+        { data: FONT_FILES.mono, name: FONT_MONO, style: "normal", weight: 500 },
+      ],
+      height: config.height,
+      width: config.width,
+    },
+  );
+}
+
+// --- Progress cards (dia concluido / novo recorde) ----------------------
+// Reaproveita TODAS as primitivas acima (fontes, logo, texturas, cenas,
+// vinheta, badge) - nunca uma segunda engine. So o conteudo/discriminador
+// de tipo muda; a composicao em camadas e identica ao card de conquista.
+// Sem sistema de raridade (nao se aplica a progresso diario) - usa sempre
+// o tom "ouro" da marca como acento premium fixo.
+
+function ProgressBadge({ icon, tier }: { icon: "flame" | "sunrise"; tier: RarityTierConfig }) {
+  const size = 220;
+  const innerSize = size - tier.ringWidth * 2;
+
+  return (
+    <div
+      style={{
+        alignItems: "center",
+        background: `linear-gradient(135deg, ${tier.medalRing[0]}, ${tier.medalRing[1]})`,
+        borderRadius: 9999,
+        display: "flex",
+        height: size,
+        justifyContent: "center",
+        width: size,
+      }}
+    >
+      <div
+        style={{
+          alignItems: "center",
+          background: `linear-gradient(160deg, ${P30_GRAPHITE_2}, ${P30_GRAPHITE})`,
+          borderRadius: 9999,
+          display: "flex",
+          height: innerSize,
+          justifyContent: "center",
+          position: "relative",
+          width: innerSize,
+        }}
+      >
+        <div
+          style={{
+            background: `radial-gradient(circle at 50% 20%, rgba(255,255,255,0.22), transparent 60%)`,
+            borderRadius: 9999,
+            display: "flex",
+            height: innerSize,
+            position: "absolute",
+            width: innerSize,
+          }}
+        />
+        <AchievementIcon color={P30_PORCELAIN} icon={icon} size={Math.round(innerSize * 0.42)} strokeWidth={1.8} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Renderiza os cards de progresso (dia concluido = card_type 'progress',
+ * novo recorde = card_type 'streak_record') - mesma engine/composicao de
+ * renderAchievementShareCardImage (Satori + Resvg via next/og), so o
+ * conteudo e o rotulo do badge superior mudam.
+ */
+export function renderProgressShareCardImage(content: ProgressCardContent, config: ShareCardTemplateConfig) {
+  const tier = RARITY_TIERS.ouro;
+  const Scene = SCENES[content.sceneId];
+  const isStory = config.format === "story";
+
+  const topInset = isStory ? 230 : 96;
+  const bottomInset = isStory ? 230 : 96;
+  const sidePad = 84;
+
+  return new ImageResponse(
+    (
+      <div
+        style={{
+          background: `linear-gradient(165deg, ${P30_GRAPHITE} 0%, ${P30_BLACK} 62%)`,
+          display: "flex",
+          fontFamily: FONT_BODY,
+          height: "100%",
+          position: "relative",
+          width: "100%",
+        }}
+      >
+        <TechTextureLayer />
+        <Scene tier={tier} />
+        <RarityGlowLayer tier={tier} />
+        <VignetteLayer />
+
+        <div
+          style={{
+            alignItems: "center",
+            bottom: bottomInset,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            left: sidePad,
+            position: "absolute",
+            right: sidePad,
+            textAlign: "center",
+            top: topInset,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- next/og requires a raw <img>, not next/image */}
+          <img alt="" height={68} src={LOGO_DATA_URI} width={68} />
+
+          <div style={{ display: "flex", marginTop: 28 }}>
+            <Pill tone="accent">{content.attributionLine}</Pill>
+          </div>
+
+          <div style={{ display: "flex", marginTop: 46 }}>
+            <ProgressBadge icon={content.icon} tier={tier} />
+          </div>
+
+          <div
+            style={{
+              color: P30_WHITE,
+              display: "flex",
+              fontFamily: FONT_DISPLAY,
+              fontSize: 72,
+              fontWeight: 700,
+              letterSpacing: -1,
+              lineHeight: 1.08,
+              marginTop: 42,
+              maxWidth: 900,
+              textTransform: "uppercase",
+            }}
+          >
+            {content.title}
+          </div>
+
+          {content.subtitle ? (
+            <div
+              style={{
+                color: P30_MUTED,
+                display: "flex",
+                fontSize: 32,
+                lineHeight: 1.4,
+                marginTop: 24,
+                maxWidth: 780,
+              }}
+            >
+              {content.subtitle.length > 140 ? `${content.subtitle.slice(0, 139)}…` : content.subtitle}
+            </div>
+          ) : null}
+
+          {content.challengeLabel ? (
+            <div style={{ color: P30_MUTED_2, display: "flex", fontSize: 26, marginTop: 22 }}>
+              {content.challengeLabel}
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              background: `linear-gradient(90deg, transparent, ${P30_LINE}, transparent)`,
+              display: "flex",
+              height: 1,
+              marginTop: 56,
+              width: 300,
+            }}
+          />
+
+          <div style={{ color: P30_MUTED_2, display: "flex", fontSize: 25, marginTop: 30 }}>{content.dateLabel}</div>
+
+          {content.microDetails.length > 0 ? (
+            <div
+              style={{
+                color: P30_MUTED_2,
+                display: "flex",
+                fontFamily: FONT_MONO,
+                fontSize: 18,
+                gap: 14,
+                letterSpacing: 1,
+                marginTop: 22,
+                textTransform: "uppercase",
+              }}
+            >
+              {content.microDetails.join("   ·   ")}
             </div>
           ) : null}
 
