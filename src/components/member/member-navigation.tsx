@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Flag,
   Home,
+  LayoutDashboard,
   Lightbulb,
   Medal,
   NotebookPen,
@@ -14,19 +15,24 @@ import {
 
 import { cn } from "@/lib/utils";
 
-// Perfil intentionally left out of the main navigation - it stays reachable
-// through the avatar/user block instead (member-shell.tsx), which already
-// linked to /app/perfil, so removing it here just drops the duplicate entry
-// point rather than losing access to the route.
+// Dashboard is the new primary landing page (Parte A/B) and gets its own
+// item here - Hoje stays right next to it as a clearly separate destination
+// (Parte C: Dashboard = visao geral/evolucao, Hoje = acoes do dia). Perfil
+// itself is intentionally left out - it's now a redirect to /app/dashboard,
+// and editing (/app/perfil/editar) is reachable through the avatar block
+// (member-shell.tsx) instead. Conquistas moved to secondaryItems to keep
+// mainItems (the mobile bottom bar) at exactly 5 items; it stays reachable
+// from the Dashboard, the avatar area and its own /app/conquistas route.
 const mainItems = [
+  { href: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/app/hoje", icon: Home, label: "Hoje" },
   { href: "/app/desafios", icon: Flag, label: "Desafios" },
   { href: "/app/jornada", icon: Route, label: "Jornada" },
   { href: "/app/dicas", icon: Lightbulb, label: "Dicas" },
-  { href: "/app/conquistas", icon: Medal, label: "Conquistas", mobileLabel: "Marcos" },
 ];
 
 const secondaryItems = [
+  { href: "/app/conquistas", icon: Medal, label: "Conquistas" },
   { href: "/app/diario", icon: NotebookPen, label: "Diario" },
   { href: "/app/configuracoes", icon: Settings, label: "Configuracoes" },
 ];

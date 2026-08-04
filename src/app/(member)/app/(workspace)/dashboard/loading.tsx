@@ -1,12 +1,12 @@
 import { Skeleton } from "@/components/ui/feedback";
 
 /**
- * Skeleton dedicado do Dashboard de Evolucao Pessoal (Parte 20) - espelha as
- * secoes reais (cabecalho, metricas, destaque/objetivo, desafios, timeline,
+ * Skeleton dedicado do Dashboard de Evolucao Pessoal - espelha as secoes
+ * reais (cabecalho, metricas, destaque/objetivo, desafios, timeline,
  * conquistas, estatisticas, evolucao recente) para evitar layout shift.
  * Nunca reaproveita o skeleton de /app/hoje - estrutura diferente.
  */
-export default function PerfilLoading() {
+export default function DashboardLoading() {
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">

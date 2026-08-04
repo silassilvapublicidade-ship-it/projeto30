@@ -49,7 +49,7 @@ export function ProfileRecentEvolution({
                 ? "border-action/32 bg-action/14 text-action-soft"
                 : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
             )}
-            href="/app/perfil?periodo=7"
+            href="/app/dashboard?periodo=7"
           >
             7 dias
           </Link>
@@ -60,7 +60,7 @@ export function ProfileRecentEvolution({
                 ? "border-action/32 bg-action/14 text-action-soft"
                 : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
             )}
-            href="/app/perfil?periodo=30"
+            href="/app/dashboard?periodo=30"
           >
             30 dias
           </Link>

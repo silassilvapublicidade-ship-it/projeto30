@@ -43,10 +43,12 @@ const SHELL_ASSETS = [
   "/favicon.ico",
 ];
 
-// Exactly the round's Network First list - Hoje, Jornada, Desafios, Perfil,
-// Conquistas, Dicas (dynamic pages). Matches the path and any subpath
-// (e.g. /app/desafios/algum-slug), so detail routes are covered too.
+// Exactly the round's Network First list - Dashboard, Hoje, Jornada,
+// Desafios, Perfil (now a redirect to Dashboard, still a real navigable
+// route), Conquistas, Dicas (dynamic pages). Matches the path and any
+// subpath (e.g. /app/desafios/algum-slug), so detail routes are covered too.
 const NETWORK_FIRST_PAGE_PATHS = [
+  "/app/dashboard",
   "/app/hoje",
   "/app/jornada",
   "/app/desafios",

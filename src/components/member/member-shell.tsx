@@ -72,9 +72,9 @@ export function MemberShell({
               </div>
 
               <Link
-                aria-label="Ver perfil"
+                aria-label="Abrir perfil e configurações"
                 className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
-                href="/app/perfil"
+                href="/app/perfil/editar"
               >
                 <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
                 <span className="min-w-0 flex-1">
@@ -108,9 +108,9 @@ export function MemberShell({
           <header className="safe-pt sticky top-0 z-30 border-b border-white/[0.06] bg-background/82 px-4 pb-3 backdrop-blur-2xl md:hidden">
             <div className="flex items-center justify-between gap-3">
               <Link
-                aria-label="Ver perfil"
+                aria-label="Abrir perfil e configurações"
                 className="flex min-w-0 items-center gap-2.5 focus-visible:outline-action-soft"
-                href="/app/perfil"
+                href="/app/perfil/editar"
               >
                 <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
                 <span className="min-w-0">

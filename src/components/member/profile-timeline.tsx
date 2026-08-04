@@ -116,7 +116,7 @@ export function ProfileTimeline({
     if (filterKey !== "all") params.set("timeline", filterKey);
     if (challengeId) params.set("desafio", challengeId);
     const query = params.toString();
-    return `/app/perfil${query ? `?${query}` : ""}#timeline`;
+    return `/app/dashboard${query ? `?${query}` : ""}#timeline`;
   }
 
   return (

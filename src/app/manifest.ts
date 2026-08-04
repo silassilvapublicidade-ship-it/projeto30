@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Projeto 30",
     short_name: "Projeto 30",
     description: "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
-    start_url: "/app/hoje",
+    start_url: "/app/dashboard",
     scope: "/",
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "browser"],

@@ -29,7 +29,7 @@ export async function recordProfileDashboardEventAction(
     return;
   }
 
-  await requireAuthUser("/app/perfil");
+  await requireAuthUser("/app/dashboard");
   await recordAnalyticsEvent({
     challengeId: options?.challengeId ?? null,
     enrollmentId: options?.enrollmentId ?? null,
@@ -49,7 +49,7 @@ export async function loadMoreProfileTimelineAction(input: {
   cursorId: string;
   types?: TimelineEventType[];
 }): Promise<ProfileTimelinePage> {
-  await requireAuthUser("/app/perfil");
+  await requireAuthUser("/app/dashboard");
   return getProfileTimeline({
     challengeId: input.challengeId,
     cursorAt: input.cursorAt,

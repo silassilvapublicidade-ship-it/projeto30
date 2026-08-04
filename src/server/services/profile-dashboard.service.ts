@@ -97,7 +97,7 @@ type RawOverview = {
  * historico deve ver estados vazios, nao uma tela quebrada.
  */
 export async function getProfileOverview(): Promise<ProfileOverview> {
-  await requireAuthUser("/app/perfil");
+  await requireAuthUser("/app/dashboard");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("member_profile_overview");
@@ -165,7 +165,7 @@ export async function getProfileTimeline(options: {
   limit?: number | undefined;
   types?: TimelineEventType[] | undefined;
 }): Promise<ProfileTimelinePage> {
-  await requireAuthUser("/app/perfil");
+  await requireAuthUser("/app/dashboard");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("member_profile_timeline", {
@@ -280,7 +280,7 @@ export type FaithMessage = {
  * - a secao simplesmente nao renderiza, nunca um texto vazio ou inventado.
  */
 export async function getFaithMessage(): Promise<FaithMessage | null> {
-  await requireAuthUser("/app/perfil");
+  await requireAuthUser("/app/dashboard");
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.rpc("member_pick_faith_message");

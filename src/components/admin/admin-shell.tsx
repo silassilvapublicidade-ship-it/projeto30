@@ -59,7 +59,7 @@ export function AdminShell({
               <Button
                 as="a"
                 className="w-full"
-                href="/app/hoje"
+                href="/app/dashboard"
                 leadingIcon={<ArrowLeft aria-hidden="true" size={15} />}
                 variant="secondary"
               >
@@ -95,7 +95,7 @@ export function AdminShell({
                 <Button
                   aria-label="Voltar para o aplicativo"
                   as="a"
-                  href="/app/hoje"
+                  href="/app/dashboard"
                   size="sm"
                   variant="secondary"
                 >

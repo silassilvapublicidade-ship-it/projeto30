@@ -49,7 +49,7 @@ export function ProfileMetricsGrid({
                   ? "border-action/32 bg-action/14 text-action-soft"
                   : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
               )}
-              href="/app/perfil"
+              href="/app/dashboard"
             >
               Geral
             </Link>
@@ -61,7 +61,7 @@ export function ProfileMetricsGrid({
                     ? "border-action/32 bg-action/14 text-action-soft"
                     : "border-white/[0.08] bg-white/[0.03] text-muted hover:text-foreground",
                 )}
-                href={`/app/perfil?desafio=${enrollment.challengeId}`}
+                href={`/app/dashboard?desafio=${enrollment.challengeId}`}
                 key={enrollment.enrollmentId}
               >
                 {enrollment.challengeName}

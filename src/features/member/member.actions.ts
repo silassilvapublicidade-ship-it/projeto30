@@ -172,7 +172,7 @@ export async function completeOnboardingAction(
     };
   }
 
-  redirect("/app/hoje");
+  redirect("/app/dashboard");
 }
 
 export async function joinAvailableChallengeAction() {

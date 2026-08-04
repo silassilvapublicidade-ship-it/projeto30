@@ -36,7 +36,7 @@ export async function updateProfileDetailsAction(
     };
   }
 
-  const user = await requireAuthUser("/app/perfil");
+  const user = await requireAuthUser("/app/perfil/editar");
 
   let admin;
 
@@ -63,7 +63,7 @@ export async function updateProfileDetailsAction(
     return { ok: false, message: "Não foi possível salvar seu perfil agora." };
   }
 
-  revalidatePath("/app/perfil", "layout");
+  revalidatePath("/app/perfil/editar", "layout");
 
   return { ok: true, message: "Perfil atualizado." };
 }
@@ -84,7 +84,7 @@ export async function uploadAvatarAction(
     return { ok: false, message: validation.message };
   }
 
-  const user = await requireAuthUser("/app/perfil");
+  const user = await requireAuthUser("/app/perfil/editar");
   const supabase = await createSupabaseServerClient();
   const path = `${user.id}/profile.${validation.extension}`;
 
@@ -138,7 +138,7 @@ export async function uploadAvatarAction(
     };
   }
 
-  revalidatePath("/app/perfil", "layout");
+  revalidatePath("/app/perfil/editar", "layout");
 
   return { ok: true, message: "Foto atualizada." };
 }
@@ -151,7 +151,7 @@ export async function removeAvatarAction(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _formData: FormData,
 ): Promise<MemberActionResult> {
-  const user = await requireAuthUser("/app/perfil");
+  const user = await requireAuthUser("/app/perfil/editar");
   const supabase = await createSupabaseServerClient();
 
   const { data: existingFiles } = await supabase.storage.from("avatars").list(user.id);
@@ -181,7 +181,7 @@ export async function removeAvatarAction(
     return { ok: false, message: "Não foi possível remover a foto agora." };
   }
 
-  revalidatePath("/app/perfil", "layout");
+  revalidatePath("/app/perfil/editar", "layout");
 
   return { ok: true, message: "Foto removida." };
 }
@@ -204,7 +204,7 @@ export async function changePasswordAction(
     };
   }
 
-  const user = await requireAuthUser("/app/perfil");
+  const user = await requireAuthUser("/app/perfil/editar");
 
   if (!user.email) {
     return {

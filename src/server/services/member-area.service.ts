@@ -703,5 +703,5 @@ export async function requireOnboardedMember() {
 
 export async function redirectToMemberStart() {
   const context = await getMemberContext();
-  redirect(context.profile.onboarding_completed ? "/app/hoje" : "/app/onboarding");
+  redirect(context.profile.onboarding_completed ? "/app/dashboard" : "/app/onboarding");
 }
