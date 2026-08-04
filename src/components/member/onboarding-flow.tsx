@@ -324,6 +324,12 @@ export function OnboardingFlow({
                     </span>
                   </div>
                 ))}
+                <p className="mt-1 text-xs leading-6 text-muted-2">
+                  Seu lembrete diário foi configurado para {data.reminderTime}. Para receber
+                  notificações no celular, ative o push depois em Configurações →
+                  Notificações. No iPhone, isso só funciona após instalar o app na tela de
+                  início.
+                </p>
               </div>
             </div>
           ) : null}

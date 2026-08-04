@@ -132,9 +132,19 @@ export async function completeOnboardingAction(
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Lembrete diario prometido no onboarding (Correções obrigatórias
+  // pré-lançamento, Parte B) - reminderTime e obrigatorio no schema acima
+  // (sempre um horario valido, nunca inventado: o usuario sempre escolheu
+  // ou aceitou o padrao do formulario), entao liga o mesmo par
+  // daily_reminder_enabled + reminder_time que
+  // saveNotificationPreferencesAction (notification-preferences.actions.ts)
+  // ja usa como fonte de verdade - nenhum campo novo, nenhuma segunda
+  // fonte. push_enabled deliberadamente NAO e tocado aqui (permanece
+  // ausente/false ate o usuario ativar push explicitamente depois).
   const notifications = {
     ...asRecord(preferences?.notifications),
     communication_opt_in: parsed.data.communicationOptIn,
+    daily_reminder_enabled: Boolean(parsed.data.reminderTime),
     email: parsed.data.communicationOptIn,
     in_app: true,
   };
