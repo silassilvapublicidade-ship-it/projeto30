@@ -5,6 +5,7 @@ import { Lock, Medal, Trophy } from "lucide-react";
 import { AchievementArtShareButton } from "@/components/member/achievement-art-share-button";
 import { AchievementShareButton } from "@/components/member/achievement-share-button";
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
+import { EmptyState } from "@/components/ui/feedback";
 import { getMemberAchievements } from "@/server/services/achievements.service";
 import { getMemberContext } from "@/server/services/member-area.service";
 
@@ -91,7 +92,7 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredUnlocked.map((achievement) => (
                   <div
-                    className="flex flex-col gap-3 rounded-[1.5rem] border border-action/24 bg-[linear-gradient(180deg,rgba(255,106,0,0.08),rgba(255,255,255,0.02))] p-4"
+                    className="flex flex-col gap-3 rounded-[1.5rem] border border-action/24 bg-[linear-gradient(180deg,rgba(255,106,0,0.08),rgba(255,255,255,0.02))] p-4 transition-[box-shadow,transform] duration-[var(--motion-hover)] ease-[var(--ease-premium)] sm:hover:-translate-y-0.5 sm:hover:shadow-[var(--shadow-lift)] active:scale-[0.99]"
                     key={achievement.id}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -129,9 +130,11 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
                 ))}
               </div>
             ) : (
-              <p className="text-sm leading-6 text-muted">
-                Nenhuma conquista desbloqueada ainda{desafio ? " neste desafio" : ""}.
-              </p>
+              <EmptyState
+                description={`Continue avançando na sua jornada${desafio ? " neste desafio" : ""} - cada conquista aparece aqui assim que for desbloqueada de verdade.`}
+                icon={Trophy}
+                title={`Nenhuma conquista desbloqueada ainda${desafio ? " neste desafio" : ""}`}
+              />
             )}
           </section>
 
@@ -159,9 +162,16 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
                     ) : null}
                     {achievement.progress ? (
                       <div className="mt-1 space-y-1">
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                        <div
+                          aria-label={`${achievement.progress.current} de ${achievement.progress.target}`}
+                          aria-valuemax={achievement.progress.target}
+                          aria-valuemin={0}
+                          aria-valuenow={achievement.progress.current}
+                          className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
+                          role="progressbar"
+                        >
                           <div
-                            className="h-full rounded-full bg-white/25"
+                            className="h-full rounded-full bg-white/25 transition-[width] duration-[var(--motion-progress)] ease-[var(--ease-premium)]"
                             style={{
                               width: `${Math.min(100, Math.round((achievement.progress.current / achievement.progress.target) * 100))}%`,
                             }}
@@ -176,10 +186,11 @@ export default async function ConquistasPage({ searchParams }: ConquistasPagePro
                 ))}
               </div>
             ) : (
-              <p className="text-sm leading-6 text-muted">
-                Todas as conquistas disponíveis{desafio ? " neste desafio" : ""} já foram
-                desbloqueadas.
-              </p>
+              <EmptyState
+                description={`Todas as conquistas disponíveis${desafio ? " neste desafio" : ""} já foram desbloqueadas - continue firme para chegar às próximas.`}
+                icon={Lock}
+                title="Nenhuma conquista bloqueada por aqui"
+              />
             )}
           </section>
         </div>

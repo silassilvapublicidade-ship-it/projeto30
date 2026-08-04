@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { AlertTriangle, Check, Inbox, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Inbox, Loader2, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -58,12 +58,14 @@ type EmptyStateProps = ComponentPropsWithoutRef<"div"> & {
   title: string;
   description: string;
   action?: ReactNode;
+  icon?: LucideIcon;
 };
 
 export function EmptyState({
   action,
   className,
   description,
+  icon: Icon = Inbox,
   title,
   ...props
 }: EmptyStateProps) {
@@ -76,7 +78,7 @@ export function EmptyState({
       {...props}
     >
       <span className="flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-muted">
-        <Inbox aria-hidden="true" size={19} />
+        <Icon aria-hidden="true" size={19} />
       </span>
       <h3 className="mt-4 text-base font-semibold text-foreground">{title}</h3>
       <p className="mt-2 max-w-sm text-sm leading-6 text-muted">{description}</p>
