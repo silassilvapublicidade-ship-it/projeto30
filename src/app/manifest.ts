@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Projeto 30",
     short_name: "Projeto 30",
-    description: "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+    description:
+      "Uma jornada de pequenas escolhas para fortalecer corpo, mente, caráter e espírito por meio de ciclos de 30 dias.",
     start_url: "/app/dashboard",
     scope: "/",
     display: "standalone",

@@ -25,30 +25,30 @@ const mono = IBM_Plex_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+const siteDescription =
+  "Uma jornada de pequenas escolhas para fortalecer corpo, mente, caráter e espírito por meio de ciclos de 30 dias.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Projeto 30",
+    default: "Projeto 30, 30 dias para evoluir",
     template: "%s | Projeto 30",
   },
-  description:
-    "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+  description: siteDescription,
   applicationName: "Projeto 30",
   authors: [{ name: "Silas Silva" }],
   creator: "Silas Silva",
   openGraph: {
-    title: "Projeto 30",
-    description:
-      "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+    title: "Projeto 30, 30 dias para evoluir",
+    description: siteDescription,
     siteName: "Projeto 30",
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Projeto 30",
-    description:
-      "30 dias para evoluir com disciplina, constância e uma experiência digital calma.",
+    title: "Projeto 30, 30 dias para evoluir",
+    description: siteDescription,
   },
   robots: {
     index: true,
