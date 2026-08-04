@@ -20,12 +20,12 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Visão geral" },
   { href: "/admin/desafios", icon: Trophy, label: "Desafios" },
-  { href: "/admin/dicas", icon: Lightbulb, label: "Dicas" },
-  { href: "/admin/conquistas", icon: Award, label: "Conquistas" },
-  { href: "/admin/compartilhamentos", icon: ImageIcon, label: "Compartilhamentos" },
-  { href: "/admin/notificacoes", icon: Bell, label: "Notificações" },
-  { href: "/admin/observabilidade", icon: Activity, label: "Observabilidade", mobileLabel: "Diagnóstico" },
   { href: "/admin/usuarios", icon: UserCog, label: "Usuários" },
+  { href: "/admin/dicas", icon: Lightbulb, label: "Dicas" },
+  { href: "/admin/notificacoes", icon: Bell, label: "Notificações" },
+  { href: "/admin/compartilhamentos", icon: ImageIcon, label: "Compartilhamentos" },
+  { href: "/admin/observabilidade", icon: Activity, label: "Observabilidade", mobileLabel: "Diagnóstico" },
+  { href: "/admin/conquistas", icon: Award, label: "Conquistas" },
   { href: "/admin/configuracoes", icon: Settings, label: "Configurações" },
 ];
 
