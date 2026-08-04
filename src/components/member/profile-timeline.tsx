@@ -4,19 +4,23 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   CalendarCheck,
+  ChevronDown,
   Flag,
   FlagOff,
   Flame,
+  Milestone,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/feedback";
+import { ProgressShareButton } from "@/components/member/progress-share-button";
 import { loadMoreProfileTimelineAction, recordProfileDashboardEventAction } from "@/features/member/profile-dashboard.actions";
 import {
   describeTimelineEvent,
   getTimelineFilterTypes,
+  groupTimelineEventsByDate,
   TIMELINE_FILTERS,
   type TimelineEventIconKey,
   type TimelineEventRow,
@@ -30,16 +34,15 @@ const EVENT_ICONS: Record<TimelineEventIconKey, LucideIcon> = {
   challenge_complete: Flag,
   challenge_start: Flag,
   day: CalendarCheck,
+  halfway: Milestone,
   record: Flame,
 };
-
-function formatEventDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" }).format(new Date(value));
-}
 
 function TimelineRow({ event }: { event: TimelineEventRow }) {
   const display = describeTimelineEvent(event);
   const Icon = EVENT_ICONS[display.iconKey];
+  const [expanded, setExpanded] = useState(false);
+  const hasMoreHabits = Boolean(event.habit_titles && event.habit_titles.length > 3);
 
   return (
     <li className="flex gap-3">
@@ -50,22 +53,78 @@ function TimelineRow({ event }: { event: TimelineEventRow }) {
         <span aria-hidden="true" className="mt-1 w-px flex-1 bg-white/[0.08]" />
       </div>
       <div className="min-w-0 flex-1 pb-4">
-        <p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">
-          {formatEventDate(event.event_at)}
-          {event.challenge_name ? ` · ${event.challenge_name}` : ""}
-        </p>
+        {event.challenge_name ? (
+          <p className="font-mono text-[0.6rem] uppercase tracking-[0.1em] text-muted-2">{event.challenge_name}</p>
+        ) : null}
         <p className="mt-0.5 text-sm font-semibold text-foreground">{display.title}</p>
         {display.description ? <p className="text-xs leading-5 text-muted">{display.description}</p> : null}
+
+        {hasMoreHabits ? (
+          <button
+            aria-expanded={expanded}
+            className="mt-1.5 inline-flex items-center gap-1 text-[0.68rem] font-semibold text-action-soft transition-colors hover:text-foreground"
+            onClick={() => {
+              if (!expanded) {
+                void recordProfileDashboardEventAction("timeline_event_expanded");
+              }
+              setExpanded((current) => !current);
+            }}
+            type="button"
+          >
+            <ChevronDown
+              aria-hidden="true"
+              className={cn("transition-transform", expanded ? "rotate-180" : undefined)}
+              size={12}
+            />
+            {expanded ? "Ver menos" : "Ver todos os hábitos"}
+          </button>
+        ) : null}
+
+        {expanded && event.habit_titles ? (
+          <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-xs leading-5 text-muted">
+            {event.habit_titles.map((title) => (
+              <li key={title}>{title}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        {event.event_type === "day_finalized" ? (
+          <div className="mt-2">
+            <ProgressShareButton dailyLogId={event.event_source_id} kind="day_completed" label={display.title} />
+          </div>
+        ) : null}
+        {event.event_type === "streak_record" ? (
+          <div className="mt-2">
+            <ProgressShareButton dailyLogId={event.event_source_id} kind="streak_record" label={display.title} />
+          </div>
+        ) : null}
       </div>
     </li>
   );
 }
 
+function TimelineDateGroup({ dateLabel, events }: { dateLabel: string; events: TimelineEventRow[] }) {
+  return (
+    <div>
+      <p className="mb-2 font-mono text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-foreground">
+        {dateLabel}
+      </p>
+      <ul className="pl-1">
+        {events.map((event) => (
+          <TimelineRow event={event} key={`${event.event_type}:${event.event_source_id}`} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 /**
- * Timeline de evolução (Parte 7/8/17) - filtro via navegação real (Link,
- * preserva outros parâmetros da URL), "carregar mais" via server action
- * (nunca todo o dataset de uma vez). Analytics de mudança de filtro é
- * disparado no clique do Link, sem bloquear a navegação.
+ * Timeline de evolução (Parte 7/8/17 da rodada anterior; Parte C desta
+ * rodada - agrupamento por data, resumo do dia com hábitos, novos tipos de
+ * evento). Filtro via navegação real (Link, preserva outros parâmetros da
+ * URL), "carregar mais" via server action (nunca todo o dataset de uma
+ * vez). O agrupamento por data é recalculado a cada render a partir dos
+ * itens já carregados - puro, nunca uma segunda busca.
  */
 export function ProfileTimeline({
   activeFilter,
@@ -74,6 +133,8 @@ export function ProfileTimeline({
   initialHasMore,
   initialNextCursorAt,
   initialNextCursorId,
+  today,
+  yesterday,
 }: {
   activeFilter: TimelineFilterKey;
   challengeId: string | null;
@@ -81,6 +142,8 @@ export function ProfileTimeline({
   initialHasMore: boolean;
   initialNextCursorAt: string | null;
   initialNextCursorId: string | null;
+  today: string;
+  yesterday: string;
 }) {
   const [items, setItems] = useState(initialItems);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -119,6 +182,8 @@ export function ProfileTimeline({
     return `/app/dashboard${query ? `?${query}` : ""}#timeline`;
   }
 
+  const groups = groupTimelineEventsByDate(items, today, yesterday);
+
   return (
     <section aria-labelledby="profile-timeline-heading" className="space-y-3" id="timeline">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -150,11 +215,11 @@ export function ProfileTimeline({
         <EmptyState description="Seus próximos registros aparecerão aqui." title="Sem eventos ainda" />
       ) : (
         <>
-          <ul className="pl-1">
-            {items.map((event) => (
-              <TimelineRow event={event} key={`${event.event_type}:${event.event_source_id}`} />
+          <div className="space-y-5">
+            {groups.map((group) => (
+              <TimelineDateGroup dateLabel={group.dateLabel} events={group.events} key={group.dateKey} />
             ))}
-          </ul>
+          </div>
 
           {loadError ? <p className="text-xs text-danger">{loadError}</p> : null}
 
