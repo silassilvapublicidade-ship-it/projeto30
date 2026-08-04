@@ -93,6 +93,9 @@ export type SystemHealthOverview = {
     severity: SystemErrorSeverity;
     metadata: SafeMetadata;
   } | null;
+  overdueScheduledCampaigns: number;
+  lastAutomationActivityAt: string | null;
+  cronHasRecentEvidence: boolean;
 };
 
 export async function getSystemHealthOverview(): Promise<SystemHealthOverview> {

@@ -25,10 +25,9 @@ export type HealthAlertInput = {
   cardsFailed24h: number;
   uploadsFailed24h: number;
   onboardingStuck: number;
-  lastCronRun: { lastSeenAt: string } | null;
+  overdueScheduledCampaigns: number;
+  cronHasRecentEvidence: boolean;
 };
-
-const HOUR_MS = 60 * 60 * 1000;
 
 // Limiares documentados (Parte E pede "volume anormal", não qualquer
 // ocorrência) - abaixo disso o evento é ruído operacional normal, não um
@@ -42,7 +41,7 @@ const SUBSCRIPTIONS_REVOKED_ABNORMAL_THRESHOLD = 10;
  * subscriptions. O chamador decide quantos exibir (o cockpit corta em 5;
  * a Observabilidade pode mostrar todos).
  */
-export function buildHealthAlerts(overview: HealthAlertInput, now: Date = new Date()): HealthAlert[] {
+export function buildHealthAlerts(overview: HealthAlertInput): HealthAlert[] {
   const alerts: HealthAlert[] = [];
 
   if (overview.openCriticalErrors24h > 0) {
@@ -55,24 +54,24 @@ export function buildHealthAlerts(overview: HealthAlertInput, now: Date = new Da
     });
   }
 
-  if (!overview.lastCronRun) {
-    alerts.push({
-      tone: "critical",
-      title: "O cron de notificações nunca rodou",
-      description:
-        "Nenhuma execução foi registrada ainda. Campanhas agendadas e lembretes automáticos não estão sendo processados.",
-      href: "/admin/observabilidade",
-    });
-  } else {
-    const lastRun = new Date(overview.lastCronRun.lastSeenAt);
-    const hoursSince = (now.getTime() - lastRun.getTime()) / HOUR_MS;
-
-    if (hoursSince > 36) {
+  // "Sem evidência recente" nunca é, sozinho, prova de falha - só vira
+  // alerta quando combinado com trabalho pendente real (crítico) ou como
+  // um aviso neutro de "primeira execução aguardada" (nunca "nunca rodou",
+  // que soa definitivo e alarmista sem essa ser a realidade).
+  if (!overview.cronHasRecentEvidence) {
+    if (overview.overdueScheduledCampaigns > 0) {
       alerts.push({
         tone: "critical",
-        title: "O cron de notificações não roda há mais de 36 horas",
+        title: "Campanhas agendadas não estão sendo processadas",
+        description: `${overview.overdueScheduledCampaigns} campanha(s) já deveriam ter sido enviadas e ainda estão como agendadas. O processador automático não confirma execução há mais de 36 horas.`,
+        href: "/admin/observabilidade",
+      });
+    } else {
+      alerts.push({
+        tone: "info",
+        title: "Aguardando confirmação da próxima execução automática",
         description:
-          "A agenda é diária - algo está impedindo a execução. Campanhas agendadas e lembretes automáticos podem estar parados.",
+          "O processador automático ainda não confirmou uma rodada recente, mas não há campanhas pendentes agora - sem impacto conhecido.",
         href: "/admin/observabilidade",
       });
     }
@@ -131,7 +130,7 @@ export function buildHealthAlerts(overview: HealthAlertInput, now: Date = new Da
   if (overview.onboardingStuck >= 5) {
     alerts.push({
       tone: "warning",
-      title: `${overview.onboardingStuck} usuários presos no onboarding há mais de 48h`,
+      title: `${overview.onboardingStuck} onboardings pendentes há mais de 48h`,
       description:
         "Criaram conta mas não concluíram o cadastro inicial. Pode ser um problema real no fluxo ou apenas pessoas que desistiram - vale uma checada.",
       href: "/admin/usuarios",

@@ -4,31 +4,64 @@
  * de notificações). Nunca inventa uma frequência maior do que essa.
  */
 const CRON_SCHEDULE_UTC_HOUR = 12;
-const ATTENTION_THRESHOLD_HOURS = 26;
-const CRITICAL_THRESHOLD_HOURS = 36;
 const HOUR_MS = 60 * 60 * 1000;
 
 export type CronHealthStatus = "saudavel" | "atencao" | "critico";
 
-export function describeCronHealth(
-  lastRunAt: string | null,
-  now: Date = new Date(),
-): { status: CronHealthStatus; label: string } {
-  if (!lastRunAt) {
-    return { status: "critico", label: "Nunca executado" };
+export type CronEvidenceInput = {
+  cronHasRecentEvidence: boolean;
+  overdueScheduledCampaigns: number;
+};
+
+/**
+ * A severidade em si NUNCA é recalculada aqui - vem pronta do servidor
+ * (admin_get_system_health_overview, migration 0075) via
+ * cronHasRecentEvidence/overdueScheduledCampaigns. Esta função só traduz
+ * esses dois fatos já decididos pelo banco num rótulo de 3 níveis para o
+ * card do cron - a mesma regra, nunca uma segunda regra.
+ */
+export function describeCronHealth(input: CronEvidenceInput): { status: CronHealthStatus; label: string } {
+  if (!input.cronHasRecentEvidence && input.overdueScheduledCampaigns > 0) {
+    return { status: "critico", label: `${input.overdueScheduledCampaigns} campanha(s) pendente(s) sem processar` };
   }
 
-  const hoursSince = (now.getTime() - new Date(lastRunAt).getTime()) / HOUR_MS;
-
-  if (hoursSince > CRITICAL_THRESHOLD_HOURS) {
-    return { status: "critico", label: `Sem executar há ${Math.floor(hoursSince)}h` };
-  }
-
-  if (hoursSince > ATTENTION_THRESHOLD_HOURS) {
-    return { status: "atencao", label: `Atrasado (última execução há ${Math.floor(hoursSince)}h)` };
+  if (!input.cronHasRecentEvidence) {
+    return { status: "atencao", label: "Aguardando confirmação" };
   }
 
   return { status: "saudavel", label: "Dentro da janela esperada" };
+}
+
+/**
+ * Rótulo humano da última evidência de atividade (Parte A.3: nunca "nunca
+ * rodou" quando a telemetria é só mais nova que a última janela do cron).
+ * lastCronRun = evidência direta (system_error_events). Sem essa,
+ * lastAutomationActivityAt é a evidência de fallback (campanha real já
+ * disparada por automação) - também real, nunca fabricada.
+ */
+export function describeCronEvidenceLabel(
+  input: { lastCronRun: { lastSeenAt: string } | null; lastAutomationActivityAt: string | null },
+  now: Date = new Date(),
+): string {
+  if (input.lastCronRun) {
+    return `Confirmado ${formatRelativeHours(input.lastCronRun.lastSeenAt, now)}`;
+  }
+
+  if (input.lastAutomationActivityAt) {
+    return `Atividade automática ${formatRelativeHours(input.lastAutomationActivityAt, now)} (rodada ainda não confirmada diretamente)`;
+  }
+
+  return "Aguardando primeira execução";
+}
+
+function formatRelativeHours(iso: string, now: Date): string {
+  const hours = Math.floor((now.getTime() - new Date(iso).getTime()) / HOUR_MS);
+
+  if (hours < 1) return "há poucos minutos";
+  if (hours < 24) return `há ${hours}h`;
+
+  const days = Math.floor(hours / 24);
+  return `há ${days} dia${days > 1 ? "s" : ""}`;
 }
 
 /** Próxima execução esperada, com base só no schedule fixo - nunca uma previsão inventada. */

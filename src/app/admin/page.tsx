@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
 import { APP_VERSION, getDeployInfo, LATEST_MIGRATION_ID, SERVICE_WORKER_VERSION } from "@/config/system-version";
 import { isCockpitPeriod, type CockpitPeriod } from "@/features/admin/admin-activity.core";
-import { describeCronHealth, getNextExpectedCronRun } from "@/features/admin/cron-schedule.core";
+import { describeCronEvidenceLabel, describeCronHealth, getNextExpectedCronRun } from "@/features/admin/cron-schedule.core";
 import { buildHealthAlerts, describeOperationalSummary } from "@/features/observability/health-alerts.core";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { requireAdminUser } from "@/server/services/admin-session.service";
@@ -73,7 +73,7 @@ export default async function AdminOverviewPage({ searchParams }: AdminOverviewP
   const isSuperAdmin = admin.role === "super_admin";
 
   const deployInfo = getDeployInfo();
-  const cronHealth = describeCronHealth(overview.health.lastCronRun?.lastSeenAt ?? null);
+  const cronHealth = describeCronHealth(overview.health);
   const nextExpectedCronRun = getNextExpectedCronRun();
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -195,7 +195,7 @@ export default async function AdminOverviewPage({ searchParams }: AdminOverviewP
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Última execução</dt>
-              <dd className="mt-1 text-foreground">{formatDateTime(overview.health.lastCronRun?.lastSeenAt ?? null)}</dd>
+              <dd className="mt-1 text-foreground">{describeCronEvidenceLabel(overview.health)}</dd>
             </div>
             <div>
               <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Duração</dt>
