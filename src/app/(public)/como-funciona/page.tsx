@@ -33,9 +33,9 @@ const steps = [
       "Cada ciclo tem começo, fim e histórico. Isso permite arquivar uma etapa e iniciar outra sem apagar sua evolução.",
   },
   {
-    title: "Defina hábitos possíveis",
+    title: "Conheça os hábitos do ciclo",
     description:
-      "O foco não é preencher uma lista enorme. O ideal é escolher práticas que realmente caibam na sua rotina.",
+      "Cada ciclo já vem com hábitos definidos, pensados para o tema do mês. Você acompanha e registra as práticas propostas, sem precisar montar a própria lista do zero.",
   },
   {
     title: "Registre o dia",
@@ -58,7 +58,7 @@ const guidance = [
   "Você pode começar em qualquer dia, não apenas no início do mês.",
   "Um dia incompleto não precisa encerrar o ciclo.",
   "Os registros diários devem pertencer ao ciclo correto para preservar contexto.",
-  "A área de membros futura será focada em execução, não em venda.",
+  "A área de membros é focada em execução, não em venda.",
 ];
 
 export default function ComoFuncionaPage() {

@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Respostas sobre gratuidade, início do ciclo, falhas durante a jornada, dados salvos e uso mobile do Projeto 30.",
+    "Respostas sobre gratuidade, espiritualidade, início do ciclo, privacidade, falhas durante a jornada e uso mobile do Projeto 30.",
   openGraph: {
     title: "Perguntas frequentes do Projeto 30",
     description:
-      "Tire dúvidas antes de começar seu ciclo de 30 dias com disciplina e constância.",
+      "Tire dúvidas antes de começar seu ciclo de 30 dias de corpo, mente, caráter e espírito.",
   },
 };
 

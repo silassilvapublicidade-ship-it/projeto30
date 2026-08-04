@@ -162,7 +162,7 @@ export function PlatformPreview({ className }: { className?: string }) {
               Hoje eu continuo
             </h2>
             <p className="mt-2 text-sm leading-6 text-muted">
-              Uma prévia estática da futura área de membros, sem dados reais.
+              Uma prévia ilustrativa da área de membros, sem dados reais.
             </p>
           </div>
           <Badge tone="neutral">42%</Badge>
@@ -316,6 +316,46 @@ export const publicFaqItems: PublicFaqItem[] = [
   {
     question: "O Projeto 30 é um aplicativo?",
     answer:
-      "Nesta fase, é uma aplicação web responsiva. Você acessa pelo navegador e pode acompanhar a evolução do produto conforme novas etapas forem liberadas.",
+      "É uma aplicação web instalável: você pode adicioná-la à tela inicial do celular e usá-la como um aplicativo, com notificações quando ativadas e alguns recursos disponíveis mesmo com conexão instável. Não é preciso baixar nada de uma loja de aplicativos.",
+  },
+  {
+    question: "O Projeto 30 pertence a alguma religião?",
+    answer:
+      "Não. O Projeto 30 é espiritual, mas não denominacional. Ele incentiva a aproximação de Deus, a oração e a gratidão sem impor uma doutrina, igreja ou instituição específica.",
+  },
+  {
+    question: "Preciso frequentar uma igreja?",
+    answer:
+      "Não. A dimensão espiritual do ciclo é pessoal e acontece no seu ritmo, com ou sem vínculo com uma comunidade religiosa.",
+  },
+  {
+    question: "Preciso ter experiência com leitura bíblica?",
+    answer:
+      "Não. As práticas espirituais foram pensadas para quem está começando agora, no nível em que você já está. Não é preciso conhecimento prévio.",
+  },
+  {
+    question: "Os desafios são iguais todos os meses?",
+    answer:
+      "Não. O Projeto 30 é a marca permanente, mas cada mês traz um novo ciclo, com tema, narrativa e hábitos próprios — construído sobre a mesma base de corpo, mente, caráter e espírito.",
+  },
+  {
+    question: "Posso adaptar alguma atividade à minha realidade?",
+    answer:
+      "Cada ciclo já vem com atividades definidas para o tema do mês. Dentro delas, você pode ajustar o ritmo à sua realidade e segurança — o importante é continuar, não executar de forma idêntica a todo mundo.",
+  },
+  {
+    question: "Minha reflexão pessoal fica privada?",
+    answer:
+      "Sim. Seu diário, suas reflexões e comentários pessoais são privados: não são exibidos para outros participantes e não aparecem em nenhum compartilhamento.",
+  },
+  {
+    question: "Preciso compartilhar minha evolução?",
+    answer:
+      "Não. Compartilhar é sempre opcional. Ele existe para quem quiser celebrar uma conquista ou inspirar outra pessoa, nunca como obrigação.",
+  },
+  {
+    question: "Posso entrar em um ciclo depois que ele começou?",
+    answer:
+      "Sim. Seu ciclo é pessoal: o Dia 1 começa quando você decide começar, não em uma data fixa do calendário.",
   },
 ];
