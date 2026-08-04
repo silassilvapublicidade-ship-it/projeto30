@@ -6,6 +6,16 @@ import type { Tables } from "@/types/database";
 
 import { requireAuthUser } from "./auth-session.service";
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+type ProgressStats = {
+  completedHabitsLifetime: number;
+  finalizedDays: number;
+  physicalActivityCompletions: number;
+  readingCompletions: number;
+  reflectionDays: number;
+};
+
 type AchievementFields = Pick<
   Tables<"achievements">,
   | "category"
@@ -54,6 +64,68 @@ function pickRepresentativeEnrollment(
     if (rankDiff !== 0) return rankDiff;
     return b.joined_at.localeCompare(a.joined_at);
   })[0]!;
+}
+
+/**
+ * The 5 counts a locked achievement's progress is derived from, scoped to
+ * ONE enrollment. Previously re-run once per LOCKED ACHIEVEMENT even though
+ * every achievement belonging to the same challenge shares the exact same
+ * representative enrollment (the N+1: 5 x L queries for L locked
+ * achievements). Now called once per DISTINCT representative enrollment
+ * instead, before the achievement loop - see getMemberAchievements.
+ */
+async function getProgressStatsForEnrollment(
+  supabase: SupabaseServerClient,
+  enrollmentId: string,
+): Promise<ProgressStats> {
+  const [
+    { count: completedHabitsLifetime },
+    { count: readingCompletions },
+    { count: physicalActivityCompletions },
+    { count: reflectionDays },
+    { count: finalizedDays },
+  ] = await Promise.all([
+    supabase
+      .from("habit_logs")
+      .select("id, daily_logs!inner(enrollment_id)", { count: "exact", head: true })
+      .eq("status", "completed")
+      .eq("daily_logs.enrollment_id", enrollmentId),
+    supabase
+      .from("habit_logs")
+      .select("id, daily_logs!inner(enrollment_id), habits!inner(habit_type)", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "completed")
+      .eq("daily_logs.enrollment_id", enrollmentId)
+      .eq("habits.habit_type", "reading"),
+    supabase
+      .from("habit_logs")
+      .select("id, daily_logs!inner(enrollment_id), habits!inner(category,icon)", {
+        count: "exact",
+        head: true,
+      })
+      .eq("status", "completed")
+      .eq("daily_logs.enrollment_id", enrollmentId)
+      .in("habits.category", ["corpo", "atividade fisica", "atividade física", "fisico", "físico"]),
+    supabase
+      .from("journal_entries")
+      .select("id, daily_logs!inner(enrollment_id)", { count: "exact", head: true })
+      .eq("daily_logs.enrollment_id", enrollmentId),
+    supabase
+      .from("daily_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("enrollment_id", enrollmentId)
+      .eq("status", "finalized"),
+  ]);
+
+  return {
+    completedHabitsLifetime: completedHabitsLifetime ?? 0,
+    finalizedDays: finalizedDays ?? 0,
+    physicalActivityCompletions: physicalActivityCompletions ?? 0,
+    readingCompletions: readingCompletions ?? 0,
+    reflectionDays: reflectionDays ?? 0,
+  };
 }
 
 export async function getMemberAchievements(): Promise<MemberAchievements> {
@@ -117,6 +189,30 @@ export async function getMemberAchievements(): Promise<MemberAchievements> {
 
   const challengeById = new Map((challengeRows ?? []).map((challenge) => [challenge.id, challenge]));
 
+  // One representative enrollment per challenge (deterministic, same pick
+  // every achievement in that challenge would have computed individually
+  // before) - resolved once, outside the achievement loop.
+  const representativeByChallenge = new Map<string, Tables<"challenge_enrollments">>();
+  for (const [challengeIdKey, enrollmentsForChallenge] of enrollmentsByChallenge) {
+    if (enrollmentsForChallenge.length > 0) {
+      representativeByChallenge.set(challengeIdKey, pickRepresentativeEnrollment(enrollmentsForChallenge));
+    }
+  }
+
+  // The 5-count progress stats only vary per enrollment, not per
+  // achievement - fetched once per DISTINCT representative enrollment
+  // (constant relative to the number of locked achievements) instead of
+  // once per achievement.
+  const distinctEnrollmentIds = Array.from(
+    new Set(Array.from(representativeByChallenge.values()).map((enrollment) => enrollment.id)),
+  );
+  const statsEntries = await Promise.all(
+    distinctEnrollmentIds.map(
+      async (enrollmentId) => [enrollmentId, await getProgressStatsForEnrollment(supabase, enrollmentId)] as const,
+    ),
+  );
+  const statsByEnrollmentId = new Map(statsEntries);
+
   const locked: LockedAchievement[] = [];
 
   for (const achievement of challengeAchievements ?? []) {
@@ -125,66 +221,26 @@ export async function getMemberAchievements(): Promise<MemberAchievements> {
     }
 
     const challenge = challengeById.get(achievement.challenge_id);
-    const enrollmentsForChallenge = enrollmentsByChallenge.get(achievement.challenge_id) ?? [];
-    const representative = enrollmentsForChallenge.length
-      ? pickRepresentativeEnrollment(enrollmentsForChallenge)
-      : null;
+    const representative = representativeByChallenge.get(achievement.challenge_id) ?? null;
 
     let progress: AchievementProgress | null = null;
 
     if (representative && challenge) {
-      const [
-        { count: completedHabitsLifetime },
-        { count: readingCompletions },
-        { count: physicalActivityCompletions },
-        { count: reflectionDays },
-        { count: finalizedDays },
-      ] = await Promise.all([
-        supabase
-          .from("habit_logs")
-          .select("id, daily_logs!inner(enrollment_id)", { count: "exact", head: true })
-          .eq("status", "completed")
-          .eq("daily_logs.enrollment_id", representative.id),
-        supabase
-          .from("habit_logs")
-          .select("id, daily_logs!inner(enrollment_id), habits!inner(habit_type)", {
-            count: "exact",
-            head: true,
-          })
-          .eq("status", "completed")
-          .eq("daily_logs.enrollment_id", representative.id)
-          .eq("habits.habit_type", "reading"),
-        supabase
-          .from("habit_logs")
-          .select("id, daily_logs!inner(enrollment_id), habits!inner(category,icon)", {
-            count: "exact",
-            head: true,
-          })
-          .eq("status", "completed")
-          .eq("daily_logs.enrollment_id", representative.id)
-          .in("habits.category", ["corpo", "atividade fisica", "atividade física", "fisico", "físico"]),
-        supabase
-          .from("journal_entries")
-          .select("id, daily_logs!inner(enrollment_id)", { count: "exact", head: true })
-          .eq("daily_logs.enrollment_id", representative.id),
-        supabase
-          .from("daily_logs")
-          .select("id", { count: "exact", head: true })
-          .eq("enrollment_id", representative.id)
-          .eq("status", "finalized"),
-      ]);
+      const stats = statsByEnrollmentId.get(representative.id);
 
-      progress = getAchievementProgress(achievement.slug, {
-        completedCycle: representative.status === "completed",
-        completedHabitsLifetime: completedHabitsLifetime ?? 0,
-        durationDays: challenge.duration_days,
-        finalizedDays: finalizedDays ?? 0,
-        physicalActivityCompletions: physicalActivityCompletions ?? 0,
-        readingCompletions: readingCompletions ?? 0,
-        reflectionDays: reflectionDays ?? 0,
-        returnStrong: false,
-        streakCurrent: representative.streak_current,
-      });
+      if (stats) {
+        progress = getAchievementProgress(achievement.slug, {
+          completedCycle: representative.status === "completed",
+          completedHabitsLifetime: stats.completedHabitsLifetime,
+          durationDays: challenge.duration_days,
+          finalizedDays: stats.finalizedDays,
+          physicalActivityCompletions: stats.physicalActivityCompletions,
+          readingCompletions: stats.readingCompletions,
+          reflectionDays: stats.reflectionDays,
+          returnStrong: false,
+          streakCurrent: representative.streak_current,
+        });
+      }
     }
 
     locked.push({
