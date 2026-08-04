@@ -1587,6 +1587,93 @@ export type Database = {
           },
         ]
       }
+      system_error_events: {
+        Row: {
+          app_version: string | null
+          area: string
+          created_at: string
+          error_code: string
+          fingerprint: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          message_safe: string
+          metadata_safe: Json
+          occurrence_count: number
+          operation: string
+          postgres_code: string | null
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_in_version: string | null
+          route: string | null
+          severity: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          area: string
+          created_at?: string
+          error_code: string
+          fingerprint: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          message_safe: string
+          metadata_safe?: Json
+          occurrence_count?: number
+          operation: string
+          postgres_code?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_in_version?: string | null
+          route?: string | null
+          severity: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          area?: string
+          created_at?: string
+          error_code?: string
+          fingerprint?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          message_safe?: string
+          metadata_safe?: Json
+          occurrence_count?: number
+          operation?: string
+          postgres_code?: string | null
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_in_version?: string | null
+          route?: string | null
+          severity?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_error_events_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_error_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -1833,6 +1920,31 @@ export type Database = {
         Args: { p_campaign_id: string }
         Returns: Json
       }
+      admin_get_system_error_event: {
+        Args: { p_id: string }
+        Returns: {
+          app_version: string
+          area: string
+          error_code: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          message_safe: string
+          metadata_safe: Json
+          occurrence_count: number
+          operation: string
+          postgres_code: string
+          resolution_note: string
+          resolved_at: string
+          resolved_by: string
+          resolved_in_version: string
+          route: string
+          severity: string
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_get_system_health_overview: { Args: never; Returns: Json }
       admin_list_challenges: {
         Args: {
           p_limit?: number
@@ -1886,6 +1998,38 @@ export type Database = {
           title: string
           total_count: number
           total_recipients: number
+        }[]
+      }
+      admin_list_system_error_events: {
+        Args: {
+          p_area?: string
+          p_error_code?: string
+          p_limit?: number
+          p_offset?: number
+          p_operation?: string
+          p_period_start?: string
+          p_severity?: string
+          p_status?: string
+        }
+        Returns: {
+          app_version: string
+          area: string
+          error_code: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          message_safe: string
+          metadata_safe: Json
+          occurrence_count: number
+          operation: string
+          postgres_code: string
+          resolution_note: string
+          resolved_at: string
+          route: string
+          severity: string
+          status: string
+          total_count: number
+          user_id: string
         }[]
       }
       admin_list_participants: {
@@ -1966,6 +2110,10 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
+      admin_purge_old_system_error_events: {
+        Args: { p_older_than_days?: number }
+        Returns: number
+      }
       admin_recompute_finalized_daily_log: {
         Args: { target_daily_log_id: string }
         Returns: Json
@@ -1977,6 +2125,15 @@ export type Database = {
       admin_require_super_admin: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      admin_resolve_system_error_event: {
+        Args: {
+          p_id: string
+          p_resolution_note?: string
+          p_resolved_in_version?: string
+          p_status: string
+        }
+        Returns: undefined
       }
       admin_resume_challenge: {
         Args: { p_challenge_id: string }
@@ -2208,6 +2365,23 @@ export type Database = {
           p_source?: string
         }
         Returns: string
+      }
+      record_system_error: {
+        Args: {
+          p_app_version?: string
+          p_area: string
+          p_message_safe: string
+          p_metadata_safe?: Json
+          p_operation: string
+          p_postgres_code?: string
+          p_route?: string
+          p_severity: string
+          p_user_id?: string
+        }
+        Returns: {
+          error_code: string
+          occurrence_count: number
+        }[]
       }
       resolve_notification_audience: {
         Args: {
