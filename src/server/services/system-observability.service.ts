@@ -75,6 +75,8 @@ export type SystemHealthOverview = {
   errors24h: number;
   errors7d: number;
   usersAffected24h: number;
+  openCriticalErrors24h: number;
+  openErrors24h: number;
   campaignsFailed24h: number;
   campaignsPartial24h: number;
   deliveriesFailed24h: number;

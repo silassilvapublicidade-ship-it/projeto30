@@ -47,7 +47,10 @@ export type AnalyticsEventName =
   | "share_template_previewed"
   // Refinamento premium (Parte G) - unico evento genuinamente novo; os
   // demais pedidos no briefing ja existem sob outro nome (ver 0069).
-  | "dashboard_context_message_viewed";
+  | "dashboard_context_message_viewed"
+  // Cockpit operacional do Admin - unico evento novo (Parte O: nao
+  // registrar metricas completas, so a visualizacao da pagina).
+  | "admin_overview_viewed";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;

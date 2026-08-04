@@ -2098,6 +2098,10 @@ export type Database = {
         Args: { p_days?: number }
         Returns: Json
       }
+      admin_operational_overview: {
+        Args: { p_period?: string }
+        Returns: Json
+      }
       admin_participant_detail: {
         Args: { p_enrollment_id: string }
         Returns: Json
@@ -2113,6 +2117,17 @@ export type Database = {
       admin_purge_old_system_error_events: {
         Args: { p_older_than_days?: number }
         Returns: number
+      }
+      admin_recent_activity: {
+        Args: { p_limit?: number }
+        Returns: {
+          actor_name: string
+          category: string
+          detail: string
+          label: string
+          link: string
+          occurred_at: string
+        }[]
       }
       admin_recompute_finalized_daily_log: {
         Args: { target_daily_log_id: string }
