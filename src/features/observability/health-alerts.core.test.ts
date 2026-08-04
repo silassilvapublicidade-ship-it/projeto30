@@ -11,7 +11,8 @@ const baseline: HealthAlertInput = {
   cardsFailed24h: 0,
   uploadsFailed24h: 0,
   onboardingStuck: 0,
-  lastCronRun: { lastSeenAt: new Date().toISOString() },
+  overdueScheduledCampaigns: 0,
+  cronHasRecentEvidence: true,
 };
 
 describe("buildHealthAlerts", () => {
@@ -53,25 +54,32 @@ describe("buildHealthAlerts", () => {
     expect(alerts[0]!.tone).toBe("info");
   });
 
-  it("only flags onboarding as stuck at 5+ users, never for a single new signup", () => {
+  it("only flags onboarding as pending at 5+ users, never for a single new signup, and never calls it 'preso'", () => {
     expect(buildHealthAlerts({ ...baseline, onboardingStuck: 1 })).toEqual([]);
-    expect(buildHealthAlerts({ ...baseline, onboardingStuck: 5 })).toHaveLength(1);
+    const alerts = buildHealthAlerts({ ...baseline, onboardingStuck: 5 });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.title).not.toMatch(/preso/i);
+    expect(alerts[0]!.title).toMatch(/pendentes/i);
   });
 
-  it("flags cron as critical when it has never run", () => {
-    const alerts = buildHealthAlerts({ ...baseline, lastCronRun: null });
-    expect(alerts.some((alert) => alert.tone === "critical" && /nunca rodou/i.test(alert.title))).toBe(true);
+  it("never says the cron 'never ran' - without recent evidence but with no overdue work, it's a neutral info note, not critical", () => {
+    const alerts = buildHealthAlerts({ ...baseline, cronHasRecentEvidence: false });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.tone).toBe("info");
+    expect(alerts[0]!.title).not.toMatch(/nunca rodou/i);
+    expect(alerts[0]!.title).not.toMatch(/nunca executou/i);
   });
 
-  it("flags cron as critical when the last run is older than 36 hours", () => {
-    const staleRun = { lastSeenAt: new Date(Date.now() - 40 * 60 * 60 * 1000).toISOString() };
-    const alerts = buildHealthAlerts({ ...baseline, lastCronRun: staleRun });
-    expect(alerts.some((alert) => alert.tone === "critical" && /36 horas/i.test(alert.title))).toBe(true);
+  it("only escalates the cron signal to critical when there is real overdue work waiting", () => {
+    const alerts = buildHealthAlerts({ ...baseline, cronHasRecentEvidence: false, overdueScheduledCampaigns: 2 });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.tone).toBe("critical");
+    expect(alerts[0]!.title).toMatch(/não estão sendo processadas/i);
+    expect(alerts[0]!.description).toContain("2");
   });
 
-  it("does not flag cron when the last run was recent", () => {
-    const recentRun = { lastSeenAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() };
-    expect(buildHealthAlerts({ ...baseline, lastCronRun: recentRun })).toEqual([]);
+  it("does not flag cron when there is recent evidence of activity (real or fallback via automation dispatch)", () => {
+    expect(buildHealthAlerts({ ...baseline, cronHasRecentEvidence: true, overdueScheduledCampaigns: 0 })).toEqual([]);
   });
 
   it("can surface multiple independent alerts at once", () => {
@@ -94,18 +102,19 @@ describe("buildHealthAlerts", () => {
       cardsFailed24h: 1,
       uploadsFailed24h: 1,
       onboardingStuck: 5,
-      lastCronRun: null,
+      overdueScheduledCampaigns: 1,
+      cronHasRecentEvidence: false,
     });
 
     const titles = alerts.map((alert) => alert.title);
     expect(titles[0]).toMatch(/erro\(s\) crítico\(s\)/);
-    expect(titles[1]).toMatch(/nunca rodou/);
+    expect(titles[1]).toMatch(/não estão sendo processadas/);
     expect(titles[2]).toMatch(/campanha\(s\) de notificação falharam/);
     expect(titles[3]).toMatch(/entregaram só parcialmente/);
     expect(titles[4]).toMatch(/acumuladas em nova tentativa/);
     expect(titles[5]).toMatch(/upload\(s\) falharam/);
     expect(titles[6]).toMatch(/card\(s\) de compartilhamento/);
-    expect(titles[7]).toMatch(/presos no onboarding/);
+    expect(titles[7]).toMatch(/onboardings pendentes/);
     expect(titles[8]).toMatch(/pararam de aceitar push/);
   });
 });

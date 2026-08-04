@@ -1,25 +1,54 @@
 import { describe, expect, it } from "vitest";
 
-import { describeCronHealth, getNextExpectedCronRun } from "./cron-schedule.core";
+import { describeCronEvidenceLabel, describeCronHealth, getNextExpectedCronRun } from "./cron-schedule.core";
 
-describe("describeCronHealth", () => {
-  it("is critico when the cron has never run", () => {
-    expect(describeCronHealth(null).status).toBe("critico");
+describe("describeCronHealth - never recomputes severity, only labels what the server already decided", () => {
+  it("is saudavel when the server confirms recent evidence", () => {
+    expect(describeCronHealth({ cronHasRecentEvidence: true, overdueScheduledCampaigns: 0 }).status).toBe("saudavel");
   });
 
-  it("is saudavel within the expected daily window (<=26h since last run)", () => {
-    const recent = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
-    expect(describeCronHealth(recent).status).toBe("saudavel");
+  it("is atencao when there is no recent evidence but no overdue work - never critico for absence alone", () => {
+    const result = describeCronHealth({ cronHasRecentEvidence: false, overdueScheduledCampaigns: 0 });
+    expect(result.status).toBe("atencao");
+    expect(result.label).not.toMatch(/nunca/i);
   });
 
-  it("is atencao for a moderate delay (26h-36h)", () => {
-    const delayed = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
-    expect(describeCronHealth(delayed).status).toBe("atencao");
+  it("is critico only when no recent evidence AND real overdue work exists", () => {
+    const result = describeCronHealth({ cronHasRecentEvidence: false, overdueScheduledCampaigns: 3 });
+    expect(result.status).toBe("critico");
+    expect(result.label).toContain("3");
   });
 
-  it("is critico beyond the maximum tolerance (>36h)", () => {
-    const stale = new Date(Date.now() - 40 * 60 * 60 * 1000).toISOString();
-    expect(describeCronHealth(stale).status).toBe("critico");
+  it("recent evidence with overdue campaigns is still saudavel - overdue alone isn't the trigger, staleness is", () => {
+    expect(describeCronHealth({ cronHasRecentEvidence: true, overdueScheduledCampaigns: 5 }).status).toBe("saudavel");
+  });
+});
+
+describe("describeCronEvidenceLabel", () => {
+  const now = new Date("2026-08-04T22:00:00Z");
+
+  it("prefers the direct cron record when available", () => {
+    const label = describeCronEvidenceLabel(
+      { lastCronRun: { lastSeenAt: "2026-08-04T12:00:00Z" }, lastAutomationActivityAt: null },
+      now,
+    );
+    expect(label).toContain("Confirmado");
+    expect(label).toContain("10h");
+  });
+
+  it("falls back to real automation activity, never claiming a direct confirmation it doesn't have", () => {
+    const label = describeCronEvidenceLabel(
+      { lastCronRun: null, lastAutomationActivityAt: "2026-08-04T12:21:00Z" },
+      now,
+    );
+    expect(label).toContain("Atividade automática");
+    expect(label).not.toContain("Confirmado");
+  });
+
+  it("never says 'nunca rodou' - says it's awaiting the first execution instead", () => {
+    const label = describeCronEvidenceLabel({ lastCronRun: null, lastAutomationActivityAt: null }, now);
+    expect(label).not.toMatch(/nunca rodou/i);
+    expect(label).toMatch(/aguardando/i);
   });
 });
 
