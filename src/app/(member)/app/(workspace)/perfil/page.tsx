@@ -1,107 +1,162 @@
 import type { Metadata } from "next";
-import { ShieldCheck, UserRound } from "lucide-react";
 
-import { ProfileDetailsForm } from "@/components/member/profile-details-form";
-import { ProfilePhotoForm } from "@/components/member/profile-photo-form";
-import { ProfileSecurityForm } from "@/components/member/profile-security-form";
-import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isAdminRole } from "@/features/admin/admin-access.core";
+import { ProfileAchievementsSummary } from "@/components/member/profile-achievements-summary";
+import { ProfileChallengesSection } from "@/components/member/profile-challenges-section";
+import { ProfileEvolutionHighlight } from "@/components/member/profile-evolution-highlight";
+import { ProfileFaithMessage } from "@/components/member/profile-faith-message";
+import { ProfileHeader } from "@/components/member/profile-header";
+import { ProfileMetricsGrid } from "@/components/member/profile-metrics-grid";
+import { ProfileNextObjective } from "@/components/member/profile-next-objective";
+import { ProfileRecentEvolution } from "@/components/member/profile-recent-evolution";
+import { ProfileStatistics } from "@/components/member/profile-statistics";
+import { ProfileTimeline } from "@/components/member/profile-timeline";
+import {
+  describeEvolutionHighlight,
+  describeNextObjective,
+  findClosestLockedAchievement,
+  getTimelineFilterTypes,
+  TIMELINE_FILTERS,
+  type TimelineFilterKey,
+} from "@/features/profile/profile-evolution.core";
+import { getMemberAchievements } from "@/server/services/achievements.service";
+import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getMemberContext } from "@/server/services/member-area.service";
+import {
+  getFaithMessage,
+  getPrimaryEnrollmentDayOverDayMessage,
+  getProfileOverview,
+  getProfileTimeline,
+  getRecentEvolutionDays,
+} from "@/server/services/profile-dashboard.service";
 
 export const metadata: Metadata = {
   title: "Perfil",
 };
 
-function ProfileSection({
-  children,
-  description,
-  title,
-}: {
-  children: React.ReactNode;
-  description: string;
-  title: string;
-}) {
-  return (
-    <Card className="p-5 sm:p-6">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <div className="mt-5">{children}</div>
-    </Card>
-  );
+const TIMELINE_PAGE_SIZE = 15;
+
+function isTimelineFilterKey(value: string | undefined): value is TimelineFilterKey {
+  return TIMELINE_FILTERS.some((filter) => filter.key === value);
 }
 
-export default async function PerfilPage() {
+type PerfilPageProps = {
+  searchParams: Promise<{ desafio?: string; periodo?: string; timeline?: string }>;
+};
+
+/**
+ * Dashboard de Evolucao Pessoal (Partes 2-13). Uma unica RPC agregada
+ * (member_profile_overview) cobre cabecalho + metricas + "meus desafios"; a
+ * timeline usa sua propria RPC paginada por cursor composto; conquistas e
+ * estatisticas reaproveitam getMemberAchievements (mesma fonte de /app/
+ * conquistas, nunca duplicada). Filtros de desafio/periodo/timeline vivem
+ * na URL - nunca estado de cliente - para o dashboard inteiro continuar
+ * navegavel e compartilhavel.
+ */
+export default async function PerfilPage({ searchParams }: PerfilPageProps) {
+  const { desafio, periodo, timeline } = await searchParams;
+  const period = periodo === "30" ? 30 : 7;
+  const timelineFilter: TimelineFilterKey = isTimelineFilterKey(timeline) ? timeline : "all";
+
   const context = await getMemberContext();
   const profile = context.profile;
   const displayName = profile.display_name || profile.name || profile.email;
+  const timezone = profile.timezone || "America/Sao_Paulo";
+
+  const [overview, achievements] = await Promise.all([getProfileOverview(), getMemberAchievements()]);
+
+  const primaryEnrollment = overview.enrollments[0] ?? null;
+  const selectedChallengeId =
+    desafio && overview.enrollments.some((enrollment) => enrollment.challengeId === desafio) ? desafio : null;
+
+  const [dayOverDayMessage, recentEvolutionDays, faithMessage, timelinePage] = await Promise.all([
+    primaryEnrollment
+      ? getPrimaryEnrollmentDayOverDayMessage({ enrollmentId: primaryEnrollment.enrollmentId, timezone })
+      : Promise.resolve(null),
+    primaryEnrollment
+      ? getRecentEvolutionDays({ days: period, enrollmentId: primaryEnrollment.enrollmentId, timezone })
+      : Promise.resolve([]),
+    getFaithMessage(),
+    getProfileTimeline({
+      challengeId: selectedChallengeId ?? undefined,
+      limit: TIMELINE_PAGE_SIZE,
+      types: getTimelineFilterTypes(timelineFilter) ?? undefined,
+    }),
+  ]);
+
+  void recordAnalyticsEvent({
+    challengeId: primaryEnrollment?.challengeId ?? null,
+    enrollmentId: primaryEnrollment?.enrollmentId ?? null,
+    eventName: "profile_dashboard_viewed",
+    source: "server",
+  });
+
+  const closestLockedAchievement = findClosestLockedAchievement(achievements.locked);
+
+  const evolutionHighlight = describeEvolutionHighlight({
+    currentDay: primaryEnrollment?.currentDay ?? null,
+    dayOverDayMessage,
+    daysFinalized: overview.totals.daysFinalized,
+    daysRemainingInChallenge:
+      primaryEnrollment && primaryEnrollment.status === "active"
+        ? primaryEnrollment.durationDays - primaryEnrollment.currentDay
+        : null,
+    durationDays: primaryEnrollment?.durationDays ?? null,
+    streakBest: overview.totals.streakBestMax,
+    streakCurrent: overview.totals.streakCurrentMax,
+  });
+
+  const nextObjective = describeNextObjective({
+    closestLockedAchievement,
+    currentDay: primaryEnrollment?.currentDay ?? null,
+    durationDays: primaryEnrollment?.durationDays ?? null,
+    streakBest: overview.totals.streakBestMax,
+    streakCurrent: overview.totals.streakCurrentMax,
+  });
 
   return (
-    <div className="space-y-6">
-      <section className="max-w-3xl">
-        <span className="flex size-12 items-center justify-center rounded-full bg-action/12 text-action-soft">
-          <UserRound aria-hidden="true" size={22} />
-        </span>
-        <h1 className="mt-5 font-display text-4xl leading-[1.05] text-foreground sm:text-5xl">
-          Meu perfil
-        </h1>
-        <p className="mt-4 text-base leading-7 text-muted">
-          Seus dados, sua foto e a segurança da sua conta ficam reunidos aqui.
-        </p>
-      </section>
+    <div className="space-y-8">
+      <ProfileHeader
+        avatarUrl={profile.avatar_url}
+        displayName={displayName}
+        fullName={profile.name}
+        joinedAt={overview.joinedAt}
+        primaryChallengeName={primaryEnrollment?.status === "active" ? primaryEnrollment.challengeName : null}
+        role={profile.role}
+      />
 
-      <ProfileSection
-        description="Uma foto ajuda a reconhecer sua jornada de relance. JPEG, PNG ou WebP, até 5 MB."
-        title="Foto e identidade"
-      >
-        <ProfilePhotoForm avatarUrl={profile.avatar_url} name={displayName} />
-      </ProfileSection>
+      <ProfileMetricsGrid
+        enrollments={overview.enrollments}
+        selectedChallengeId={selectedChallengeId}
+        totals={overview.totals}
+      />
 
-      <ProfileSection
-        description="Nome, nome de exibição e cidade. O e-mail é somente leitura nesta fase."
-        title="Informações pessoais"
-      >
-        <ProfileDetailsForm
-          city={profile.city}
-          displayName={profile.display_name}
-          email={profile.email}
-          name={profile.name}
-        />
-      </ProfileSection>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ProfileEvolutionHighlight message={evolutionHighlight} />
+        <ProfileNextObjective message={nextObjective} />
+      </div>
 
-      <ProfileSection
-        description="Confirme sua senha atual para definir uma nova senha de acesso."
-        title="Segurança"
-      >
-        <ProfileSecurityForm />
-      </ProfileSection>
+      <ProfileFaithMessage message={faithMessage} />
 
-      <ProfileSection
-        description="Abra o Projeto 30 direto da tela inicial, em tela cheia, como um aplicativo."
-        title="Instalar aplicativo"
-      >
-        <InstallAppPrompt />
-      </ProfileSection>
+      <ProfileChallengesSection enrollments={overview.enrollments} />
 
-      {isAdminRole(profile.role) ? (
-        <ProfileSection
-          description="Sua conta tem papel administrativo. O acesso continua protegido no servidor."
-          title="Acesso administrativo"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted">
-              <ShieldCheck aria-hidden="true" className="text-action-soft" size={16} />
-              Papel atual: {profile.role === "super_admin" ? "Super admin" : "Administrador"}
-            </div>
-            <Button as="a" href="/admin">
-              Acessar administração
-            </Button>
-          </div>
-        </ProfileSection>
-      ) : null}
+      <ProfileTimeline
+        activeFilter={timelineFilter}
+        challengeId={selectedChallengeId}
+        initialHasMore={timelinePage.hasMore}
+        initialItems={timelinePage.items}
+        initialNextCursorAt={timelinePage.nextCursorAt}
+        initialNextCursorId={timelinePage.nextCursorId}
+      />
+
+      <ProfileAchievementsSummary
+        displayName={displayName}
+        recent={achievements.unlocked.slice(0, 3)}
+        totalUnlocked={achievements.unlocked.length}
+      />
+
+      <ProfileStatistics totals={overview.totals} />
+
+      <ProfileRecentEvolution days={recentEvolutionDays} period={period} />
     </div>
   );
 }

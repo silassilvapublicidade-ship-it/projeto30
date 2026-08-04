@@ -653,6 +653,7 @@ export type Database = {
           points_earned: number
           rules_snapshot: Json
           status: Database["public"]["Enums"]["daily_log_status"]
+          streak_at_finalize: number | null
           updated_at: string
         }
         Insert: {
@@ -668,6 +669,7 @@ export type Database = {
           points_earned?: number
           rules_snapshot?: Json
           status?: Database["public"]["Enums"]["daily_log_status"]
+          streak_at_finalize?: number | null
           updated_at?: string
         }
         Update: {
@@ -683,6 +685,7 @@ export type Database = {
           points_earned?: number
           rules_snapshot?: Json
           status?: Database["public"]["Enums"]["daily_log_status"]
+          streak_at_finalize?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -2048,7 +2051,7 @@ export type Database = {
         }[]
       }
       automation_resolve_inactive_users_audience: {
-        Args: { p_inactive_days?: number | undefined }
+        Args: { p_inactive_days?: number }
         Returns: {
           push_eligible: boolean
           user_id: string
@@ -2159,6 +2162,18 @@ export type Database = {
         Args: { p_notification_id: string }
         Returns: undefined
       }
+      member_pick_faith_message: { Args: never; Returns: Json }
+      member_profile_overview: { Args: never; Returns: Json }
+      member_profile_timeline: {
+        Args: {
+          p_challenge_id?: string | undefined
+          p_cursor_at?: string | undefined
+          p_cursor_id?: string | undefined
+          p_limit?: number | undefined
+          p_types?: string[] | undefined
+        }
+        Returns: Json
+      }
       owns_daily_log: {
         Args: { target_daily_log_id: string }
         Returns: boolean
@@ -2182,10 +2197,10 @@ export type Database = {
       resolve_notification_audience: {
         Args: {
           p_audience_type: string
-          p_challenge_id?: string | undefined
-          p_habit_keyword?: string | undefined
-          p_min_streak?: number | undefined
-          p_specific_user_id?: string | undefined
+          p_challenge_id?: string
+          p_habit_keyword?: string
+          p_min_streak?: number
+          p_specific_user_id?: string
         }
         Returns: {
           push_eligible: boolean

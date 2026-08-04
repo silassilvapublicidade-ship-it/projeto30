@@ -27,7 +27,14 @@ export type AnalyticsEventName =
   | "daily_completion_summary_viewed"
   | "daily_completion_continue_clicked"
   | "daily_completion_journey_clicked"
-  | "daily_completion_share_clicked";
+  | "daily_completion_share_clicked"
+  // Dashboard de Evolucao Pessoal (Perfil) - Parte 21. Exatamente os 5
+  // eventos pedidos, nenhum dado pessoal no metadata.
+  | "profile_dashboard_viewed"
+  | "profile_timeline_filter_changed"
+  | "profile_challenge_opened"
+  | "profile_achievement_shared"
+  | "profile_edit_clicked";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;
