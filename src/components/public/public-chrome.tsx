@@ -96,8 +96,7 @@ export function PublicFooter() {
           <div>
             <BrandMark />
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted">
-              Uma jornada diária para transformar intenção em constância, um dia de cada
-              vez.
+              Pequenas escolhas. Grandes transformações.
             </p>
           </div>
 

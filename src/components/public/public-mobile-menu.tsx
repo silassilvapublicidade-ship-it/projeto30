@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-const anchorLinks = [
-  { label: "Experiência", href: "#produto" },
-  { label: "Evolução", href: "#evolucao" },
-  { label: "Reflexão", href: "#reflexao" },
+const primaryNavLinks = [
+  { label: "O Projeto", href: "/#pilares" },
+  { label: "Como funciona", href: "/como-funciona" },
+  { label: "Sobre", href: "/sobre" },
 ];
 
 export function PublicMobileMenu() {
@@ -33,7 +33,7 @@ export function PublicMobileMenu() {
           id="public-mobile-nav"
         >
           <ul className="flex flex-col">
-            {anchorLinks.map((item) => (
+            {primaryNavLinks.map((item) => (
               <li key={item.href}>
                 <Link
                   className="block rounded-xl px-4 py-3 text-sm font-semibold text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-action-soft"
@@ -60,7 +60,7 @@ export function PublicMobileMenu() {
                 href="/cadastro"
                 onClick={() => setOpen(false)}
               >
-                Começar meu Dia 1
+                Começar gratuitamente
               </Link>
             </li>
           </ul>

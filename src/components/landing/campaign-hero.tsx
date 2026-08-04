@@ -50,23 +50,15 @@ export function CampaignHero() {
       <div className="relative flex min-h-[85vh] flex-col justify-end px-4 pb-14 pt-10 sm:px-6 lg:min-h-[90vh] lg:justify-center lg:px-8 lg:pb-0 lg:pt-10">
         <div className="mx-auto w-full max-w-6xl lg:-translate-y-12">
           <div className="max-w-[700px]">
-            <h1 className="font-display text-[clamp(2.25rem,3.25vw+2rem,6rem)] leading-[1.05] text-white">
-              <span className="lg:hidden">
-                Entre decidir e mudar,
-                <br />
-                existem 30 dias.
-              </span>
-              <span className="hidden lg:inline">
-                Entre decidir
-                <br />
-                e mudar,
-                <br />
-                existem 30 dias.
-              </span>
+            <p className="font-mono text-xs font-medium uppercase tracking-[0.18em] text-white/70">
+              Projeto 30
+            </p>
+            <h1 className="mt-3 font-display text-[clamp(2.25rem,3.25vw+2rem,6rem)] leading-[1.05] text-white">
+              30 dias para evoluir.
             </h1>
             <p className="mt-5 max-w-md text-base leading-7 text-white/80 sm:text-lg">
-              Uma jornada diária para transformar intenção em constância — um dia de cada
-              vez.
+              Uma jornada de pequenas escolhas para fortalecer corpo, mente, caráter e
+              espírito.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
@@ -75,10 +67,10 @@ export function CampaignHero() {
                 size="lg"
                 trailingIcon={<ArrowRight aria-hidden="true" size={17} />}
               >
-                Começar meu Dia 1
+                Começar gratuitamente
               </Button>
               <Button as="a" href="/como-funciona" size="lg" variant="secondary">
-                Conhecer a experiência
+                Conhecer o projeto
               </Button>
             </div>
           </div>
