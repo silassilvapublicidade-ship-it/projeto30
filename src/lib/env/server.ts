@@ -30,6 +30,15 @@ const serverEnvSchema = z.object({
   // endpoint if the Vercel plan's cron frequency is too coarse (see
   // vercel.json comment).
   CRON_CONTROL_SECRET: optionalSecret,
+  // Geração assistida por IA da Biblioteca (Parte C) - opcional de
+  // propósito: o app inteiro (incluindo o resto da Biblioteca - CRUD
+  // manual, revisão, publicação) precisa funcionar sem essas duas
+  // variáveis. Só a rota /admin/biblioteca/gerar exige a chave; sem ela,
+  // ela mostra "IA não configurada" em vez de quebrar o build ou o resto
+  // do app. Nunca lida no client (ver src/lib/env/client.ts, que não a
+  // declara) - só dentro de src/server/ai/ai-provider.ts.
+  ANTHROPIC_API_KEY: optionalSecret,
+  ANTHROPIC_MODEL: optionalSecret,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -46,6 +55,8 @@ export function getServerEnv(): ServerEnv {
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
     VAPID_SUBJECT: process.env.VAPID_SUBJECT,
     CRON_CONTROL_SECRET: process.env.CRON_CONTROL_SECRET,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
   });
 }
 

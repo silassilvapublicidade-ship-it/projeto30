@@ -96,3 +96,26 @@ verificar a senha atual sem afetar sessão/rate limit. Reautenticar com
 `signInWithPassword` é a única forma real de confirmar a senha atual contra o
 GoTrue antes de trocá-la — uma falha nessa chamada significa senha incorreta,
 nunca um "sim" fabricado no código da aplicação.
+
+## ADR-011: Geração de conteúdo por IA nunca publica sozinha
+
+Decisão: a Biblioteca aceita conteúdo gerado por IA (`src/server/ai/`) apenas
+como rascunho (`status = 'draft'`, `source_type = 'ai_assisted'`). A RPC
+`admin_transition_library_content_status` bloqueia no banco qualquer salto
+direto para `published`/`scheduled` sem passar antes por `approved` — a trava
+não é só uma regra de UI. O provedor de IA é uma abstração fina
+(`src/server/ai/ai-provider.ts`, hoje implementada via chamada HTTP direta à
+Anthropic Messages API) que só recebe contexto explicitamente permitido pelo
+formulário do admin (tema, tom, pilar, categoria) — nunca dado de usuário,
+diário, feedback ou credenciais. O modelo é instruído a nunca gerar um
+trecho ou referência bíblica, e o service descarta esses dois campos do
+retorno mesmo que o modelo os inclua de qualquer forma (nunca confiar no
+texto gerado para citação bíblica). A saída do modelo é validada por um
+schema Zod completo antes de qualquer gravação; uma saída inválida nunca é
+salva.
+
+Motivo: geração automática de conteúdo institucional/editorial (inclusive
+com viés religioso e de saúde) exige revisão humana obrigatória antes de
+chegar a qualquer usuário final — publicar automaticamente, mesmo por engano
+de um bug, seria um risco editorial e de confiança inaceitável para o
+produto.
