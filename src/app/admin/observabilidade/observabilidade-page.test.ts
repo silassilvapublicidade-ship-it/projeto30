@@ -51,11 +51,17 @@ describe("/admin/observabilidade (overview)", () => {
 
   it("never uses a CTA/action label as a metric value - the 'Ver Compartilhamentos' bug is gone", () => {
     expect(source).not.toContain('value="Ver Compartilhamentos"');
-    expect(source).toContain("Auditoria de Storage: ainda não disponível");
   });
 
-  it("does not fabricate a Storage-audit CTA that doesn't exist yet", () => {
-    expect(source).not.toContain("Executar auditoria");
+  it("links to the real Storage audit page now that it exists (Rodada 5, Parte A)", () => {
+    expect(source).toContain("/admin/observabilidade/storage");
+    expect(source).toContain("Executar auditoria de Storage");
+  });
+
+  it("shows a Retenção de diagnósticos section wired to the real purge preview (Rodada 5, Parte B)", () => {
+    expect(source).toContain("Retenção de diagnósticos");
+    expect(source).toContain("previewSystemErrorPurge()");
+    expect(source).toContain("<RetentionPurgePanel");
   });
 
   it("zero-value metrics render as reassuring text via StatLine, not a bare 0", () => {

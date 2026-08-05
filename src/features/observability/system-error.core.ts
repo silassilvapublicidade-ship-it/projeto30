@@ -13,6 +13,7 @@ export const SYSTEM_ERROR_AREAS = [
   "admin",
   "pwa",
   "app",
+  "feedback",
 ] as const;
 
 export type SystemErrorArea = (typeof SYSTEM_ERROR_AREAS)[number];
@@ -32,6 +33,7 @@ export const SYSTEM_ERROR_AREA_LABELS: Record<SystemErrorArea, string> = {
   admin: "Admin",
   pwa: "PWA",
   app: "Área de membros",
+  feedback: "Feedback",
 };
 
 export function isSystemErrorArea(value: string): value is SystemErrorArea {
@@ -48,6 +50,8 @@ export const SYSTEM_ERROR_SEVERITY_LABELS: Record<SystemErrorSeverity, string> =
   error: "Erro",
   critical: "Crítico",
 };
+
+export const RETENTION_PURGE_CONFIRMATION_PHRASE = "LIMPAR DIAGNÓSTICOS ANTIGOS";
 
 export const SYSTEM_ERROR_STATUSES = ["open", "investigating", "resolved"] as const;
 

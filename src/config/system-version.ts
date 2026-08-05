@@ -18,7 +18,7 @@ export const SERVICE_WORKER_VERSION = "v1";
 
 // Mantido manualmente em sincronia com o nome do arquivo da migration mais
 // recente em supabase/migrations/. Atualizar ao criar uma nova migration.
-export const LATEST_MIGRATION_ID = "0073_system_observability_fingerprint_fix";
+export const LATEST_MIGRATION_ID = "0079_feedback_cockpit_summary";
 
 export type DeployInfo = {
   commitSha: string | null;

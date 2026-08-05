@@ -1587,6 +1587,68 @@ export type Database = {
           },
         ]
       }
+      storage_audit_runs: {
+        Row: {
+          bucket_breakdown: Json
+          buckets_audited: string[]
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          missing_reference_count: number
+          orphan_count: number
+          started_at: string
+          status: string
+          suspicious_count: number
+          total_bytes: number
+          total_objects: number
+          triggered_by: string | null
+        }
+        Insert: {
+          bucket_breakdown?: Json
+          buckets_audited?: string[]
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          missing_reference_count?: number
+          orphan_count?: number
+          started_at: string
+          status?: string
+          suspicious_count?: number
+          total_bytes?: number
+          total_objects?: number
+          triggered_by?: string | null
+        }
+        Update: {
+          bucket_breakdown?: Json
+          buckets_audited?: string[]
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          missing_reference_count?: number
+          orphan_count?: number
+          started_at?: string
+          status?: string
+          suspicious_count?: number
+          total_bytes?: number
+          total_objects?: number
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storage_audit_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_error_events: {
         Row: {
           app_version: string | null
@@ -1716,6 +1778,111 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenge_enrollments"
             referencedColumns: ["id", "user_id", "challenge_id"]
+          },
+        ]
+      }
+      user_feedback: {
+        Row: {
+          admin_response: string | null
+          allow_contact: boolean
+          app_version: string | null
+          attachment_storage_path: string | null
+          browser: string | null
+          category: string | null
+          created_at: string
+          description: string
+          diagnostic_code: string | null
+          feedback_type: string
+          id: string
+          internal_notes: string | null
+          is_pwa: boolean
+          operating_system: string | null
+          priority: string
+          protocol_code: string
+          resolved_at: string | null
+          resolved_in_version: string | null
+          responded_at: string | null
+          responded_by: string | null
+          route: string | null
+          sentiment: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          viewport: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          allow_contact?: boolean
+          app_version?: string | null
+          attachment_storage_path?: string | null
+          browser?: string | null
+          category?: string | null
+          created_at?: string
+          description: string
+          diagnostic_code?: string | null
+          feedback_type: string
+          id?: string
+          internal_notes?: string | null
+          is_pwa?: boolean
+          operating_system?: string | null
+          priority?: string
+          protocol_code: string
+          resolved_at?: string | null
+          resolved_in_version?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          route?: string | null
+          sentiment?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          viewport?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          allow_contact?: boolean
+          app_version?: string | null
+          attachment_storage_path?: string | null
+          browser?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string
+          diagnostic_code?: string | null
+          feedback_type?: string
+          id?: string
+          internal_notes?: string | null
+          is_pwa?: boolean
+          operating_system?: string | null
+          priority?: string
+          protocol_code?: string
+          resolved_at?: string | null
+          resolved_in_version?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          route?: string | null
+          sentiment?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          viewport?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_feedback_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1945,6 +2112,90 @@ export type Database = {
         }[]
       }
       admin_get_system_health_overview: { Args: never; Returns: Json }
+      admin_get_latest_storage_audit_run: { Args: never; Returns: Json }
+      admin_feedback_cockpit_summary: { Args: never; Returns: Json }
+      admin_log_storage_cleanup: {
+        Args: {
+          p_bucket: string
+          p_deleted_count: number
+          p_freed_bytes: number
+          p_paths: string[]
+          p_result: string
+        }
+        Returns: undefined
+      }
+      admin_preview_system_error_purge: {
+        Args: { p_older_than_days?: number }
+        Returns: Json
+      }
+      admin_count_feedback_for_diagnostic: {
+        Args: { p_error_code: string }
+        Returns: number
+      }
+      admin_delete_user_feedback: {
+        Args: { p_id: string }
+        Returns: string
+      }
+      admin_get_user_feedback_detail: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      admin_list_user_feedback: {
+        Args: {
+          p_category?: string | undefined
+          p_feedback_type?: string | undefined
+          p_has_attachment?: boolean | undefined
+          p_has_diagnostic?: boolean | undefined
+          p_limit?: number
+          p_offset?: number
+          p_period_start?: string | undefined
+          p_priority?: string | undefined
+          p_search?: string | undefined
+          p_status?: string | undefined
+        }
+        Returns: Json
+      }
+      admin_update_user_feedback: {
+        Args: {
+          p_admin_response?: string | undefined
+          p_diagnostic_code?: string | undefined
+          p_id: string
+          p_internal_notes?: string | undefined
+          p_priority?: string | undefined
+          p_resolved_in_version?: string | undefined
+          p_status?: string | undefined
+        }
+        Returns: boolean
+      }
+      create_user_feedback: {
+        Args: {
+          p_allow_contact?: boolean
+          p_app_version?: string | undefined
+          p_attachment_storage_path?: string | undefined
+          p_browser?: string | undefined
+          p_category: string | undefined
+          p_description: string
+          p_diagnostic_code?: string | undefined
+          p_feedback_type: string
+          p_id: string
+          p_include_technical?: boolean
+          p_is_pwa?: boolean
+          p_operating_system?: string | undefined
+          p_route?: string | undefined
+          p_sentiment?: string | undefined
+          p_title: string
+          p_viewport?: string | undefined
+        }
+        Returns: Json
+      }
+      user_list_my_feedback: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      user_withdraw_feedback: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
       admin_list_challenges: {
         Args: {
           p_limit?: number

@@ -7,6 +7,7 @@ import { CockpitBlockCard, type CockpitBlockStatus } from "@/components/admin/co
 import { CopyDiagnosticButton } from "@/components/admin/copy-diagnostic-button";
 import { ObservabilitySection } from "@/components/admin/observability-section";
 import { ObservabilityStatusBanner } from "@/components/admin/observability-status-banner";
+import { RetentionPurgePanel } from "@/components/admin/retention-purge-panel";
 import { StatLine } from "@/components/admin/stat-line";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,12 @@ import {
   type SystemErrorStatus,
 } from "@/features/observability/system-error.core";
 import { requireAdminUser } from "@/server/services/admin-session.service";
-import { getSystemHealthOverview, listSystemErrorEvents } from "@/server/services/system-observability.service";
+import {
+  getSystemHealthOverview,
+  listSystemErrorEvents,
+  previewSystemErrorPurge,
+} from "@/server/services/system-observability.service";
+import { getLatestStorageAuditRun } from "@/server/services/storage-audit.service";
 
 export const metadata: Metadata = {
   title: "Central Operacional · Administração",
@@ -102,10 +108,15 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
       ? (statusParam as SystemErrorStatus)
       : undefined;
 
-  const [overview, { rows, totalCount }] = await Promise.all([
+  const [overview, { rows, totalCount }, purgePreview, latestStorageAuditRun] = await Promise.all([
     getSystemHealthOverview(),
     listSystemErrorEvents({ area, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, severity, status }),
+    previewSystemErrorPurge(),
+    getLatestStorageAuditRun().catch(() => null),
   ]);
+
+  const purgeFeedback = firstParam(rawParams.purgeFeedback);
+  const purgeDeletedParam = firstParam(rawParams.purgeDeleted);
 
   const alerts = buildHealthAlerts(overview);
   const [topAlert] = alerts;
@@ -151,6 +162,23 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
       </div>
 
       <ObservabilityStatusBanner status={overview.status} />
+
+      {purgeFeedback === "success" ? (
+        <StatusCard
+          description={`${purgeDeletedParam ?? "0"} diagnóstico(s) resolvido(s) removido(s) com sucesso.`}
+          title="Limpeza concluída"
+          tone="success"
+        />
+      ) : null}
+      {purgeFeedback === "forbidden" ? (
+        <StatusCard description="Apenas super administradores podem executar a limpeza." title="Ação não permitida" tone="warning" />
+      ) : null}
+      {purgeFeedback === "invalid" ? (
+        <StatusCard description="A frase de confirmação não confere. Tente novamente." title="Confirmação inválida" tone="warning" />
+      ) : null}
+      {purgeFeedback === "error" ? (
+        <StatusCard description="Não foi possível executar a limpeza agora." title="Falha na limpeza" tone="error" />
+      ) : null}
 
       {topAlert ? (
         <div className={`min-w-0 rounded-[var(--radius-card)] border p-3 sm:p-4 ${alertToneClass[topAlert.tone]}`}>
@@ -267,8 +295,33 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
               text={overview.uploadsFailed24h > 0 ? `${overview.uploadsFailed24h} upload(s) com falha` : "Uploads com falha: nenhum"}
               tone={overview.uploadsFailed24h > 0 ? "attention" : "positive"}
             />
-            <StatLine text="Auditoria de Storage: ainda não disponível" tone="neutral" />
+            {latestStorageAuditRun ? (
+              <StatLine
+                text={`Storage: ${latestStorageAuditRun.orphanCount} órfão(s), ${latestStorageAuditRun.missingReferenceCount} referência(s) ausente(s) (auditoria ${formatDateTime(latestStorageAuditRun.startedAt)})`}
+                tone={latestStorageAuditRun.missingReferenceCount > 0 || latestStorageAuditRun.orphanCount > 0 ? "attention" : "positive"}
+              />
+            ) : (
+              <StatLine text="Storage: nenhuma auditoria executada ainda" tone="neutral" />
+            )}
           </div>
+          <div className="mt-1">
+            <Button as="a" href="/admin/observabilidade/storage" size="sm" variant="ghost">
+              Executar auditoria de Storage
+            </Button>
+          </div>
+        </ObservabilitySection>
+
+        <ObservabilitySection
+          badge={
+            purgePreview.eligibleCount > 0 ? (
+              <Badge tone="accent">{purgePreview.eligibleCount} elegível(is)</Badge>
+            ) : (
+              <Badge tone="success">Em dia</Badge>
+            )
+          }
+          title="Retenção de diagnósticos"
+        >
+          <RetentionPurgePanel isSuperAdmin={isSuperAdmin} preview={purgePreview} />
         </ObservabilitySection>
 
         <ObservabilitySection

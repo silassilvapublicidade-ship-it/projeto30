@@ -34,21 +34,21 @@ export type RecordSystemErrorInput = {
  *   para service_role (Parte P - "nenhuma service_role no cliente": este
  *   módulo é "server-only" e nunca é importado por Client Components).
  */
-export async function recordSystemError(input: RecordSystemErrorInput): Promise<void> {
+export async function recordSystemError(input: RecordSystemErrorInput): Promise<{ errorCode: string | null }> {
   try {
     const operation = sanitizeErrorText(input.operation, 120);
     const message = sanitizeErrorText(input.message, 500);
 
     if (!operation || !message || containsForbiddenPattern(operation) || containsForbiddenPattern(message)) {
       console.error(`[system-error-invalid] area=${input.area} operation=${input.operation}`);
-      return;
+      return { errorCode: null };
     }
 
     const metadata: SafeMetadata = sanitizeMetadata(input.metadata);
     const admin = createSupabaseAdminClient();
     const appVersion = getDeployInfo().commitShaShort;
 
-    const { error } = await admin.rpc("record_system_error", {
+    const { data, error } = await admin.rpc("record_system_error", {
       p_area: input.area,
       p_operation: operation,
       p_severity: input.severity,
@@ -62,11 +62,15 @@ export async function recordSystemError(input: RecordSystemErrorInput): Promise<
 
     if (error) {
       console.error(`[system-error-record-failed] area=${input.area} operation=${operation}: ${error.message}`);
+      return { errorCode: null };
     }
+
+    return { errorCode: data?.[0]?.error_code ?? null };
   } catch (unexpected) {
     // Nunca deixa o logger derrubar o fluxo real - só regista no console
     // (Parte L: "nunca lançar outro erro se o registro falhar").
     console.error("[system-error-record-failed] unexpected", unexpected);
+    return { errorCode: null };
   }
 }
 
@@ -203,4 +207,67 @@ export async function resolveSystemErrorEvent(input: {
   }
 
   return { ok: true };
+}
+
+export type SystemErrorPurgePreview = {
+  eligibleCount: number;
+  oldestResolvedAt: string | null;
+  newestResolvedAt: string | null;
+  severityBreakdown: Record<string, number>;
+  areaBreakdown: Record<string, number>;
+  cutoffDays: number;
+};
+
+const RETENTION_DAYS = 60;
+
+/**
+ * Somente leitura - qualquer admin pode ver (Parte B.7: "admin comum pode
+ * visualizar o resumo"). Nunca inclui message_safe/metadata (Parte B: "nunca
+ * mensagem sensível") - só contagens e datas.
+ */
+export async function previewSystemErrorPurge(): Promise<SystemErrorPurgePreview> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_preview_system_error_purge", {
+    p_older_than_days: RETENTION_DAYS,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const result = data as {
+    eligibleCount: number;
+    oldestResolvedAt: string | null;
+    newestResolvedAt: string | null;
+    severityBreakdown: Record<string, number>;
+    areaBreakdown: Record<string, number>;
+    cutoffDays: number;
+  };
+
+  return {
+    eligibleCount: result?.eligibleCount ?? 0,
+    oldestResolvedAt: result?.oldestResolvedAt ?? null,
+    newestResolvedAt: result?.newestResolvedAt ?? null,
+    severityBreakdown: result?.severityBreakdown ?? {},
+    areaBreakdown: result?.areaBreakdown ?? {},
+    cutoffDays: result?.cutoffDays ?? RETENTION_DAYS,
+  };
+}
+
+export async function purgeOldSystemErrorEvents(): Promise<
+  { ok: true; deletedCount: number } | { ok: false; message: string }
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("admin_purge_old_system_error_events", {
+    p_older_than_days: RETENTION_DAYS,
+  });
+
+  if (error) {
+    if (error.code === "42501") {
+      return { ok: false, message: "Apenas super administradores podem executar a limpeza." };
+    }
+    return { ok: false, message: "Não foi possível executar a limpeza agora." };
+  }
+
+  return { ok: true, deletedCount: data ?? 0 };
 }
