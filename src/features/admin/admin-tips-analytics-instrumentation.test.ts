@@ -35,8 +35,9 @@ describe("tips.service - analytics instrumentation", () => {
     const end = source.indexOf("export type TipDownload");
     const body = source.slice(start, end);
 
-    expect(body).toContain("if (data) {");
-    const beforeGuard = body.split("if (data) {")[0];
+    expect(body).toContain("if (!data) {");
+    expect(body).toContain("return null;");
+    const beforeGuard = body.split("if (!data) {")[0];
     expect(beforeGuard).not.toContain("recordAnalyticsEvent");
     expect(body).toContain('eventName: "tip_card_opened"');
     expect(body).toContain("contentItemId: data.id");

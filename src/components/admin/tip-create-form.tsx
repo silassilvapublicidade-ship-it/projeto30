@@ -49,8 +49,10 @@ function SubmitButtons({ hasFile }: { hasFile: boolean }) {
 
 export function TipCreateForm({
   challenges,
+  libraryContents,
 }: {
   challenges: Array<{ id: string; name: string }>;
+  libraryContents: Array<{ id: string; title: string }>;
 }) {
   const [state, formAction] = useActionState(createTipCardAction, initialState);
   const fieldErrors = state.ok ? undefined : state.fieldErrors;
@@ -87,6 +89,10 @@ export function TipCreateForm({
   const challengeOptions = [
     { label: "Nenhum", value: "" },
     ...challenges.map((challenge) => ({ label: challenge.name, value: challenge.id })),
+  ];
+  const libraryContentOptions = [
+    { label: "Nenhum", value: "" },
+    ...libraryContents.map((content) => ({ label: content.title, value: content.id })),
   ];
 
   return (
@@ -246,6 +252,18 @@ export function TipCreateForm({
           options={challengeOptions}
           placeholder="Nenhum"
         />
+
+        <div>
+          <Select
+            label="Conteúdo relacionado na Biblioteca (opcional)"
+            name="relatedLibraryContentId"
+            options={libraryContentOptions}
+            placeholder="Nenhum"
+          />
+          <p className="mt-1.5 text-xs leading-5 text-muted-2">
+            Mostra o link &ldquo;Quero aprender mais&rdquo; na tela desta dica.
+          </p>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field

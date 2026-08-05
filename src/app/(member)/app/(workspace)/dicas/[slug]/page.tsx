@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { getTipBySlug } from "@/server/services/tips.service";
 import { ScrollToTopOnMount } from "@/components/member/scroll-to-top-on-mount";
@@ -61,6 +61,19 @@ export default async function DicaDetailPage({ params }: DicaDetailPageProps) {
 
       {tip.content ? (
         <p className="whitespace-pre-line text-base leading-7 text-foreground/85">{tip.content}</p>
+      ) : null}
+
+      {tip.relatedLibraryContent ? (
+        <Link
+          className="group flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 transition-colors hover:border-action/40 hover:bg-white/[0.05]"
+          href={`/app/biblioteca/${tip.relatedLibraryContent.slug}`}
+        >
+          <div>
+            <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-action-soft">Quero aprender mais</p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{tip.relatedLibraryContent.title}</p>
+          </div>
+          <ArrowRight aria-hidden="true" className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" size={18} />
+        </Link>
       ) : null}
     </div>
   );

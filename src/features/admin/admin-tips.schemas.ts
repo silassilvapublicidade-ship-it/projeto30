@@ -28,6 +28,7 @@ export const tipFormSchema = z
     content: z.string().trim().max(4000).optional(),
     displayOrder: z.coerce.number().int().min(0).max(9999).default(0),
     endsAt: z.string().trim().optional(),
+    relatedLibraryContentId: z.uuid().optional(),
     slug: z
       .string()
       .trim()

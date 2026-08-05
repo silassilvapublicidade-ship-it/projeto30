@@ -4,13 +4,17 @@ import { ArrowLeft } from "lucide-react";
 
 import { TipCreateForm } from "@/components/admin/tip-create-form";
 import { listChallengesForTipPicker } from "@/server/services/admin-tips.service";
+import { listPublishedLibraryContentsForPicker } from "@/server/services/admin-library.service";
 
 export const metadata: Metadata = {
   title: "Novo card de dica · Administração",
 };
 
 export default async function NovoCardDeDicaPage() {
-  const challenges = await listChallengesForTipPicker();
+  const [challenges, libraryContents] = await Promise.all([
+    listChallengesForTipPicker(),
+    listPublishedLibraryContentsForPicker(),
+  ]);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -28,7 +32,7 @@ export default async function NovoCardDeDicaPage() {
         </p>
       </div>
 
-      <TipCreateForm challenges={challenges} />
+      <TipCreateForm challenges={challenges} libraryContents={libraryContents} />
     </div>
   );
 }

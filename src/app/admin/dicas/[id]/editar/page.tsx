@@ -7,6 +7,7 @@ import { TipForm } from "@/components/admin/tip-form";
 import { TipImageUploader } from "@/components/admin/tip-image-uploader";
 import { StatusCard } from "@/components/ui/feedback";
 import { getAdminTipById, listChallengesForTipPicker } from "@/server/services/admin-tips.service";
+import { listPublishedLibraryContentsForPicker } from "@/server/services/admin-library.service";
 
 type EditarDicaPageProps = {
   params: Promise<{ id: string }>;
@@ -22,9 +23,10 @@ export async function generateMetadata({ params }: EditarDicaPageProps): Promise
 export default async function EditarDicaPage({ params, searchParams }: EditarDicaPageProps) {
   const { id } = await params;
   const { feedback } = await searchParams;
-  const [{ data: tip }, challenges] = await Promise.all([
+  const [{ data: tip }, challenges, libraryContents] = await Promise.all([
     getAdminTipById(id),
     listChallengesForTipPicker(),
+    listPublishedLibraryContentsForPicker(),
   ]);
 
   if (!tip) {
@@ -62,7 +64,7 @@ export default async function EditarDicaPage({ params, searchParams }: EditarDic
 
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <TipImageUploader currentImageUrl={tip.image_url} tipId={tip.id} />
-        <TipForm challenges={challenges} tip={tip} />
+        <TipForm challenges={challenges} libraryContents={libraryContents} tip={tip} />
       </div>
     </div>
   );

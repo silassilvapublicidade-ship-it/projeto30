@@ -31,15 +31,18 @@ export type TipDetail = Pick<
   | "id"
   | "image_url"
   | "published_at"
+  | "related_library_content_id"
   | "slug"
   | "summary"
   | "title"
->;
+> & {
+  relatedLibraryContent: { slug: string; title: string } | null;
+};
 
 const summaryColumns =
   "id,title,slug,summary,image_url,alt_text,category,challenge_id,display_order,published_at";
 const detailColumns =
-  "id,title,slug,summary,content,image_url,alt_text,category,challenge_id,published_at";
+  "id,title,slug,summary,content,image_url,alt_text,category,challenge_id,published_at,related_library_content_id";
 
 // A published card only actually shows to members while starts_at (if set)
 // has already passed and ends_at (if set) hasn't yet. Each .or() call below
@@ -120,16 +123,29 @@ export async function getTipBySlug(slug: string): Promise<TipDetail | null> {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (data) {
-    await recordAnalyticsEvent({
-      challengeId: data.challenge_id,
-      contentItemId: data.id,
-      eventName: "tip_card_opened",
-      metadata: data.category ? { category: data.category } : {},
-    });
+  if (!data) {
+    return null;
   }
 
-  return data ?? null;
+  await recordAnalyticsEvent({
+    challengeId: data.challenge_id,
+    contentItemId: data.id,
+    eventName: "tip_card_opened",
+    metadata: data.category ? { category: data.category } : {},
+  });
+
+  let relatedLibraryContent: TipDetail["relatedLibraryContent"] = null;
+  if (data.related_library_content_id) {
+    const { data: libraryContent } = await supabase
+      .from("library_contents")
+      .select("slug, title")
+      .eq("id", data.related_library_content_id)
+      .eq("status", "published")
+      .maybeSingle();
+    relatedLibraryContent = libraryContent ?? null;
+  }
+
+  return { ...data, relatedLibraryContent };
 }
 
 export type TipDownload = Pick<

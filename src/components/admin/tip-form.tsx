@@ -35,9 +35,11 @@ function SaveButton() {
 
 export function TipForm({
   challenges,
+  libraryContents,
   tip,
 }: {
   challenges: Array<{ id: string; name: string }>;
+  libraryContents: Array<{ id: string; title: string }>;
   tip: Tables<"content_items">;
 }) {
   const [state, formAction] = useActionState(updateTipAction, initialState);
@@ -45,6 +47,10 @@ export function TipForm({
   const challengeOptions = [
     { label: "Nenhum", value: "" },
     ...challenges.map((challenge) => ({ label: challenge.name, value: challenge.id })),
+  ];
+  const libraryContentOptions = [
+    { label: "Nenhum", value: "" },
+    ...libraryContents.map((content) => ({ label: content.title, value: content.id })),
   ];
 
   return (
@@ -112,6 +118,19 @@ export function TipForm({
         options={challengeOptions}
         placeholder="Nenhum"
       />
+
+      <div>
+        <Select
+          defaultValue={tip.related_library_content_id ?? ""}
+          label="Conteúdo relacionado na Biblioteca (opcional)"
+          name="relatedLibraryContentId"
+          options={libraryContentOptions}
+          placeholder="Nenhum"
+        />
+        <p className="mt-1.5 text-xs leading-5 text-muted-2">
+          Mostra o link &ldquo;Quero aprender mais&rdquo; na tela desta dica.
+        </p>
+      </div>
 
       <Field
         error={fieldErrors?.displayOrder?.[0]}
