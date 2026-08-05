@@ -29,25 +29,24 @@ describe("filterNavItemsByRole - real permission logic, not just a source-text r
 });
 
 describe("filterNavGroupsByRole", () => {
-  it("removes the Área administrativa group entirely for a regular user - never an empty, confusing section", () => {
+  it("removes the Administração group entirely for a regular user - never an empty, confusing section", () => {
     const filtered = filterNavGroupsByRole(MORE_HUB_GROUPS, false);
-    expect(filtered.some((group) => group.title === "Área administrativa")).toBe(false);
+    expect(filtered.some((group) => group.title === "Administração")).toBe(false);
   });
 
-  it("keeps the Área administrativa group, with ADMIN_ITEM inside, for an admin", () => {
+  it("keeps the Administração group, with ADMIN_ITEM inside, for an admin", () => {
     const filtered = filterNavGroupsByRole(MORE_HUB_GROUPS, true);
-    const adminGroup = filtered.find((group) => group.title === "Área administrativa");
+    const adminGroup = filtered.find((group) => group.title === "Administração");
     expect(adminGroup?.items).toEqual([ADMIN_ITEM]);
   });
 
   it("applies the same rule to the desktop sidebar groups - one rule, two surfaces", () => {
     const regularUserGroups = filterNavGroupsByRole(DESKTOP_SIDEBAR_GROUPS, false);
-    const contaGroup = regularUserGroups.find((group) => group.title === "Conta");
-    expect(contaGroup?.items.some((item) => item.href === "/admin")).toBe(false);
+    expect(regularUserGroups.some((group) => group.title === "Administração")).toBe(false);
 
     const adminGroups = filterNavGroupsByRole(DESKTOP_SIDEBAR_GROUPS, true);
-    const adminContaGroup = adminGroups.find((group) => group.title === "Conta");
-    expect(adminContaGroup?.items.some((item) => item.href === "/admin")).toBe(true);
+    const adminGroup = adminGroups.find((group) => group.title === "Administração");
+    expect(adminGroup?.items).toEqual([ADMIN_ITEM]);
   });
 });
 

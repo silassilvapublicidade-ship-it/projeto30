@@ -13,6 +13,8 @@ import {
   Route,
   Settings,
   ShieldCheck,
+  Smartphone,
+  Trophy,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -36,6 +38,7 @@ export type MemberNavItem = {
 };
 
 export type MemberNavGroup = {
+  icon?: LucideIcon;
   items: MemberNavItem[];
   title: string;
 };
@@ -47,6 +50,7 @@ export const DESAFIOS_ITEM: MemberNavItem = { href: "/app/desafios", icon: Flag,
 export const DICAS_ITEM: MemberNavItem = { href: "/app/dicas", icon: Lightbulb, label: "Dicas" };
 export const CONQUISTAS_ITEM: MemberNavItem = { href: "/app/conquistas", icon: Medal, label: "Conquistas" };
 export const DIARIO_ITEM: MemberNavItem = { href: "/app/diario", icon: NotebookPen, label: "Diário" };
+export const FEEDBACK_ITEM: MemberNavItem = { href: "/app/feedback", icon: MessageCircle, label: "Feedback" };
 export const ENVIAR_FEEDBACK_ITEM: MemberNavItem = {
   href: "/app/feedback",
   icon: MessageCircle,
@@ -62,7 +66,7 @@ export const CONFIGURACOES_ITEM: MemberNavItem = { href: "/app/configuracoes", i
 export const EDITAR_PERFIL_ITEM: MemberNavItem = { href: "/app/perfil/editar", icon: UserRound, label: "Editar perfil" };
 export const INSTALAR_APP_ITEM: MemberNavItem = {
   icon: Download,
-  label: "Instalar Projeto 30",
+  label: "Instalar aplicativo",
   special: "install-app",
 };
 export const ADMIN_ITEM: MemberNavItem = {
@@ -78,48 +82,63 @@ export const SAIR_ITEM: MemberNavItem = { icon: LogOut, label: "Sair", special: 
  * de rotas, não de um único href). */
 export const PRIMARY_MOBILE_ITEMS: MemberNavItem[] = [DASHBOARD_ITEM, HOJE_ITEM, JORNADA_ITEM, DESAFIOS_ITEM];
 
-/** Sidebar desktop completa (Parte B) - aproveita o espaço disponível
- * para dar acesso direto a tudo, sem depender do hub Mais para uso
- * frequente. */
+/**
+ * Sidebar desktop (Parte B/L, refinada) - no desktop "Mais" deixa de fazer
+ * sentido (o espaço já mostra tudo direto). Editar perfil e Notificações
+ * saem da lista porque já têm entrada própria bem visível na mesma
+ * sidebar (bloco do avatar e sino, respectivamente) - repeti-los aqui
+ * seria redundante, não mais completo. Instalar aplicativo também sai do
+ * desktop (padrão de instalação é essencialmente mobile); continua
+ * disponível em /app/perfil/editar e no hub /app/mais. Feedback vira um
+ * único item (aponta para o formulário; "Meus feedbacks" é um link a
+ * partir dali) em vez de dois itens redundantes. "Sair" não é mais um
+ * item de grupo aqui - fica como ação isolada no rodapé da sidebar
+ * (ver member-shell.tsx), fora de qualquer card, exatamente como um
+ * logout deve se sentir.
+ */
 export const DESKTOP_SIDEBAR_GROUPS: MemberNavGroup[] = [
   { items: [DASHBOARD_ITEM, HOJE_ITEM, DESAFIOS_ITEM, JORNADA_ITEM, DICAS_ITEM], title: "Principal" },
   { items: [CONQUISTAS_ITEM, DIARIO_ITEM], title: "Minha evolução" },
-  {
-    items: [ENVIAR_FEEDBACK_ITEM, MEUS_FEEDBACKS_ITEM, NOTIFICACOES_ITEM, CONFIGURACOES_ITEM],
-    title: "Suporte e conta",
-  },
-  { items: [EDITAR_PERFIL_ITEM, INSTALAR_APP_ITEM, ADMIN_ITEM, SAIR_ITEM], title: "Conta" },
+  { items: [FEEDBACK_ITEM, CONFIGURACOES_ITEM], title: "Suporte e conta" },
+  { items: [ADMIN_ITEM], title: "Administração" },
 ];
 
-/** Hub /app/mais (Parte D) - tudo que a barra mobile não mostra direto,
- * com a cópia exata pedida por item importante. */
+/**
+ * Hub /app/mais (Parte D, refinado para parecer uma área premium do
+ * Projeto 30 - cards com ícone de grupo, espaço generoso - em vez de uma
+ * lista de Configurações 2.0). Cada grupo carrega seu próprio ícone,
+ * usado como selo no topo do card.
+ */
 export const MORE_HUB_GROUPS: MemberNavGroup[] = [
   {
-    items: [
-      { ...DICAS_ITEM, description: "Conteúdos para apoiar sua jornada." },
-      { ...CONQUISTAS_ITEM, description: "Veja seus marcos e compartilhamentos." },
-      { ...DIARIO_ITEM, description: "Relembre suas reflexões e registros." },
-    ],
-    title: "Minha evolução",
-  },
-  {
-    items: [
-      { ...ENVIAR_FEEDBACK_ITEM, description: "Encontrou um problema ou teve uma ideia?" },
-      { ...MEUS_FEEDBACKS_ITEM, description: "Acompanhe seus relatos e respostas." },
-    ],
-    title: "Suporte",
-  },
-  {
+    icon: UserRound,
     items: [
       { ...EDITAR_PERFIL_ITEM, description: "Atualize sua foto e informações pessoais." },
       { ...CONFIGURACOES_ITEM, description: "Gerencie sua conta e preferências." },
       { ...NOTIFICACOES_ITEM, description: "Escolha quais lembretes deseja receber." },
     ],
-    title: "Conta e preferências",
+    title: "Sua conta",
   },
-  { items: [INSTALAR_APP_ITEM], title: "Aplicativo" },
-  { items: [ADMIN_ITEM], title: "Área administrativa" },
-  { items: [SAIR_ITEM], title: "Sessão" },
+  {
+    icon: Trophy,
+    items: [
+      { ...CONQUISTAS_ITEM, description: "Veja seus marcos e compartilhamentos." },
+      { ...DIARIO_ITEM, description: "Relembre suas reflexões e registros." },
+      { ...DICAS_ITEM, description: "Conteúdos para apoiar sua jornada." },
+    ],
+    title: "Minha evolução",
+  },
+  {
+    icon: MessageCircle,
+    items: [
+      { ...ENVIAR_FEEDBACK_ITEM, description: "Encontrou um problema ou teve uma ideia?" },
+      { ...MEUS_FEEDBACKS_ITEM, description: "Acompanhe seus relatos e respostas." },
+    ],
+    title: "Ajude o Projeto 30",
+  },
+  { icon: Smartphone, items: [INSTALAR_APP_ITEM], title: "Aplicativo" },
+  { icon: ShieldCheck, items: [ADMIN_ITEM], title: "Administração" },
+  { icon: LogOut, items: [SAIR_ITEM], title: "Sair" },
 ];
 
 /** Toda rota que só é alcançável a partir do hub /app/mais no mobile -

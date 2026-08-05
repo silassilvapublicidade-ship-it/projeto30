@@ -1,3 +1,4 @@
+import { LayoutGrid } from "lucide-react";
 import type { Metadata } from "next";
 
 import { MaisGroupCard } from "@/components/member/mais-group-card";
@@ -27,6 +28,14 @@ export default async function MaisPage() {
 
   return (
     <div className="space-y-6">
+      <section className="max-w-2xl">
+        <span className="flex size-12 items-center justify-center rounded-full bg-action/12 text-action-soft">
+          <LayoutGrid aria-hidden="true" size={22} />
+        </span>
+        <h1 className="mt-5 font-display text-4xl leading-[1.05] text-foreground sm:text-5xl">Mais</h1>
+        <p className="mt-3 text-base leading-7 text-muted">Tudo o que você precisa, em um só lugar.</p>
+      </section>
+
       <MaisHeader context={context} />
 
       <div className="grid gap-4 sm:grid-cols-2">

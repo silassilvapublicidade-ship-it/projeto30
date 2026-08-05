@@ -84,6 +84,8 @@ export function MemberShell({
                   </span>
                 </span>
               </Link>
+
+              <SignOutForm />
             </div>
           </div>
         </aside>
@@ -129,7 +131,7 @@ export function MemberShell({
           </main>
         </div>
       </div>
-      <MemberMobileNavigation />
+      <MemberMobileNavigation maisBadgeCount={unreadNotificationCount} />
     </div>
   );
 }

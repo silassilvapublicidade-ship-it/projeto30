@@ -2,6 +2,7 @@ import { ShieldCheck } from "lucide-react";
 
 import { MemberAvatar } from "@/components/member/member-avatar";
 import { ProfileEditLink } from "@/components/member/profile-edit-link";
+import { Card } from "@/components/ui/card";
 import type { MemberContext } from "@/server/services/member-area.service";
 
 /**
@@ -30,26 +31,28 @@ export function MaisHeader({ context }: { context: MemberContext }) {
         : "Veja cada um na tela Hoje.";
 
   return (
-    <section aria-labelledby="mais-header-name" className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-4">
-        <MemberAvatar avatarUrl={profile.avatar_url} name={displayName} size="lg" />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-xl font-semibold text-foreground" id="mais-header-name">
-              {displayName}
-            </h1>
-            {showRoleBadge ? (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-action/28 bg-action/10 px-2.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-action-soft">
-                <ShieldCheck aria-hidden="true" size={11} />
-                {profile.role === "super_admin" ? "Super admin" : "Administrador"}
-              </span>
-            ) : null}
+    <Card className="hover:translate-y-0" tone="accent">
+      <section aria-labelledby="mais-header-name" className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <MemberAvatar avatarUrl={profile.avatar_url} name={displayName} size="lg" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate font-display text-2xl leading-tight text-foreground sm:text-3xl" id="mais-header-name">
+                {displayName}
+              </h1>
+              {showRoleBadge ? (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-action/28 bg-action/10 px-2.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-action-soft">
+                  <ShieldCheck aria-hidden="true" size={11} />
+                  {profile.role === "super_admin" ? "Super admin" : "Administrador"}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1.5 truncate text-sm text-muted-2">{cycleLabel} · {cycleSubLabel}</p>
           </div>
-          <p className="mt-1 truncate text-sm text-muted-2">{cycleLabel} · {cycleSubLabel}</p>
         </div>
-      </div>
 
-      <ProfileEditLink />
-    </section>
+        <ProfileEditLink />
+      </section>
+    </Card>
   );
 }

@@ -15,18 +15,23 @@ import { isMaisActive, isMemberRouteActive, PRIMARY_MOBILE_ITEMS } from "@/featu
  */
 function MobileNavLink({
   active,
+  badgeCount,
   href,
   icon: Icon,
   label,
 }: {
   active: boolean;
+  badgeCount?: number;
   href: string;
   icon: typeof MoreHorizontal;
   label: string;
 }) {
+  const hasBadge = Boolean(badgeCount && badgeCount > 0);
+
   return (
     <Link
       aria-current={active ? "page" : undefined}
+      aria-label={hasBadge ? `${label}, ${badgeCount} novidade${badgeCount === 1 ? "" : "s"}` : undefined}
       className={cn(
         "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-[1.15rem] text-[0.66rem] font-semibold transition-[background,color,transform] duration-[var(--motion-base)] focus-visible:outline-action-soft active:scale-[0.98]",
         active
@@ -35,14 +40,24 @@ function MobileNavLink({
       )}
       href={href}
     >
-      <Icon aria-hidden="true" className={active ? "text-action-soft" : undefined} size={18} />
+      <span className="relative">
+        <Icon aria-hidden="true" className={active ? "text-action-soft" : undefined} size={18} />
+        {hasBadge ? (
+          <span
+            aria-hidden="true"
+            className="absolute -right-1.5 -top-1.5 flex min-w-[1.05rem] items-center justify-center rounded-full border border-background bg-action px-1 font-mono text-[0.58rem] font-semibold leading-[1.05rem] text-white"
+          >
+            {badgeCount! > 9 ? "9+" : badgeCount}
+          </span>
+        ) : null}
+      </span>
       <span className="max-w-full truncate px-0.5">{label}</span>
       {active ? <span aria-hidden="true" className="absolute top-1.5 size-1 rounded-full bg-action-soft" /> : null}
     </Link>
   );
 }
 
-export function MemberMobileNavigation() {
+export function MemberMobileNavigation({ maisBadgeCount = 0 }: { maisBadgeCount?: number }) {
   const pathname = usePathname();
 
   return (
@@ -60,7 +75,13 @@ export function MemberMobileNavigation() {
             label={item.label}
           />
         ))}
-        <MobileNavLink active={isMaisActive(pathname)} href="/app/mais" icon={MoreHorizontal} label="Mais" />
+        <MobileNavLink
+          active={isMaisActive(pathname)}
+          badgeCount={maisBadgeCount}
+          href="/app/mais"
+          icon={MoreHorizontal}
+          label="Mais"
+        />
       </div>
     </nav>
   );

@@ -34,35 +34,46 @@ describe("/app/mais - definitive secondary hub, reads the central nav definition
   });
 });
 
-describe("member-navigation.core.ts - MORE_HUB_GROUPS matches the exact structure and copy requested", () => {
+describe("member-navigation.core.ts - MORE_HUB_GROUPS matches the exact structure and copy requested (refined hub round)", () => {
   const source = readSource("src", "features", "member", "member-navigation.core.ts");
 
-  it("Minha evolução: Dicas, Conquistas, Diário with the exact descriptions given", () => {
-    const block = source.match(/export const MORE_HUB_GROUPS[\s\S]*?title: "Minha evolução",\s*\},/)?.[0] ?? "";
-    expect(block).toContain("Conteúdos para apoiar sua jornada.");
-    expect(block).toContain("Veja seus marcos e compartilhamentos.");
-    expect(block).toContain("Relembre suas reflexões e registros.");
+  it("Sua conta: Editar perfil, Configurações, Notificações with the exact descriptions given", () => {
+    const block = source.match(/export const MORE_HUB_GROUPS[\s\S]*?title: "Sua conta",\s*\},/)?.[0] ?? "";
+    expect(block).toContain("Atualize sua foto e informações pessoais.");
+    expect(block).toContain("Gerencie sua conta e preferências.");
+    expect(block).toContain("Escolha quais lembretes deseja receber.");
+    expect(block).toContain("icon: UserRound");
   });
 
-  it("Suporte: Enviar feedback and Meus feedbacks with the exact descriptions given", () => {
+  it("Minha evolução: Conquistas, Diário, Dicas with the exact descriptions given", () => {
+    expect(source).toContain('icon: Trophy,');
+    expect(source).toContain('title: "Minha evolução",');
+    expect(source).toContain("Veja seus marcos e compartilhamentos.");
+    expect(source).toContain("Relembre suas reflexões e registros.");
+    expect(source).toContain("Conteúdos para apoiar sua jornada.");
+  });
+
+  it("Ajude o Projeto 30: Enviar feedback and Meus feedbacks with the exact descriptions given", () => {
+    const block = source.match(/title: "Ajude o Projeto 30",\s*\},/)?.[0] ?? "";
+    expect(block).not.toBe("");
     expect(source).toContain("Encontrou um problema ou teve uma ideia?");
     expect(source).toContain("Acompanhe seus relatos e respostas.");
   });
 
-  it("Conta e preferências: Editar perfil, Configurações, Notificações with the exact descriptions given", () => {
-    expect(source).toContain("Atualize sua foto e informações pessoais.");
-    expect(source).toContain("Gerencie sua conta e preferências.");
-    expect(source).toContain("Escolha quais lembretes deseja receber.");
+  it("Aplicativo has only Instalar aplicativo, shown only when applicable (the widget itself decides visibility)", () => {
+    expect(source).toContain('{ icon: Smartphone, items: [INSTALAR_APP_ITEM], title: "Aplicativo" }');
   });
 
-  it("Aplicativo has only Instalar Projeto 30, shown only when applicable (the widget itself decides visibility)", () => {
-    const block = source.match(/\{ items: \[INSTALAR_APP_ITEM\], title: "Aplicativo" \}/);
-    expect(block).not.toBeNull();
+  it("Administração and Sair are their own dedicated groups, not merged into one 'Sistema' group", () => {
+    expect(source).toContain('{ icon: ShieldCheck, items: [ADMIN_ITEM], title: "Administração" }');
+    expect(source).toContain('{ icon: LogOut, items: [SAIR_ITEM], title: "Sair" }');
   });
 
-  it("Área administrativa and Sessão are their own dedicated groups, not merged into one 'Sistema' group", () => {
-    expect(source).toContain('{ items: [ADMIN_ITEM], title: "Área administrativa" }');
-    expect(source).toContain('{ items: [SAIR_ITEM], title: "Sessão" }');
+  it("every group carries its own icon - the visual selo that makes the hub feel like a designed area, not a plain list", () => {
+    const block = source.match(/export const MORE_HUB_GROUPS[\s\S]*?\n\];/)?.[0] ?? "";
+    const groupCount = (block.match(/title: "/g) ?? []).length;
+    const iconCount = (block.match(/icon: \w+,/g) ?? []).length;
+    expect(iconCount).toBe(groupCount);
   });
 });
 
