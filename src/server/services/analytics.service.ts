@@ -50,7 +50,13 @@ export type AnalyticsEventName =
   | "dashboard_context_message_viewed"
   // Cockpit operacional do Admin - unico evento novo (Parte O: nao
   // registrar metricas completas, so a visualizacao da pagina).
-  | "admin_overview_viewed";
+  | "admin_overview_viewed"
+  // Reorganizacao definitiva da navegacao - so a visualizacao do hub
+  // (Parte Q pede tambem member_more_item_clicked, mas rastrear clique a
+  // clique em ~15 links exigiria instrumentar cada um; sem necessidade
+  // comprovada agora, fica de fora - so a visualizacao do hub, sem dado
+  // pessoal, mesmo padrao de profile_dashboard_viewed/admin_overview_viewed).
+  | "member_more_opened";
 
 type RecordAnalyticsEventInput = {
   challengeId?: string | null;

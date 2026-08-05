@@ -4,10 +4,8 @@ import { ShieldCheck } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { MemberAvatar } from "@/components/member/member-avatar";
-import {
-  MemberDesktopNavigation,
-  MemberMobileNavigation,
-} from "@/components/member/member-navigation";
+import { MemberDesktopSidebar } from "@/components/member/member-sidebar";
+import { MemberMobileNavigation } from "@/components/member/member-navigation";
 import { NotificationBellLink } from "@/components/member/notification-bell-link";
 import { SignOutForm } from "@/components/member/sign-out-form";
 import { Button } from "@/components/ui/button";
@@ -58,11 +56,11 @@ export function MemberShell({
               <NotificationBellLink unreadCount={unreadNotificationCount} />
             </div>
 
-            <div className="mt-6">
-              <MemberDesktopNavigation />
+            <div className="mt-6 min-h-0 flex-1">
+              <MemberDesktopSidebar isAdmin={showAdminAccess} />
             </div>
 
-            <div className="mt-auto space-y-3">
+            <div className="mt-4 space-y-3">
               <div className="rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-4">
                 <p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">
                   Ciclo
@@ -72,9 +70,9 @@ export function MemberShell({
               </div>
 
               <Link
-                aria-label="Abrir Mais"
+                aria-label="Abrir perfil e configurações pessoais"
                 className="flex items-center gap-3 rounded-[1.35rem] border border-white/[0.08] bg-white/[0.035] p-3 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
-                href="/app/mais"
+                href="/app/perfil/editar"
               >
                 <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
                 <span className="min-w-0 flex-1">
@@ -86,20 +84,6 @@ export function MemberShell({
                   </span>
                 </span>
               </Link>
-
-              {showAdminAccess ? (
-                <Button
-                  as="a"
-                  className="w-full"
-                  href="/admin"
-                  leadingIcon={<ShieldCheck aria-hidden="true" size={15} />}
-                  variant="secondary"
-                >
-                  Acessar administração
-                </Button>
-              ) : null}
-
-              <SignOutForm />
             </div>
           </div>
         </aside>
@@ -108,9 +92,9 @@ export function MemberShell({
           <header className="safe-pt sticky top-0 z-30 border-b border-white/[0.06] bg-background/82 px-4 pb-3 backdrop-blur-2xl md:hidden">
             <div className="flex items-center justify-between gap-3">
               <Link
-                aria-label="Abrir Mais"
+                aria-label="Abrir perfil e configurações pessoais"
                 className="flex min-w-0 items-center gap-2.5 focus-visible:outline-action-soft"
-                href="/app/mais"
+                href="/app/perfil/editar"
               >
                 <MemberAvatar avatarUrl={context.profile.avatar_url} name={displayName} />
                 <span className="min-w-0">
