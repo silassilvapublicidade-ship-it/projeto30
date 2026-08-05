@@ -2,71 +2,44 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// member-navigation.tsx is a client component (not includable by this
-// project's .test.ts-only vitest config without a DOM/testing-library
-// setup this codebase doesn't have yet), so - matching the same static
-// text-regression pattern already used for SQL migrations in this repo -
-// this asserts directly on its source text instead of rendering it.
-function readNavigationSource() {
-  return readFileSync(
-    join(process.cwd(), "src", "components", "member", "member-navigation.tsx"),
-    "utf8",
-  );
+function readSource(...pathSegments: string[]) {
+  return readFileSync(join(process.cwd(), ...pathSegments), "utf8");
 }
 
-describe("member navigation content - definitive architecture (scalable nav round)", () => {
-  const source = readNavigationSource();
+const coreSource = readSource("src", "features", "member", "member-navigation.core.ts");
+const mobileSource = readSource("src", "components", "member", "member-navigation.tsx");
+const sidebarSource = readSource("src", "components", "member", "member-sidebar.tsx");
 
+describe("member-navigation.core.ts - single source of truth (Parte I)", () => {
   it("removes Leitura from the navigation entirely", () => {
-    expect(source).not.toContain("/app/leitura");
-    expect(source).not.toMatch(/label:\s*"Leitura"/);
+    expect(coreSource).not.toContain("/app/leitura");
+    expect(coreSource).not.toMatch(/label: "Leitura"/);
   });
 
-  it("keeps exactly 4 daily-use items in mainItems - Dicas is no longer one of them, it now lives in /app/mais", () => {
-    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
-    expect(mainItemsMatch).not.toBeNull();
-
-    const entryMatches = (mainItemsMatch?.[1] ?? "").match(/\{ href:/g) ?? [];
-    expect(entryMatches).toHaveLength(4);
-    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/dicas");
+  it("PRIMARY_MOBILE_ITEMS has exactly 4 daily-use items, in the exact order Dashboard, Hoje, Jornada, Desafios", () => {
+    const block = coreSource.match(/export const PRIMARY_MOBILE_ITEMS[^;]*;/)?.[0] ?? "";
+    expect(block).toContain("DASHBOARD_ITEM, HOJE_ITEM, JORNADA_ITEM, DESAFIOS_ITEM");
   });
 
-  it("Dashboard is first, Hoje stays right next to it as a clearly separate destination", () => {
-    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
-    const body = mainItemsMatch?.[1] ?? "";
-    const dashboardIndex = body.indexOf('href: "/app/dashboard"');
-    const hojeIndex = body.indexOf('href: "/app/hoje"');
-    expect(dashboardIndex).toBeGreaterThan(-1);
-    expect(hojeIndex).toBeGreaterThan(-1);
-    expect(dashboardIndex).toBeLessThan(hojeIndex);
+  it("DESKTOP_SIDEBAR_GROUPS gives desktop direct access to everything - Dicas included in Principal, unlike mobile", () => {
+    const block = coreSource.match(/export const DESKTOP_SIDEBAR_GROUPS[\s\S]*?\n\];/)?.[0] ?? "";
+    expect(block).toContain("DASHBOARD_ITEM, HOJE_ITEM, DESAFIOS_ITEM, JORNADA_ITEM, DICAS_ITEM");
+    expect(block).toContain('title: "Principal"');
+    expect(block).toContain('title: "Minha evolução"');
+    expect(block).toContain('title: "Suporte e conta"');
+    expect(block).toContain('title: "Conta"');
+    expect(block).toContain("CONQUISTAS_ITEM, DIARIO_ITEM");
+    expect(block).toContain("ENVIAR_FEEDBACK_ITEM, MEUS_FEEDBACKS_ITEM, NOTIFICACOES_ITEM, CONFIGURACOES_ITEM");
+    expect(block).toContain("EDITAR_PERFIL_ITEM, INSTALAR_APP_ITEM, ADMIN_ITEM, SAIR_ITEM");
   });
 
-  it("keeps exactly Dashboard, Hoje, Jornada, Desafios in mainItems, in that exact order - the definitive Bottom Navigation contract", () => {
-    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
-    const body = mainItemsMatch?.[1] ?? "";
-    const order = ["/app/dashboard", "/app/hoje", "/app/jornada", "/app/desafios"];
-    let lastIndex = -1;
-    for (const href of order) {
-      const index = body.indexOf(href);
-      expect(index).toBeGreaterThan(lastIndex);
-      lastIndex = index;
-    }
+  it("ADMIN_ITEM is flagged adminOnly and points to /admin - the one central permission rule both surfaces obey", () => {
+    expect(coreSource).toContain("adminOnly: true");
+    expect(coreSource).toContain('href: "/admin"');
   });
 
-  it("both MemberDesktopNavigation and MemberMobileNavigation append a real 'Mais' link to /app/mais - never a dead-end grouping label", () => {
-    expect(source).toContain('href="/app/mais" icon={MoreHorizontal} label="Mais"');
-    const desktopBody = source.slice(
-      source.indexOf("export function MemberDesktopNavigation"),
-      source.indexOf("export function MemberMobileNavigation"),
-    );
-    const mobileBody = source.slice(source.indexOf("export function MemberMobileNavigation"));
-    expect(desktopBody).toContain('href="/app/mais"');
-    expect(mobileBody).toContain('href="/app/mais"');
-  });
-
-  it("Mais lights up (isMaisActive) for every page that moved out of the main nav - Conquistas, Diário, Dicas, Configurações, Feedback, Perfil, Notificações", () => {
-    const prefixesMatch = source.match(/const MAIS_ACTIVE_PREFIXES = \[([\s\S]*?)\];/);
-    const body = prefixesMatch?.[1] ?? "";
+  it("MAIS_ACTIVE_PREFIXES lists every route that moved out of the primary mobile bar", () => {
+    const block = coreSource.match(/export const MAIS_ACTIVE_PREFIXES = \[([\s\S]*?)\];/)?.[1] ?? "";
     for (const prefix of [
       "/app/mais",
       "/app/conquistas",
@@ -77,17 +50,77 @@ describe("member navigation content - definitive architecture (scalable nav roun
       "/app/perfil",
       "/app/notificacoes",
     ]) {
-      expect(body).toContain(prefix);
+      expect(block).toContain(prefix);
     }
   });
 
-  it("removes Perfil from the main navigation entirely - it's now reachable only via the avatar -> /app/mais -> Editar perfil path", () => {
-    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
-    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/perfil");
-    expect(source).not.toMatch(/label:\s*"Perfil"/);
+  it("isMemberRouteActive matches exact and nested routes, never a loose string prefix across different routes", () => {
+    expect(coreSource).toContain(
+      "return pathname === href || pathname.startsWith(`${href}/`);",
+    );
   });
 
-  it("no longer defines a secondaryItems array - every secondary destination now lives inside /app/mais itself, not a second inline list here", () => {
-    expect(source).not.toContain("const secondaryItems");
+  it("filterNavItemsByRole/filterNavGroupsByRole centralize the permission rule - never a per-component isAdminRole check duplicated ad hoc", () => {
+    expect(coreSource).toContain("export function filterNavItemsByRole");
+    expect(coreSource).toContain("!item.adminOnly || isAdmin");
+    expect(coreSource).toContain("export function filterNavGroupsByRole");
+  });
+});
+
+describe("MemberMobileNavigation - exactly 5 touch targets (Parte C)", () => {
+  it("renders PRIMARY_MOBILE_ITEMS (4) plus a 5th 'Mais' link - never a 6th item", () => {
+    expect(mobileSource).toContain("PRIMARY_MOBILE_ITEMS.map((item)");
+    expect(mobileSource).toContain('icon={MoreHorizontal} label="Mais"');
+  });
+
+  it("never hardcodes Dicas, Conquistas, Diário, Configurações, Feedback or Notificações as their own tab - only PRIMARY_MOBILE_ITEMS + Mais are rendered", () => {
+    for (const forbidden of ["/app/dicas", "/app/conquistas", "/app/diario", "/app/configuracoes", "/app/feedback", "/app/notificacoes"]) {
+      expect(mobileSource).not.toContain(forbidden);
+    }
+  });
+
+  it("Mais lights up via isMaisActive, imported from the central module - never a locally redefined rule", () => {
+    expect(mobileSource).toContain('from "@/features/member/member-navigation.core"');
+    expect(mobileSource).toContain("isMaisActive(pathname)");
+  });
+
+  it("every tab has aria-current when active and a minimum comfortable touch target (min-h-14 = 56px, well above 44px)", () => {
+    expect(mobileSource).toContain('aria-current={active ? "page" : undefined}');
+    expect(mobileSource).toContain("min-h-14");
+  });
+
+  it("labels never wrap or overflow - truncated within the tab", () => {
+    expect(mobileSource).toContain("truncate");
+  });
+
+  it("stays inside the Safe Area via the shared safe-fixed-bottom utility, hidden on desktop (md:hidden)", () => {
+    expect(mobileSource).toContain("safe-fixed-bottom");
+    expect(mobileSource).toContain("md:hidden");
+  });
+});
+
+describe("MemberDesktopSidebar - full, direct access (Parte B/L)", () => {
+  it("reads DESKTOP_SIDEBAR_GROUPS from the central module and filters by role centrally", () => {
+    expect(sidebarSource).toContain('from "@/features/member/member-navigation.core"');
+    expect(sidebarSource).toContain("filterNavGroupsByRole(DESKTOP_SIDEBAR_GROUPS, isAdmin)");
+  });
+
+  it("renders group titles so the sections stay visually clear", () => {
+    expect(sidebarSource).toContain("group.title");
+  });
+
+  it("special items (install-app, sign-out) render their real widget/form, never a dead <Link>", () => {
+    expect(sidebarSource).toContain('item.special === "install-app"');
+    expect(sidebarSource).toContain("<InstallAppPrompt");
+    expect(sidebarSource).toContain('item.special === "sign-out"');
+    expect(sidebarSource).toContain("<SignOutForm");
+  });
+
+  it("can scroll independently if the viewport is short - never clips Sair off-screen", () => {
+    expect(sidebarSource).toContain("overflow-y-auto");
+  });
+
+  it("marks the active route via the same centralized isMemberRouteActive used everywhere else", () => {
+    expect(sidebarSource).toContain("isMemberRouteActive(pathname, item.href!)");
   });
 });

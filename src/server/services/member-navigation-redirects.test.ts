@@ -63,16 +63,17 @@ describe("admin-shell.tsx - return to app link", () => {
   });
 });
 
-describe("MemberShell - avatar opens the Mais hub (scalable nav round, Parte I)", () => {
+describe("MemberShell - avatar opens Editar perfil directly (responsive nav round, Parte F)", () => {
   const source = readSource("src", "components", "member", "member-shell.tsx");
 
-  it("the avatar links to /app/mais on both desktop and mobile - it no longer jumps straight to editing", () => {
-    const matches = source.match(/href="\/app\/mais"/g) ?? [];
+  it("the avatar links to /app/perfil/editar on both desktop and mobile - it never opens Mais, that's the bottom nav's job", () => {
+    const matches = source.match(/href="\/app\/perfil\/editar"/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(source).not.toMatch(/aria-label="Abrir (Mais|perfil e configurações pessoais)"[\s\S]{0,80}href="\/app\/mais"/);
   });
 
-  it("communicates clearly that it opens the Mais hub, not just 'view profile'", () => {
-    const matches = source.match(/aria-label="Abrir Mais"/g) ?? [];
+  it("uses the exact requested aria-label: 'Abrir perfil e configurações pessoais'", () => {
+    const matches = source.match(/aria-label="Abrir perfil e configurações pessoais"/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -85,8 +86,8 @@ describe("MemberShell - avatar opens the Mais hub (scalable nav round, Parte I)"
     expect(source).toContain("<SignOutForm");
   });
 
-  it("Dashboard is not ONLY reachable through the avatar - it now has its own item in the shared navigation", () => {
-    expect(source).toContain("<MemberDesktopNavigation");
+  it("Dashboard is not ONLY reachable through the avatar - it has its own item in both the desktop sidebar and the mobile bar", () => {
+    expect(source).toContain("<MemberDesktopSidebar");
     expect(source).toContain("<MemberMobileNavigation");
   });
 });
