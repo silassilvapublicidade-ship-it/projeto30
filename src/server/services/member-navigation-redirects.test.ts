@@ -63,16 +63,16 @@ describe("admin-shell.tsx - return to app link", () => {
   });
 });
 
-describe("MemberShell - avatar opens Editar perfil (Parte D)", () => {
+describe("MemberShell - avatar opens the Mais hub (scalable nav round, Parte I)", () => {
   const source = readSource("src", "components", "member", "member-shell.tsx");
 
-  it("the avatar links to /app/perfil/editar on both desktop and mobile - never to the removed /app/perfil settings page", () => {
-    const matches = source.match(/href="\/app\/perfil\/editar"/g) ?? [];
+  it("the avatar links to /app/mais on both desktop and mobile - it no longer jumps straight to editing", () => {
+    const matches = source.match(/href="\/app\/mais"/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("communicates clearly that it opens profile + settings, not just 'view profile'", () => {
-    const matches = source.match(/aria-label="Abrir perfil e configurações"/g) ?? [];
+  it("communicates clearly that it opens the Mais hub, not just 'view profile'", () => {
+    const matches = source.match(/aria-label="Abrir Mais"/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 

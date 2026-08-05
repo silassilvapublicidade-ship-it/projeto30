@@ -14,7 +14,7 @@ function readNavigationSource() {
   );
 }
 
-describe("member navigation content", () => {
+describe("member navigation content - definitive architecture (scalable nav round)", () => {
   const source = readNavigationSource();
 
   it("removes Leitura from the navigation entirely", () => {
@@ -22,17 +22,13 @@ describe("member navigation content", () => {
     expect(source).not.toMatch(/label:\s*"Leitura"/);
   });
 
-  it("adds Dicas in the main navigation", () => {
-    expect(source).toContain("/app/dicas");
-    expect(source).toMatch(/label:\s*"Dicas"/);
-  });
-
-  it("keeps exactly five items in the shared main navigation (desktop + mobile bar) - never a sixth without an explicit density audit", () => {
+  it("keeps exactly 4 daily-use items in mainItems - Dicas is no longer one of them, it now lives in /app/mais", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     expect(mainItemsMatch).not.toBeNull();
 
     const entryMatches = (mainItemsMatch?.[1] ?? "").match(/\{ href:/g) ?? [];
-    expect(entryMatches).toHaveLength(5);
+    expect(entryMatches).toHaveLength(4);
+    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/dicas");
   });
 
   it("Dashboard is first, Hoje stays right next to it as a clearly separate destination", () => {
@@ -45,24 +41,53 @@ describe("member navigation content", () => {
     expect(dashboardIndex).toBeLessThan(hojeIndex);
   });
 
-  it("keeps Hoje, Desafios, Jornada and Dicas in the main navigation alongside Dashboard", () => {
+  it("keeps exactly Dashboard, Hoje, Jornada, Desafios in mainItems, in that exact order - the definitive Bottom Navigation contract", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     const body = mainItemsMatch?.[1] ?? "";
-    for (const href of ["/app/dashboard", "/app/hoje", "/app/desafios", "/app/jornada", "/app/dicas"]) {
-      expect(body).toContain(href);
+    const order = ["/app/dashboard", "/app/hoje", "/app/jornada", "/app/desafios"];
+    let lastIndex = -1;
+    for (const href of order) {
+      const index = body.indexOf(href);
+      expect(index).toBeGreaterThan(lastIndex);
+      lastIndex = index;
     }
   });
 
-  it("moves Conquistas to the secondary items - still reachable, just not one of the 5 main mobile slots", () => {
-    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
-    const secondaryItemsMatch = source.match(/const secondaryItems = \[([\s\S]*?)\];/);
-    expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/conquistas");
-    expect(secondaryItemsMatch?.[1] ?? "").toContain("/app/conquistas");
+  it("both MemberDesktopNavigation and MemberMobileNavigation append a real 'Mais' link to /app/mais - never a dead-end grouping label", () => {
+    expect(source).toContain('href="/app/mais" icon={MoreHorizontal} label="Mais"');
+    const desktopBody = source.slice(
+      source.indexOf("export function MemberDesktopNavigation"),
+      source.indexOf("export function MemberMobileNavigation"),
+    );
+    const mobileBody = source.slice(source.indexOf("export function MemberMobileNavigation"));
+    expect(desktopBody).toContain('href="/app/mais"');
+    expect(mobileBody).toContain('href="/app/mais"');
   });
 
-  it("removes Perfil from the main navigation entirely - it's now a redirect, reachable via the avatar block instead", () => {
+  it("Mais lights up (isMaisActive) for every page that moved out of the main nav - Conquistas, Diário, Dicas, Configurações, Feedback, Perfil, Notificações", () => {
+    const prefixesMatch = source.match(/const MAIS_ACTIVE_PREFIXES = \[([\s\S]*?)\];/);
+    const body = prefixesMatch?.[1] ?? "";
+    for (const prefix of [
+      "/app/mais",
+      "/app/conquistas",
+      "/app/diario",
+      "/app/dicas",
+      "/app/configuracoes",
+      "/app/feedback",
+      "/app/perfil",
+      "/app/notificacoes",
+    ]) {
+      expect(body).toContain(prefix);
+    }
+  });
+
+  it("removes Perfil from the main navigation entirely - it's now reachable only via the avatar -> /app/mais -> Editar perfil path", () => {
     const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
     expect(mainItemsMatch?.[1] ?? "").not.toContain("/app/perfil");
     expect(source).not.toMatch(/label:\s*"Perfil"/);
+  });
+
+  it("no longer defines a secondaryItems array - every secondary destination now lives inside /app/mais itself, not a second inline list here", () => {
+    expect(source).not.toContain("const secondaryItems");
   });
 });

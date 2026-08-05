@@ -2,57 +2,60 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Flag,
-  Home,
-  LayoutDashboard,
-  Lightbulb,
-  Medal,
-  NotebookPen,
-  Route,
-  Settings,
-} from "lucide-react";
+import { Flag, Home, LayoutDashboard, MoreHorizontal, Route } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// Dashboard is the new primary landing page (Parte A/B) and gets its own
-// item here - Hoje stays right next to it as a clearly separate destination
-// (Parte C: Dashboard = visao geral/evolucao, Hoje = acoes do dia). Perfil
-// itself is intentionally left out - it's now a redirect to /app/dashboard,
-// and editing (/app/perfil/editar) is reachable through the avatar block
-// (member-shell.tsx) instead. Conquistas moved to secondaryItems to keep
-// mainItems (the mobile bottom bar) at exactly 5 items; it stays reachable
-// from the Dashboard, the avatar area and its own /app/conquistas route.
+// Arquitetura de navegação definitiva (rodada de reorganização): a barra
+// principal (mobile e desktop, agora unificadas) mostra só os 4 destinos de
+// USO DIÁRIO - tudo o que é "conta/configuração/uma vez por semana" (
+// Conquistas, Diário, Dicas, Configurações, Notificações, Feedback, editar
+// perfil, admin) vive dentro de /app/mais, um hub próprio, nunca mais
+// espalhado em itens soltos que crescem sem limite conforme o produto
+// cresce. Isso é o que torna a barra escalável: novas telas entram em
+// /app/mais, nunca aqui.
 const mainItems = [
   { href: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/app/hoje", icon: Home, label: "Hoje" },
-  { href: "/app/desafios", icon: Flag, label: "Desafios" },
   { href: "/app/jornada", icon: Route, label: "Jornada" },
-  { href: "/app/dicas", icon: Lightbulb, label: "Dicas" },
+  { href: "/app/desafios", icon: Flag, label: "Desafios" },
 ];
 
-const secondaryItems = [
-  { href: "/app/conquistas", icon: Medal, label: "Conquistas" },
-  { href: "/app/diario", icon: NotebookPen, label: "Diario" },
-  { href: "/app/configuracoes", icon: Settings, label: "Configuracoes" },
+// Toda página que agora só é alcançável a partir do hub /app/mais - usado
+// para acender o item "Mais" quando o usuário está em qualquer uma delas,
+// em vez de a barra parecer "sem seleção" nessas telas.
+const MAIS_ACTIVE_PREFIXES = [
+  "/app/mais",
+  "/app/conquistas",
+  "/app/diario",
+  "/app/dicas",
+  "/app/configuracoes",
+  "/app/feedback",
+  "/app/perfil",
+  "/app/notificacoes",
 ];
+
+function isMaisActive(pathname: string) {
+  return MAIS_ACTIVE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function isPrimaryActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 function NavLink({
+  active,
   href,
   icon: Icon,
   label,
-  mobileLabel,
   mode,
 }: {
+  active: boolean;
   href: string;
   icon: typeof Home;
   label: string;
-  mobileLabel?: string;
   mode: "desktop" | "mobile";
 }) {
-  const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
-
   if (mode === "mobile") {
     return (
       <Link
@@ -70,7 +73,7 @@ function NavLink({
           className={active ? "text-action-soft" : undefined}
           size={18}
         />
-        <span>{mobileLabel ?? label}</span>
+        <span>{label}</span>
         {active ? (
           <span
             aria-hidden="true"
@@ -109,28 +112,21 @@ function NavLink({
 }
 
 export function MemberDesktopNavigation() {
+  const pathname = usePathname();
+
   return (
-    <nav aria-label="Navegacao da area de membros" className="space-y-6">
-      <div className="space-y-1">
-        {mainItems.map((item) => (
-          <NavLink {...item} key={item.href} mode="desktop" />
-        ))}
-      </div>
-      <div className="border-t border-white/[0.08] pt-4">
-        <p className="px-3 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-muted-2">
-          Mais
-        </p>
-        <div className="mt-2 space-y-1">
-          {secondaryItems.map((item) => (
-            <NavLink {...item} key={item.href} mode="desktop" />
-          ))}
-        </div>
-      </div>
+    <nav aria-label="Navegacao da area de membros" className="space-y-1">
+      {mainItems.map((item) => (
+        <NavLink {...item} active={isPrimaryActive(pathname, item.href)} key={item.href} mode="desktop" />
+      ))}
+      <NavLink active={isMaisActive(pathname)} href="/app/mais" icon={MoreHorizontal} label="Mais" mode="desktop" />
     </nav>
   );
 }
 
 export function MemberMobileNavigation() {
+  const pathname = usePathname();
+
   return (
     <nav
       aria-label="Navegacao principal"
@@ -138,8 +134,9 @@ export function MemberMobileNavigation() {
     >
       <div className="flex gap-1">
         {mainItems.map((item) => (
-          <NavLink {...item} key={item.href} mode="mobile" />
+          <NavLink {...item} active={isPrimaryActive(pathname, item.href)} key={item.href} mode="mobile" />
         ))}
+        <NavLink active={isMaisActive(pathname)} href="/app/mais" icon={MoreHorizontal} label="Mais" mode="mobile" />
       </div>
     </nav>
   );

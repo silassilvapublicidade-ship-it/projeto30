@@ -6,17 +6,18 @@ function readSource(...pathSegments: string[]) {
   return readFileSync(join(process.cwd(), ...pathSegments), "utf8");
 }
 
-describe("root cause: /app/configuracoes was the only place with a feedback link, and it was unreachable on mobile", () => {
-  it("MemberMobileNavigation only ever renders mainItems, never secondaryItems - Configuracoes (where the old feedback link lived) was never reachable from the mobile bottom nav", () => {
+// Historical root cause (kept for context, no longer literally checkable):
+// /app/configuracoes had the only feedback link, but was a secondaryItems
+// entry only ever rendered on desktop - unreachable from the mobile bottom
+// nav. That whole mainItems/secondaryItems split was superseded by the
+// definitive nav redesign (Dashboard/Hoje/Jornada/Desafios/Mais - see
+// mais-page.test.ts), which is why this file now asserts the CURRENT
+// architecture instead of the old gap.
+describe("Feedback is still never a primary bottom-nav tab of its own", () => {
+  it("mainItems never gets a Feedback entry - it lives inside /app/mais and on the Dashboard, not as a 6th/7th tab", () => {
     const source = readSource("src", "components", "member", "member-navigation.tsx");
-    const mobileBody = source.slice(source.indexOf("export function MemberMobileNavigation"));
-    expect(mobileBody).toContain("mainItems.map((item)");
-    expect(mobileBody).not.toContain("secondaryItems");
-  });
-
-  it("still never adds Feedback to the primary bottom navigation - the fix is Dashboard + Configuracoes + error boundary, not a new tab", () => {
-    const source = readSource("src", "components", "member", "member-navigation.tsx");
-    expect(source).not.toMatch(/label: "Feedback"/);
+    const mainItemsMatch = source.match(/const mainItems = \[([\s\S]*?)\];/);
+    expect(mainItemsMatch?.[1] ?? "").not.toMatch(/label: "Feedback"/);
   });
 });
 
