@@ -19,7 +19,7 @@ describe("Observabilidade in the shared admin nav", () => {
 
   it("uses a coherent icon (Activity), per the suggested options", () => {
     expect(navItemsBlock).toContain("icon: Activity");
-    expect(source).toContain('import { Activity,');
+    expect(source).toContain("Activity,");
   });
 
   it("defines a shorter mobileLabel so the already-dense mobile bar does not get more cramped", () => {
@@ -32,13 +32,15 @@ describe("Observabilidade in the shared admin nav", () => {
     expect(mobileBranch).toContain("{mobileLabel ?? label}");
   });
 
-  it("both AdminDesktopNavigation and AdminMobileNavigation render every item in the shared array, so Observabilidade appears in both", () => {
+  it("appears in both AdminDesktopNavigation (all items) and AdminMobileNavigation (primary items, not tucked into 'Mais')", () => {
     const desktopBody = source.slice(
       source.indexOf("export function AdminDesktopNavigation"),
-      source.indexOf("export function AdminMobileNavigation"),
+      source.indexOf("export function AdminMobileMoreTab"),
     );
-    const mobileBody = source.slice(source.indexOf("export function AdminMobileNavigation"));
     expect(desktopBody).toContain("navItems.map((item)");
-    expect(mobileBody).toContain("navItems.map((item)");
+    // Observabilidade is not flagged overflow, so it's part of mobilePrimaryItems.
+    expect(navItemsBlock).not.toMatch(/href: "\/admin\/observabilidade"[^\n]*overflow: true/);
+    const mobileNavBody = source.slice(source.indexOf("export function AdminMobileNavigation"));
+    expect(mobileNavBody).toContain("mobilePrimaryItems.map((item)");
   });
 });

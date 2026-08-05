@@ -18,11 +18,11 @@ export async function reportClientErrorAction(input: {
   route: string;
   digest?: string | undefined;
   message: string;
-}): Promise<void> {
+}): Promise<{ errorCode: string | null }> {
   const area = isSystemErrorArea(input.area) ? input.area : "app";
   const user = await getOptionalAuthUser().catch(() => null);
 
-  await recordSystemError({
+  return recordSystemError({
     area,
     operation: "client_error_boundary",
     severity: "warning",

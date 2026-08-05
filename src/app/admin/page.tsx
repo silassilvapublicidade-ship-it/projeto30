@@ -20,6 +20,7 @@ import {
   getAdminOperationalOverview,
   getAdminRecentActivity,
 } from "@/server/services/admin-operational-overview.service";
+import { getFeedbackCockpitSummary } from "@/server/services/feedback.service";
 
 export const metadata: Metadata = {
   title: "Visão geral · Administração",
@@ -49,11 +50,18 @@ export default async function AdminOverviewPage({ searchParams }: AdminOverviewP
 
   let overview;
   let recentActivity: Awaited<ReturnType<typeof getAdminRecentActivity>> = [];
+  let feedbackSummary: Awaited<ReturnType<typeof getFeedbackCockpitSummary>> = {
+    newCount: 0,
+    urgentCount: 0,
+    reviewingCount: 0,
+    recentNegativeRatings: 0,
+  };
 
   try {
-    [overview, recentActivity] = await Promise.all([
+    [overview, recentActivity, feedbackSummary] = await Promise.all([
       getAdminOperationalOverview(period),
       getAdminRecentActivity(10),
+      getFeedbackCockpitSummary(),
     ]);
   } catch (error) {
     return (
@@ -183,6 +191,18 @@ export default async function AdminOverviewPage({ searchParams }: AdminOverviewP
           headline={APP_VERSION}
           href="/admin/observabilidade"
           title="Deploy"
+        />
+        <CockpitBlockCard
+          ctaLabel="Ver feedbacks"
+          description={
+            feedbackSummary.urgentCount > 0
+              ? `${feedbackSummary.urgentCount} urgente(s) aguardando resposta.`
+              : `${feedbackSummary.reviewingCount} em análise · ${feedbackSummary.recentNegativeRatings} avaliação(ões) negativa(s) em 7 dias.`
+          }
+          headline={feedbackSummary.newCount > 0 ? `${feedbackSummary.newCount} novo(s) feedback(s)` : "Nenhum feedback novo"}
+          href="/admin/feedback"
+          status={feedbackSummary.urgentCount > 0 ? "atencao" : "saudavel"}
+          title="Feedback"
         />
       </section>
 

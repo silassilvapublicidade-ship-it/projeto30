@@ -34,7 +34,8 @@ describe("Dicas navigation - visible in the Admin menu, not a hidden URL", () =>
     const desktopBody = source.slice(desktopStart, mobileStart);
     const mobileBody = source.slice(mobileStart);
     expect(desktopBody).toContain("navItems.map((item)");
-    expect(mobileBody).toContain("navItems.map((item)");
+    // Mobile renders the non-overflow subset directly (Dicas is not flagged overflow).
+    expect(mobileBody).toContain("mobilePrimaryItems.map((item)");
   });
 
   it("marks the active nav item via isActivePath, matching /admin/dicas and any nested route under it", () => {
