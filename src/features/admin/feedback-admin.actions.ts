@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { FEEDBACK_DELETE_CONFIRMATION_PHRASE } from "@/features/feedback/feedback.core";
 import { requireAdminUser } from "@/server/services/admin-session.service";
-import { adminDeleteFeedback, adminUpdateFeedback } from "@/server/services/feedback.service";
+import { adminDeleteFeedback, adminGetFeedbackDetail, adminUpdateFeedback } from "@/server/services/feedback.service";
+import { runFeedbackRespondedAutomation } from "@/server/services/notification-automations.service";
 import { recordSystemError } from "@/server/services/system-observability.service";
 
 function detailPath(id: string) {
@@ -28,7 +29,28 @@ export async function updateFeedbackAction(formData: FormData) {
   const diagnosticCode = String(formData.get("diagnosticCode") ?? "").trim() || undefined;
 
   try {
+    // Estado anterior lido ANTES do update - é o único jeito de saber se
+    // admin_response acabou de sair de vazio->preenchido, ou se o status
+    // acabou de virar planned/resolved (Parte E: nunca notificar em edição
+    // de prioridade/nota interna, nem reenviar em edições subsequentes da
+    // mesma resposta já preenchida).
+    const before = await adminGetFeedbackDetail(id);
+
     await adminUpdateFeedback({ id, status, priority, adminResponse, internalNotes, resolvedInVersion, diagnosticCode });
+
+    if (before) {
+      const responseJustFilled = !before.adminResponse && Boolean(adminResponse);
+      if (responseJustFilled) {
+        await runFeedbackRespondedAutomation({ event: "responded", feedbackId: id, userId: before.userId });
+      }
+      if (status && status !== before.status) {
+        if (status === "planned") {
+          await runFeedbackRespondedAutomation({ event: "status_planned", feedbackId: id, userId: before.userId });
+        } else if (status === "resolved") {
+          await runFeedbackRespondedAutomation({ event: "status_resolved", feedbackId: id, userId: before.userId });
+        }
+      }
+    }
 
     if (adminResponse) {
       const supabase = await createSupabaseServerClient();

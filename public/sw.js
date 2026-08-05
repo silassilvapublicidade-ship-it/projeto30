@@ -221,6 +221,7 @@ const NOTIFICATION_DESTINATION_TYPES = [
   "conquistas",
   "notificacoes",
   "configuracoes_notificacoes",
+  "feedback",
 ];
 
 function isSafeSlug(value) {
@@ -253,6 +254,8 @@ function resolveDestinationPath(destinationType, destinationReferenceId) {
       return "/app/notificacoes";
     case "configuracoes_notificacoes":
       return "/app/configuracoes/notificacoes";
+    case "feedback":
+      return "/app/feedback/meus";
     default:
       return null;
   }

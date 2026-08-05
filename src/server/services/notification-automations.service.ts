@@ -303,6 +303,51 @@ export async function runAchievementUnlockedAutomation(input: {
   }
 }
 
+/**
+ * Parte E - fecha o ciclo do Feedback. Chamada só a partir de
+ * updateFeedbackAction (feedback-admin.actions.ts), que já decidiu QUAL
+ * evento aconteceu (resposta nova, ou status virou planned/resolved) antes
+ * de chegar aqui - esta função nunca decide isso sozinha, só despacha pelo
+ * mesmo motor de sempre. O texto do push nunca inclui o conteúdo da
+ * resposta (nem é passado para esta função) - só o aviso genérico. Chave de
+ * idempotência por (feedback, evento) - reabrir/editar depois não reenvia o
+ * mesmo aviso; mudanças de prioridade ou nota interna nunca chamam isto.
+ */
+export async function runFeedbackRespondedAutomation(input: {
+  event: "responded" | "status_planned" | "status_resolved";
+  feedbackId: string;
+  userId: string;
+}): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const { data: rows, error } = await supabase.rpc("automation_resolve_important_update_audience", {
+    p_user_ids: [input.userId],
+  });
+
+  if (error || !rows || rows.length === 0) {
+    if (error) logRpcFailure("automation_resolve_important_update_audience", error);
+    return;
+  }
+
+  const copy: Record<typeof input.event, { message: string; title: string }> = {
+    responded: { message: "Abra o Projeto 30 para acompanhar a resposta.", title: "Seu feedback recebeu uma resposta" },
+    status_planned: { message: "Abra o Projeto 30 para acompanhar o andamento.", title: "Seu feedback foi planejado" },
+    status_resolved: { message: "Abra o Projeto 30 para ver os detalhes.", title: "Seu feedback foi resolvido" },
+  };
+
+  const campaignId = await getOrCreateAutomationCampaign(supabase, {
+    audienceType: "automation_feedback_response",
+    automationType: `feedback_${input.event}`,
+    destinationType: "feedback",
+    idempotencyKey: `feedback_${input.event}:${input.feedbackId}`,
+    message: copy[input.event].message,
+    title: copy[input.event].title,
+  });
+
+  if (campaignId) {
+    await dispatchCampaignToAudience(campaignId, rows);
+  }
+}
+
 function toSaoPauloDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 }

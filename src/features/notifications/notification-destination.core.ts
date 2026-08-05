@@ -19,6 +19,7 @@ export const NOTIFICATION_DESTINATION_TYPES = [
   "conquistas",
   "notificacoes",
   "configuracoes_notificacoes",
+  "feedback",
 ] as const;
 
 export type NotificationDestinationType = (typeof NOTIFICATION_DESTINATION_TYPES)[number];
@@ -40,6 +41,7 @@ export const NOTIFICATION_DESTINATION_LABELS: Record<NotificationDestinationType
   conquistas: "Conquistas",
   notificacoes: "Central de notificações",
   configuracoes_notificacoes: "Configurações de notificações",
+  feedback: "Meus feedbacks",
 };
 
 /**
@@ -79,6 +81,8 @@ export function resolveNotificationDestinationPath(
       return "/app/notificacoes";
     case "configuracoes_notificacoes":
       return "/app/configuracoes/notificacoes";
+    case "feedback":
+      return "/app/feedback/meus";
     default:
       return null;
   }
