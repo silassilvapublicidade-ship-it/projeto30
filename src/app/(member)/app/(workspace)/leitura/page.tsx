@@ -1,13 +1,10 @@
-import { BookOpen } from "lucide-react";
+import { redirect } from "next/navigation";
 
-import { MemberEmptyPage } from "@/components/member/member-empty-page";
-
-export default function LeituraPage() {
-  return (
-    <MemberEmptyPage
-      description="Planos de leitura serão ligados aos ciclos publicados. A fundação já reserva o espaço sem inventar conteúdos."
-      icon={BookOpen}
-      title="Leitura"
-    />
-  );
+/**
+ * /app/leitura virou /app/biblioteca (Parte B) - redirect permanente para
+ * preservar links antigos, mesmo padrão já usado em /app/perfil ->
+ * /app/dashboard.
+ */
+export default function LeituraRedirectPage() {
+  redirect("/app/biblioteca");
 }

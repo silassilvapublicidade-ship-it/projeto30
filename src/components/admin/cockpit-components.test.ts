@@ -32,7 +32,7 @@ describe("CockpitRecentActivity", () => {
 
   it("each row can link out, and shows time/action/area/responsible when available", () => {
     expect(source).toContain("item.link");
-    expect(source).toContain("formatDateTime(item.occurred_at)");
+    expect(source).toContain("formatProjectDateTime(item.occurred_at)");
     expect(source).toContain("item.actor_name");
   });
 });
@@ -69,13 +69,14 @@ describe("Admin nav order (Parte N)", () => {
   const source = readSource("admin-navigation.tsx");
   const navItemsBlock = source.slice(source.indexOf("const navItems = ["), source.indexOf("];", source.indexOf("const navItems = [")));
 
-  it("orders items exactly: Visão geral, Desafios, Usuários, Dicas, Notificações, Compartilhamentos, Observabilidade, then the rest", () => {
+  it("orders items exactly: Visão geral, Desafios, Usuários, Dicas, Biblioteca, Notificações, Compartilhamentos, Observabilidade, then the rest", () => {
     const hrefs = [...navItemsBlock.matchAll(/href: "([^"]+)"/g)].map((match) => match[1]);
-    expect(hrefs.slice(0, 7)).toEqual([
+    expect(hrefs.slice(0, 8)).toEqual([
       "/admin",
       "/admin/desafios",
       "/admin/usuarios",
       "/admin/dicas",
+      "/admin/biblioteca",
       "/admin/notificacoes",
       "/admin/compartilhamentos",
       "/admin/observabilidade",

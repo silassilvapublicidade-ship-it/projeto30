@@ -11,8 +11,8 @@ const mobileSource = readSource("src", "components", "member", "member-navigatio
 const sidebarSource = readSource("src", "components", "member", "member-sidebar.tsx");
 
 describe("member-navigation.core.ts - single source of truth (Parte I)", () => {
-  it("removes Leitura from the navigation entirely", () => {
-    expect(coreSource).not.toContain("/app/leitura");
+  it("removes Leitura from the navigation entirely - /app/leitura only survives as a redirect-active-state prefix (Parte B), never as a real nav item", () => {
+    expect(coreSource).not.toContain('href: "/app/leitura"');
     expect(coreSource).not.toMatch(/label: "Leitura"/);
   });
 

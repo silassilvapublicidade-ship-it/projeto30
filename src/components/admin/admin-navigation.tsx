@@ -7,12 +7,12 @@ import {
   Activity,
   Award,
   Bell,
+  BookOpen,
   ImageIcon,
   LayoutDashboard,
   Lightbulb,
   MessageCircle,
   MoreHorizontal,
-  Settings,
   Trophy,
   UserCog,
 } from "lucide-react";
@@ -39,12 +39,12 @@ const navItems = [
   { href: "/admin/desafios", icon: Trophy, label: "Desafios" },
   { href: "/admin/usuarios", icon: UserCog, label: "Usuários" },
   { href: "/admin/dicas", icon: Lightbulb, label: "Dicas" },
+  { href: "/admin/biblioteca", icon: BookOpen, label: "Biblioteca", overflow: true },
   { href: "/admin/notificacoes", icon: Bell, label: "Notificações" },
   { href: "/admin/compartilhamentos", icon: ImageIcon, label: "Compartilhamentos" },
   { href: "/admin/observabilidade", icon: Activity, label: "Observabilidade", mobileLabel: "Diagnóstico" },
   { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/conquistas", icon: Award, label: "Conquistas", overflow: true },
-  { href: "/admin/configuracoes", icon: Settings, label: "Configurações", overflow: true },
 ];
 
 const mobilePrimaryItems = navItems.filter((item) => !item.overflow);

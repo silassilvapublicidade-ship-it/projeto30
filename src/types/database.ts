@@ -117,7 +117,6 @@ export type Database = {
           entity_id: string | null
           entity_type: string
           id: string
-          ip: unknown
         }
         Insert: {
           action: string
@@ -128,7 +127,6 @@ export type Database = {
           entity_id?: string | null
           entity_type: string
           id?: string
-          ip?: unknown
         }
         Update: {
           action?: string
@@ -139,7 +137,6 @@ export type Database = {
           entity_id?: string | null
           entity_type?: string
           id?: string
-          ip?: unknown
         }
         Relationships: [
           {
@@ -563,6 +560,7 @@ export type Database = {
           image_storage_path: string | null
           image_url: string | null
           published_at: string | null
+          related_library_content_id: string | null
           slug: string
           starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
@@ -585,6 +583,7 @@ export type Database = {
           image_storage_path?: string | null
           image_url?: string | null
           published_at?: string | null
+          related_library_content_id?: string | null
           slug: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
@@ -607,6 +606,7 @@ export type Database = {
           image_storage_path?: string | null
           image_url?: string | null
           published_at?: string | null
+          related_library_content_id?: string | null
           slug?: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
@@ -628,6 +628,13 @@ export type Database = {
             columns: ["challenge_id"]
             isOneToOne: false
             referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_related_library_content_id_fkey"
+            columns: ["related_library_content_id"]
+            isOneToOne: false
+            referencedRelation: "library_contents"
             referencedColumns: ["id"]
           },
           {
@@ -926,6 +933,194 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "challenge_enrollments"
             referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      library_contents: {
+        Row: {
+          ai_generation_metadata: Json
+          ai_generation_status: string | null
+          approved_at: string | null
+          approved_by: string | null
+          author_type: string
+          bible_excerpt: string | null
+          bible_reference: string | null
+          body: string | null
+          category: string | null
+          cover_image_url: string | null
+          cover_storage_path: string | null
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          final_message: string | null
+          id: string
+          introduction: string | null
+          pillar: string
+          practical_application: string | null
+          published_at: string | null
+          published_by: string | null
+          reading_time_minutes: number | null
+          reflection_question: string | null
+          related_challenge_id: string | null
+          related_habit_id: string | null
+          requires_enhanced_review: boolean
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scheduled_at: string | null
+          slug: string
+          small_action: string | null
+          source_type: string
+          status: string
+          subtitle: string | null
+          summary: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ai_generation_metadata?: Json
+          ai_generation_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          author_type?: string
+          bible_excerpt?: string | null
+          bible_reference?: string | null
+          body?: string | null
+          category?: string | null
+          cover_image_url?: string | null
+          cover_storage_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          final_message?: string | null
+          id?: string
+          introduction?: string | null
+          pillar: string
+          practical_application?: string | null
+          published_at?: string | null
+          published_by?: string | null
+          reading_time_minutes?: number | null
+          reflection_question?: string | null
+          related_challenge_id?: string | null
+          related_habit_id?: string | null
+          requires_enhanced_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scheduled_at?: string | null
+          slug: string
+          small_action?: string | null
+          source_type?: string
+          status?: string
+          subtitle?: string | null
+          summary?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ai_generation_metadata?: Json
+          ai_generation_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          author_type?: string
+          bible_excerpt?: string | null
+          bible_reference?: string | null
+          body?: string | null
+          category?: string | null
+          cover_image_url?: string | null
+          cover_storage_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          final_message?: string | null
+          id?: string
+          introduction?: string | null
+          pillar?: string
+          practical_application?: string | null
+          published_at?: string | null
+          published_by?: string | null
+          reading_time_minutes?: number | null
+          reflection_question?: string | null
+          related_challenge_id?: string | null
+          related_habit_id?: string | null
+          requires_enhanced_review?: boolean
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scheduled_at?: string | null
+          slug?: string
+          small_action?: string | null
+          source_type?: string
+          status?: string
+          subtitle?: string | null
+          summary?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_contents_related_challenge_id_fkey"
+            columns: ["related_challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_contents_related_habit_id_fkey"
+            columns: ["related_habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_reading_progress: {
+        Row: {
+          completed_at: string | null
+          content_id: string
+          created_at: string
+          id: string
+          last_position: string | null
+          progress_percent: number
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          content_id: string
+          created_at?: string
+          id?: string
+          last_position?: string | null
+          progress_percent?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          content_id?: string
+          created_at?: string
+          id?: string
+          last_position?: string | null
+          progress_percent?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_reading_progress_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "library_contents"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2022,6 +2217,86 @@ export type Database = {
         Args: { p_challenge_id: string }
         Returns: Json
       }
+      admin_create_library_content: {
+        Args: {
+          p_ai_generation_metadata?: Json | undefined
+          p_ai_generation_status?: string | undefined
+          p_author_type?: string | undefined
+          p_bible_excerpt?: string | undefined
+          p_bible_reference?: string | undefined
+          p_body?: string | undefined
+          p_category?: string | undefined
+          p_cover_image_url?: string | undefined
+          p_cover_storage_path?: string | undefined
+          p_difficulty?: string | undefined
+          p_final_message?: string | undefined
+          p_introduction?: string | undefined
+          p_pillar: string
+          p_practical_application?: string | undefined
+          p_reading_time_minutes?: number | undefined
+          p_reflection_question?: string | undefined
+          p_related_challenge_id?: string | undefined
+          p_related_habit_id?: string | undefined
+          p_requires_enhanced_review?: boolean | undefined
+          p_slug: string
+          p_small_action?: string | undefined
+          p_source_type?: string | undefined
+          p_subtitle?: string | undefined
+          p_summary?: string | undefined
+          p_tags?: string[] | undefined
+          p_title: string
+        }
+        Returns: string
+      }
+      admin_get_library_content: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      admin_list_library_contents: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_pillar?: string | undefined
+          p_search?: string | undefined
+          p_status?: string | undefined
+        }
+        Returns: Json
+      }
+      admin_mark_library_content_reviewed: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      admin_transition_library_content_status: {
+        Args: { p_id: string; p_scheduled_at?: string | undefined; p_status: string }
+        Returns: undefined
+      }
+      admin_update_library_content: {
+        Args: {
+          p_bible_excerpt?: string | undefined
+          p_bible_reference?: string | undefined
+          p_body?: string | undefined
+          p_category?: string | undefined
+          p_cover_image_url?: string | undefined
+          p_cover_storage_path?: string | undefined
+          p_difficulty?: string | undefined
+          p_final_message?: string | undefined
+          p_id: string
+          p_introduction?: string | undefined
+          p_pillar?: string | undefined
+          p_practical_application?: string | undefined
+          p_reading_time_minutes?: number | undefined
+          p_reflection_question?: string | undefined
+          p_related_challenge_id?: string | undefined
+          p_related_habit_id?: string | undefined
+          p_requires_enhanced_review?: boolean | undefined
+          p_small_action?: string | undefined
+          p_subtitle?: string | undefined
+          p_summary?: string | undefined
+          p_tags?: string[] | undefined
+          p_title?: string | undefined
+        }
+        Returns: undefined
+      }
       admin_create_notification_campaign: {
         Args: {
           p_action_label?: string | undefined
@@ -2494,6 +2769,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      automation_resolve_important_update_audience: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
       automation_resolve_new_tip_subscribers_audience: {
         Args: never
         Returns: {
@@ -2598,6 +2880,38 @@ export type Database = {
       mark_notification_read: {
         Args: { p_notification_id: string }
         Returns: undefined
+      }
+      member_get_library_content: {
+        Args: { p_slug: string }
+        Returns: Json
+      }
+      member_get_library_recommendation: { Args: never; Returns: Json }
+      member_list_journal_challenges: { Args: never; Returns: Json }
+      member_list_library_contents: {
+        Args: {
+          p_category?: string | undefined
+          p_challenge_id?: string | undefined
+          p_limit?: number
+          p_offset?: number
+          p_pillar?: string | undefined
+          p_search?: string | undefined
+        }
+        Returns: Json
+      }
+      member_upsert_library_progress: {
+        Args: { p_content_id: string; p_progress_percent?: number | undefined; p_status: string }
+        Returns: undefined
+      }
+      member_list_journal_entries: {
+        Args: {
+          p_challenge_id?: string | undefined
+          p_limit?: number
+          p_offset?: number
+          p_only_with_content?: boolean
+          p_period_days?: number | undefined
+          p_search?: string | undefined
+        }
+        Returns: Json
       }
       member_pick_daily_mission_message: { Args: never; Returns: Json }
       member_pick_faith_message: { Args: never; Returns: Json }

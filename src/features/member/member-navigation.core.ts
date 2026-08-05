@@ -1,5 +1,6 @@
 import {
   Bell,
+  BookOpen,
   Bug,
   Download,
   Flag,
@@ -51,6 +52,7 @@ export const DESAFIOS_ITEM: MemberNavItem = { href: "/app/desafios", icon: Flag,
 export const DICAS_ITEM: MemberNavItem = { href: "/app/dicas", icon: Lightbulb, label: "Dicas" };
 export const CONQUISTAS_ITEM: MemberNavItem = { href: "/app/conquistas", icon: Medal, label: "Conquistas" };
 export const DIARIO_ITEM: MemberNavItem = { href: "/app/diario", icon: NotebookPen, label: "Diário" };
+export const BIBLIOTECA_ITEM: MemberNavItem = { href: "/app/biblioteca", icon: BookOpen, label: "Biblioteca" };
 export const FEEDBACK_ITEM: MemberNavItem = { href: "/app/feedback", icon: MessageCircle, label: "Feedback" };
 // Os 3 itens abaixo, em vez de um único "Enviar feedback" genérico, deixam
 // o convite mais humano e concreto - reaproveitam a MESMA rota/formulário,
@@ -109,7 +111,7 @@ export const PRIMARY_MOBILE_ITEMS: MemberNavItem[] = [DASHBOARD_ITEM, HOJE_ITEM,
  */
 export const DESKTOP_SIDEBAR_GROUPS: MemberNavGroup[] = [
   { items: [DASHBOARD_ITEM, HOJE_ITEM, DESAFIOS_ITEM, JORNADA_ITEM, DICAS_ITEM], title: "Principal" },
-  { items: [CONQUISTAS_ITEM, DIARIO_ITEM], title: "Minha evolução" },
+  { items: [CONQUISTAS_ITEM, DIARIO_ITEM, BIBLIOTECA_ITEM], title: "Minha evolução" },
   { items: [FEEDBACK_ITEM, CONFIGURACOES_ITEM], title: "Suporte e conta" },
   { items: [ADMIN_ITEM], title: "Administração" },
 ];
@@ -136,6 +138,7 @@ export const MORE_HUB_GROUPS: MemberNavGroup[] = [
       { ...CONQUISTAS_ITEM, description: "Veja seus marcos e compartilhamentos." },
       { ...DIARIO_ITEM, description: "Relembre suas reflexões e registros." },
       { ...DICAS_ITEM, description: "Conteúdos para apoiar sua jornada." },
+      { ...BIBLIOTECA_ITEM, description: "Conteúdos para Corpo, Mente, Caráter e Espírito." },
     ],
     title: "Minha evolução",
   },
@@ -157,6 +160,8 @@ export const MAIS_ACTIVE_PREFIXES = [
   "/app/conquistas",
   "/app/diario",
   "/app/dicas",
+  "/app/biblioteca",
+  "/app/leitura",
   "/app/configuracoes",
   "/app/feedback",
   "/app/perfil",

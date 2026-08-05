@@ -25,9 +25,9 @@ describe("Feedback added to the Admin nav (Rodada 5, Parte C.20)", () => {
     expect(desktopBody).toContain("navItems.map((item)");
   });
 
-  it("on mobile, less-frequent destinations (Conquistas, Configurações) are tucked under 'Mais' instead of adding a 10th flat tab", () => {
+  it("on mobile, less-frequent destinations (Conquistas, Biblioteca) are tucked under 'Mais' instead of adding a 10th flat tab", () => {
     expect(navItemsBlock).toMatch(/href: "\/admin\/conquistas"[^\n]*overflow: true/);
-    expect(navItemsBlock).toMatch(/href: "\/admin\/configuracoes"[^\n]*overflow: true/);
+    expect(navItemsBlock).toMatch(/href: "\/admin\/biblioteca"[^\n]*overflow: true/);
     expect(navItemsBlock).not.toMatch(/href: "\/admin\/feedback"[^\n]*overflow: true/);
   });
 
