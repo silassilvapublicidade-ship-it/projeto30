@@ -1,3 +1,8 @@
+// Lista canônica das 10 conquistas do desafio-base - o desbloqueio real
+// roda em SQL (finalize_daily_log_with_responses), mas esta lista continua
+// viva como guardrail: scripts administrativos de novos desafios (ver
+// august-challenge-script.test.ts) validam contra ela para garantir que
+// nenhum slug de conquista novo/renomeado seja introduzido sem revisão.
 export const initialAchievementSlugs = [
   "primeiro-habito",
   "primeiro-dia",
@@ -13,11 +18,6 @@ export const initialAchievementSlugs = [
 
 export type InitialAchievementSlug = (typeof initialAchievementSlugs)[number];
 
-export type AchievementRuleConfig = {
-  description: string;
-  slug: InitialAchievementSlug;
-};
-
 export type AchievementCheckInput = {
   completedCycle: boolean;
   completedHabitsLifetime: number;
@@ -30,104 +30,12 @@ export type AchievementCheckInput = {
   streakCurrent: number;
 };
 
-export type AchievementCheckResult = {
-  unlockedSlugs: InitialAchievementSlug[];
-};
-
-export const initialAchievementRules: AchievementRuleConfig[] = [
-  {
-    slug: "primeiro-habito",
-    description: "Desbloqueia ao concluir o primeiro habito do ciclo.",
-  },
-  {
-    slug: "primeiro-dia",
-    description: "Desbloqueia ao finalizar o primeiro dia.",
-  },
-  {
-    slug: "tres-dias-seguidos",
-    description: "Desbloqueia ao manter tres dias validos seguidos.",
-  },
-  {
-    slug: "primeira-semana",
-    description: "Desbloqueia ao finalizar sete dias do ciclo.",
-  },
-  {
-    slug: "sete-leituras",
-    description: "Desbloqueia ao concluir sete habitos de leitura.",
-  },
-  {
-    slug: "sete-atividades-fisicas",
-    description: "Desbloqueia ao concluir sete habitos de atividade fisica.",
-  },
-  {
-    slug: "sete-reflexoes",
-    description: "Desbloqueia ao registrar sete reflexoes.",
-  },
-  {
-    slug: "metade-do-caminho",
-    description: "Desbloqueia ao finalizar metade da duracao configurada.",
-  },
-  {
-    slug: "retorno-forte",
-    description: "Desbloqueia ao voltar com um dia valido depois de falhar.",
-  },
-  {
-    slug: "missao-concluida",
-    description: "Desbloqueia ao concluir a duracao configurada do ciclo.",
-  },
-];
-
-function assertNonNegativeInteger(value: number, field: string) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${field} precisa ser um inteiro nao negativo.`);
-  }
-}
-
 export function getHalfwayTarget(durationDays: number) {
   if (!Number.isInteger(durationDays) || durationDays < 1) {
     throw new Error("durationDays precisa ser um inteiro positivo.");
   }
 
   return Math.ceil(durationDays / 2);
-}
-
-export function getUnlockedAchievementSlugs(
-  input: AchievementCheckInput,
-  alreadyUnlocked: Iterable<string> = [],
-): AchievementCheckResult {
-  assertNonNegativeInteger(input.completedHabitsLifetime, "completedHabitsLifetime");
-  assertNonNegativeInteger(input.finalizedDays, "finalizedDays");
-  assertNonNegativeInteger(
-    input.physicalActivityCompletions,
-    "physicalActivityCompletions",
-  );
-  assertNonNegativeInteger(input.readingCompletions, "readingCompletions");
-  assertNonNegativeInteger(input.reflectionDays, "reflectionDays");
-  assertNonNegativeInteger(input.streakCurrent, "streakCurrent");
-
-  const unlocked = new Set(alreadyUnlocked);
-  const halfwayTarget = getHalfwayTarget(input.durationDays);
-  const candidates: Array<[InitialAchievementSlug, boolean]> = [
-    ["primeiro-habito", input.completedHabitsLifetime >= 1],
-    ["primeiro-dia", input.finalizedDays >= 1],
-    ["tres-dias-seguidos", input.streakCurrent >= 3],
-    ["primeira-semana", input.finalizedDays >= 7],
-    ["sete-leituras", input.readingCompletions >= 7],
-    ["sete-atividades-fisicas", input.physicalActivityCompletions >= 7],
-    ["sete-reflexoes", input.reflectionDays >= 7],
-    ["metade-do-caminho", input.finalizedDays >= halfwayTarget],
-    ["retorno-forte", input.returnStrong],
-    [
-      "missao-concluida",
-      input.completedCycle || input.finalizedDays >= input.durationDays,
-    ],
-  ];
-
-  return {
-    unlockedSlugs: candidates
-      .filter(([slug, qualifies]) => qualifies && !unlocked.has(slug))
-      .map(([slug]) => slug),
-  };
 }
 
 export type AchievementProgress = {
@@ -140,6 +48,11 @@ export type AchievementProgress = {
  * countable threshold. Returns null for slugs whose criterion is a boolean
  * condition (e.g. "retorno-forte") rather than a running count - there is
  * no honest fraction to show for those.
+ *
+ * O desbloqueio em si (quais conquistas viram unlocked) roda em SQL
+ * (finalize_daily_log_with_responses) - esta função só calcula o
+ * current/target exibido na UI para uma conquista ainda travada, nunca
+ * decide se ela desbloqueou.
  */
 export function getAchievementProgress(
   slug: string,

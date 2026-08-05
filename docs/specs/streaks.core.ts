@@ -1,3 +1,23 @@
+/**
+ * SPEC ONLY - NÃO EXECUTA EM PRODUÇÃO.
+ *
+ * Este arquivo documenta a lógica original de cálculo de streak (sequência
+ * de dias válidos), que foi a implementação real antes da rotina de
+ * finalização do dia migrar para SQL (`finalize_daily_log_with_responses`,
+ * ver supabase/migrations). A regra SQL é hoje a única fonte de verdade
+ * para streak - este arquivo nunca é importado por nenhum código em src/,
+ * não é parte do build, e existe só como referência histórica legível do
+ * algoritmo original em TypeScript.
+ *
+ * Movido para fora de src/ na rodada de consolidação (Parte G) após
+ * confirmar, por busca exaustiva de importadores, zero consumidores em
+ * produção (só era usado por seu próprio teste e por um teste de
+ * integração legado, ambos removidos junto com esta mudança).
+ *
+ * Não alterar regras de streak a partir deste arquivo - qualquer mudança
+ * real de streak deve ser feita na migration SQL correspondente.
+ */
+
 const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
 const millisecondsPerDay = 86_400_000;
 

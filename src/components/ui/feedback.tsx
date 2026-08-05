@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { AlertTriangle, Check, Inbox, Loader2, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Check, Inbox, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -84,24 +84,6 @@ export function EmptyState({
       <p className="mt-2 max-w-sm text-sm leading-6 text-muted">{description}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
-  );
-}
-
-export function Spinner({ className, ...props }: ComponentPropsWithoutRef<"span">) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-2 text-sm text-muted", className)}
-      role="status"
-      {...props}
-    >
-      <Loader2
-        aria-hidden="true"
-        className="animate-spin text-action"
-        size={16}
-        strokeWidth={2.2}
-      />
-      Carregando
-    </span>
   );
 }
 

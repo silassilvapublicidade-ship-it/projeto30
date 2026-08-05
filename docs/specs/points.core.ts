@@ -1,3 +1,23 @@
+/**
+ * SPEC ONLY - NÃO EXECUTA EM PRODUÇÃO.
+ *
+ * Este arquivo documenta a lógica original de cálculo de pontos do dia
+ * (habitos + bônus de reflexão/finalização/todos-os-hábitos), que foi a
+ * implementação real antes da rotina de finalização do dia migrar para SQL
+ * (`finalize_daily_log_with_responses`, ver supabase/migrations). A regra
+ * SQL é hoje a única fonte de verdade para pontuação - este arquivo nunca é
+ * importado por nenhum código em src/, não é parte do build, e existe só
+ * como referência histórica legível do algoritmo original em TypeScript.
+ *
+ * Movido para fora de src/ na rodada de consolidação (Parte G) após
+ * confirmar, por busca exaustiva de importadores, zero consumidores em
+ * produção (só era usado por seu próprio teste e por um teste de
+ * integração legado, ambos removidos junto com esta mudança).
+ *
+ * Não alterar regras de pontos a partir deste arquivo - qualquer mudança
+ * real de pontuação deve ser feita na migration SQL correspondente.
+ */
+
 export type HabitPointStatus = "pending" | "completed" | "not_applicable" | "skipped";
 
 export type HabitPointInput = {
