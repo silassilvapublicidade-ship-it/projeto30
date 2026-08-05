@@ -7,12 +7,8 @@ import { StatLine } from "@/components/admin/stat-line";
 import { Button } from "@/components/ui/button";
 import { executeSystemErrorPurgeAction } from "@/features/admin/retention-purge.actions";
 import { RETENTION_PURGE_CONFIRMATION_PHRASE } from "@/features/observability/system-error.core";
+import { formatProjectDate } from "@/lib/format-date";
 import type { SystemErrorPurgePreview } from "@/server/services/system-observability.service";
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString("pt-BR");
-}
 
 export function RetentionPurgePanel({
   isSuperAdmin,
@@ -41,7 +37,7 @@ export function RetentionPurgePanel({
         <div className="grid gap-2 sm:grid-cols-2">
           <StatLine text={`${preview.eligibleCount} diagnóstico(s) elegível(is) para remoção`} tone="attention" />
           <StatLine
-            text={`Período: ${formatDate(preview.oldestResolvedAt)} até ${formatDate(preview.newestResolvedAt)}`}
+            text={`Período: ${formatProjectDate(preview.oldestResolvedAt)} até ${formatProjectDate(preview.newestResolvedAt)}`}
             tone="neutral"
           />
           {severityEntries.length > 0 ? (

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/feedback";
 import { TodayInteractiveSection } from "@/components/member/today-interactive-section";
 import { resolveDailyChallengeMessage } from "@/features/journey/progress-motivation.core";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import type {
   EnrollmentDayContext,
   MemberContext,
@@ -59,8 +60,7 @@ function SecondaryContext() {
 }
 
 function NoCycleToday({ context }: { context: MemberContext }) {
-  const displayName =
-    context.profile.display_name || context.profile.name || context.profile.email;
+  const displayName = resolveUserDisplayName(context.profile);
 
   return (
     <div className="relative isolate overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-5 shadow-[var(--shadow-soft)] sm:p-8">
@@ -208,8 +208,7 @@ export function TodayExperience({
   context: MemberContext;
   notice?: TodayJourneyNotice | null;
 }) {
-  const displayName =
-    context.profile.display_name || context.profile.name || context.profile.email;
+  const displayName = resolveUserDisplayName(context.profile);
 
   if (context.enrollments.length === 0) {
     return (

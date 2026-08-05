@@ -10,6 +10,7 @@ import { NotificationBellLink } from "@/components/member/notification-bell-link
 import { SignOutForm } from "@/components/member/sign-out-form";
 import { Button } from "@/components/ui/button";
 import { isAdminRole } from "@/features/admin/admin-access.core";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import type { MemberContext } from "@/server/services/member-area.service";
 
 export function MemberShell({
@@ -21,8 +22,7 @@ export function MemberShell({
   context: MemberContext;
   unreadNotificationCount: number;
 }) {
-  const displayName =
-    context.profile.display_name || context.profile.name || context.profile.email;
+  const displayName = resolveUserDisplayName(context.profile);
   const enrollmentCount = context.enrollments.length;
   const firstEnrollment = context.enrollments[0]?.enrollment ?? null;
   const cycleLabel =

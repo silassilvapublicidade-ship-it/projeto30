@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import { getTotalPages, parseUserListParams } from "@/features/admin/admin-analytics.schemas";
+import { formatProjectDate } from "@/lib/format-date";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import { ADMIN_USER_PAGE_SIZE, listAdminUsers } from "@/server/services/admin-users.service";
 
 export const metadata: Metadata = {
@@ -294,7 +296,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                       className="font-semibold text-foreground hover:text-action-soft focus-visible:outline-action-soft"
                       href={`/admin/usuarios/${user.id}`}
                     >
-                      {user.display_name || user.name || user.email}
+                      {resolveUserDisplayName(user)}
                     </Link>
                     <p className="truncate font-mono text-xs text-muted-2">{user.email}</p>
                   </td>
@@ -310,7 +312,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   </td>
                   <td className="px-4 py-3 text-muted">{user.active_challenge_count}</td>
                   <td className="px-4 py-3 text-muted">
-                    {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                    {formatProjectDate(user.created_at)}
                   </td>
                   <td className="px-4 py-3">
                     <UserRowActions

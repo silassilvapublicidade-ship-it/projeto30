@@ -16,6 +16,7 @@ import {
   STORAGE_BUCKET_LABELS,
   type StorageBucketId,
 } from "@/features/admin/storage-audit.core";
+import { formatProjectDateTime } from "@/lib/format-date";
 import type { StorageAuditRunResult } from "@/server/services/storage-audit.service";
 
 function formatBytes(bytes: number) {
@@ -24,11 +25,6 @@ function formatBytes(bytes: number) {
   const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   const value = bytes / 1024 ** exponent;
   return `${value.toFixed(exponent === 0 ? 0 : 1)} ${units[exponent]}`;
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 const statusLabel: Record<string, string> = {
@@ -150,7 +146,7 @@ export function StorageAuditPanel({ canCleanup }: { canCleanup: boolean }) {
         </Button>
         {result ? (
           <span className="text-xs text-muted-2">
-            Concluída em {formatDateTime(result.finishedAt)} · {(result.durationMs / 1000).toFixed(1)}s
+            Concluída em {formatProjectDateTime(result.finishedAt)} · {(result.durationMs / 1000).toFixed(1)}s
           </span>
         ) : null}
       </div>

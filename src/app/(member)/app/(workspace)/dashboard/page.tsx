@@ -34,6 +34,7 @@ import {
   TIMELINE_FILTERS,
   type TimelineFilterKey,
 } from "@/features/profile/profile-evolution.core";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import { getMemberAchievements } from "@/server/services/achievements.service";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { getMemberContext } from "@/server/services/member-area.service";
@@ -91,7 +92,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const context = await getMemberContext();
   const profile = context.profile;
-  const displayName = profile.display_name || profile.name || profile.email;
+  const displayName = resolveUserDisplayName(profile);
   const timezone = profile.timezone || "America/Sao_Paulo";
   const today = getDateOnlyInTimeZone(new Date(), timezone);
   const yesterday = getPreviousDateOnly(today);

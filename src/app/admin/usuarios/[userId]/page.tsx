@@ -7,6 +7,8 @@ import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { UserDetailActions } from "@/components/admin/user-detail-actions";
 import { UserEditForm } from "@/components/admin/user-edit-form";
 import { StatusCard } from "@/components/ui/feedback";
+import { formatProjectDate } from "@/lib/format-date";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import {
   getAdminUserDetail,
   listPublishedChallengesForEnrollPicker,
@@ -38,10 +40,6 @@ const enrollmentStatusLabels: Record<string, string> = {
   paused: "Pausado",
   restarted: "Reiniciado",
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("pt-BR");
-}
 
 type UserDetailPageProps = {
   params: Promise<{ userId: string }>;
@@ -86,7 +84,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
         </Link>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <h1 className="min-w-0 break-words text-2xl font-semibold text-foreground">
-            {profile.display_name || profile.name || profile.email}
+            {resolveUserDisplayName(profile)}
           </h1>
           <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs font-semibold text-muted">
             {roleLabels[profile.role] ?? profile.role}
@@ -106,7 +104,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
       <div className="grid gap-3 sm:grid-cols-3">
         <AdminMetricCard label="Desafios ativos" value={String(activeEnrollmentIds.size)} />
         <AdminMetricCard label="Conquistas desbloqueadas" value={String(achievements.length)} />
-        <AdminMetricCard label="Criado em" value={formatDate(profile.created_at)} />
+        <AdminMetricCard label="Criado em" value={formatProjectDate(profile.created_at)} />
       </div>
 
       <section className="space-y-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4">
@@ -149,7 +147,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
                         <td className="py-2 pr-3 text-muted">
                           {enrollment.streak_current} (melhor: {enrollment.streak_best})
                         </td>
-                        <td className="py-2 pr-3 text-muted">{formatDate(enrollment.joined_at)}</td>
+                        <td className="py-2 pr-3 text-muted">{formatProjectDate(enrollment.joined_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -171,7 +169,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
                   >
                     <p className="text-sm font-semibold text-foreground">{achievement.name}</p>
                     <p className="text-xs text-muted-2">
-                      {achievement.category} · {achievement.rarity} · {formatDate(achievement.unlocked_at)}
+                      {achievement.category} · {achievement.rarity} · {formatProjectDate(achievement.unlocked_at)}
                     </p>
                   </li>
                 ))}
@@ -188,7 +186,7 @@ export default async function AdminUserDetailPage({ params }: UserDetailPageProp
                 {auditLogs.map((log, index) => (
                   <li className="flex items-center justify-between gap-3 text-muted" key={`${log.action}-${index}`}>
                     <span>{log.action}</span>
-                    <span className="text-xs text-muted-2">{formatDate(log.created_at)}</span>
+                    <span className="text-xs text-muted-2">{formatProjectDate(log.created_at)}</span>
                   </li>
                 ))}
               </ul>

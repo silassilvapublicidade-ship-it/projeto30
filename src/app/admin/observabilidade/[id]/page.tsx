@@ -16,6 +16,7 @@ import {
   SYSTEM_ERROR_STATUSES,
 } from "@/features/observability/system-error.core";
 import { resolveSystemErrorEventAction } from "@/features/observability/observability-admin.actions";
+import { formatProjectDateTime } from "@/lib/format-date";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 import { getSystemErrorEvent } from "@/server/services/system-observability.service";
 
@@ -32,11 +33,6 @@ const feedbackMessages: Record<string, { description: string; title: string; ton
     tone: "error",
   },
 };
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 type ObservabilityDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -62,7 +58,7 @@ export default async function ObservabilityDetailPage({ params, searchParams }: 
     appVersion: event.app_version,
     errorCode: event.error_code,
     messageSafe: event.message_safe,
-    occurredAt: formatDateTime(event.last_seen_at),
+    occurredAt: formatProjectDateTime(event.last_seen_at),
     operation: event.operation,
     route: event.route,
   });
@@ -97,11 +93,11 @@ export default async function ObservabilityDetailPage({ params, searchParams }: 
         </div>
         <div>
           <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Primeira vez</p>
-          <p className="mt-1 text-foreground">{formatDateTime(event.first_seen_at)}</p>
+          <p className="mt-1 text-foreground">{formatProjectDateTime(event.first_seen_at)}</p>
         </div>
         <div>
           <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Última vez</p>
-          <p className="mt-1 text-foreground">{formatDateTime(event.last_seen_at)}</p>
+          <p className="mt-1 text-foreground">{formatProjectDateTime(event.last_seen_at)}</p>
         </div>
         <div>
           <p className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Rota</p>

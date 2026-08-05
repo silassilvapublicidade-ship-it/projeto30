@@ -14,6 +14,7 @@ import {
   type FeedbackStatus,
 } from "@/features/feedback/feedback.core";
 import { withdrawFeedbackAction } from "@/features/feedback/feedback.actions";
+import { formatProjectDate } from "@/lib/format-date";
 import { listMyFeedback } from "@/server/services/feedback.service";
 
 export const metadata: Metadata = {
@@ -27,10 +28,6 @@ const statusTone: Record<FeedbackStatus, "accent" | "neutral" | "success" | "war
   resolved: "success",
   closed: "neutral",
 };
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("pt-BR");
-}
 
 export default async function MyFeedbackPage() {
   const items = await listMyFeedback();
@@ -74,7 +71,7 @@ export default async function MyFeedbackPage() {
                     <p className="mt-2 text-sm font-semibold text-foreground">{item.title}</p>
                     <p className="mt-1 text-xs text-muted-2">
                       {isFeedbackType(item.feedback_type) ? FEEDBACK_TYPE_LABELS[item.feedback_type] : item.feedback_type} ·{" "}
-                      {formatDate(item.created_at)}
+                      {formatProjectDate(item.created_at)}
                     </p>
 
                     {item.admin_response ? (

@@ -20,15 +20,11 @@ import {
 import { updateFeedbackAction } from "@/features/admin/feedback-admin.actions";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { formatProjectDateTime } from "@/lib/format-date";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 import { adminGetFeedbackDetail } from "@/server/services/feedback.service";
 
 export const metadata: Metadata = { title: "Feedback · Administração" };
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 type FeedbackDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -94,7 +90,7 @@ export default async function AdminFeedbackDetailPage({ params, searchParams }: 
           </div>
           <div>
             <dt className="font-mono uppercase tracking-[0.16em] text-muted-2">Enviado em</dt>
-            <dd className="mt-1 text-foreground">{formatDateTime(detail.createdAt)}</dd>
+            <dd className="mt-1 text-foreground">{formatProjectDateTime(detail.createdAt)}</dd>
           </div>
           <div>
             <dt className="font-mono uppercase tracking-[0.16em] text-muted-2">Contato autorizado</dt>

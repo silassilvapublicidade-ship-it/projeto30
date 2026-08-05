@@ -15,6 +15,7 @@ import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { APP_VERSION, getDeployInfo, LATEST_MIGRATION_ID, SERVICE_WORKER_VERSION } from "@/config/system-version";
 import { describeCronEvidenceLabel, describeCronHealth } from "@/features/admin/cron-schedule.core";
 import { buildHealthAlerts } from "@/features/observability/health-alerts.core";
+import { formatProjectDateTime } from "@/lib/format-date";
 import {
   SYSTEM_ERROR_AREA_LABELS,
   SYSTEM_ERROR_AREAS,
@@ -73,11 +74,6 @@ const sectionBadgeLabel: Record<CockpitBlockStatus, string> = {
   degradado: "Degradado",
   critico: "Crítico",
 };
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -297,7 +293,7 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
             />
             {latestStorageAuditRun ? (
               <StatLine
-                text={`Storage: ${latestStorageAuditRun.orphanCount} órfão(s), ${latestStorageAuditRun.missingReferenceCount} referência(s) ausente(s) (auditoria ${formatDateTime(latestStorageAuditRun.startedAt)})`}
+                text={`Storage: ${latestStorageAuditRun.orphanCount} órfão(s), ${latestStorageAuditRun.missingReferenceCount} referência(s) ausente(s) (auditoria ${formatProjectDateTime(latestStorageAuditRun.startedAt)})`}
                 tone={latestStorageAuditRun.missingReferenceCount > 0 || latestStorageAuditRun.orphanCount > 0 ? "attention" : "positive"}
               />
             ) : (
@@ -463,7 +459,7 @@ export default async function ObservabilityPage({ searchParams }: ObservabilityP
                     <p className="mt-2 break-words text-sm text-muted">{row.message_safe}</p>
                     <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.68rem] text-muted-2">
                       <span>{SYSTEM_ERROR_AREA_LABELS[row.area] ?? row.area}</span>
-                      <span>{row.occurrence_count}× · última vez {formatDateTime(row.last_seen_at)}</span>
+                      <span>{row.occurrence_count}× · última vez {formatProjectDateTime(row.last_seen_at)}</span>
                     </p>
                   </li>
                 ))}

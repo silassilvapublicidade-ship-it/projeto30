@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { MemberAvatar } from "@/components/member/member-avatar";
 import { ProfileEditLink } from "@/components/member/profile-edit-link";
 import { Card } from "@/components/ui/card";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import type { MemberContext } from "@/server/services/member-area.service";
 
 /**
@@ -16,7 +17,7 @@ import type { MemberContext } from "@/server/services/member-area.service";
  */
 export function MaisHeader({ context }: { context: MemberContext }) {
   const profile = context.profile;
-  const displayName = profile.display_name || profile.name || profile.email;
+  const displayName = resolveUserDisplayName(profile);
   const enrollmentCount = context.enrollments.length;
   const firstEnrollment = context.enrollments[0]?.enrollment ?? null;
   const showRoleBadge = profile.role === "admin" || profile.role === "super_admin";

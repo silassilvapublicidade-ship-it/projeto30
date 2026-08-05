@@ -1,11 +1,8 @@
 import Link from "next/link";
 
 import { describeActivityCategory, describeAuditAction } from "@/features/admin/admin-activity.core";
+import { formatProjectDateTime } from "@/lib/format-date";
 import type { RecentActivityItem } from "@/server/services/admin-operational-overview.service";
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 function describeItem(item: RecentActivityItem) {
   if (item.category === "admin") {
@@ -36,7 +33,7 @@ export function CockpitRecentActivity({ items }: { items: RecentActivityItem[] }
                 {item.actor_name ? ` · ${item.actor_name}` : ""}
               </p>
             </div>
-            <span className="shrink-0 font-mono text-[0.68rem] text-muted-2">{formatDateTime(item.occurred_at)}</span>
+            <span className="shrink-0 font-mono text-[0.68rem] text-muted-2">{formatProjectDateTime(item.occurred_at)}</span>
           </div>
         );
 

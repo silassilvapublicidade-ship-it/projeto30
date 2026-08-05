@@ -21,6 +21,7 @@ import {
   type FeedbackPriority,
   type FeedbackStatus,
 } from "@/features/feedback/feedback.core";
+import { formatProjectDateTime } from "@/lib/format-date";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 import { adminListFeedback } from "@/server/services/feedback.service";
 
@@ -45,10 +46,6 @@ const priorityTone: Record<FeedbackPriority, "accent" | "neutral" | "success" | 
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 type FeedbackListPageProps = {
@@ -174,7 +171,7 @@ export default async function AdminFeedbackPage({ searchParams }: FeedbackListPa
                     <span>{FEEDBACK_CATEGORY_LABELS[row.category as keyof typeof FEEDBACK_CATEGORY_LABELS] ?? row.category}</span>
                   ) : null}
                   <span>{row.user_display_name ?? "Usuário"}</span>
-                  <span>{formatDateTime(row.created_at)}</span>
+                  <span>{formatProjectDateTime(row.created_at)}</span>
                   {row.diagnostic_code ? <span className="font-mono">{row.diagnostic_code}</span> : null}
                   {row.has_attachment ? <span>📎 Anexo</span> : null}
                 </p>

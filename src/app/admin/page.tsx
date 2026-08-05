@@ -14,6 +14,7 @@ import { APP_VERSION, getDeployInfo, LATEST_MIGRATION_ID, SERVICE_WORKER_VERSION
 import { isCockpitPeriod, type CockpitPeriod } from "@/features/admin/admin-activity.core";
 import { describeCronEvidenceLabel, describeCronHealth, getNextExpectedCronRun } from "@/features/admin/cron-schedule.core";
 import { buildHealthAlerts, describeOperationalSummary } from "@/features/observability/health-alerts.core";
+import { formatProjectDateTime } from "@/lib/format-date";
 import { recordAnalyticsEvent } from "@/server/services/analytics.service";
 import { requireAdminUser } from "@/server/services/admin-session.service";
 import {
@@ -31,11 +32,6 @@ const cronStatusBadgeTone = {
   atencao: "warning",
   critico: "danger",
 } as const;
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
 
 type AdminOverviewPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -235,7 +231,7 @@ export default async function AdminOverviewPage({ searchParams }: AdminOverviewP
             </div>
             <div className="col-span-2">
               <dt className="font-mono text-[0.62rem] uppercase tracking-[0.16em] text-muted-2">Próxima expectativa</dt>
-              <dd className="mt-1 text-foreground">{formatDateTime(nextExpectedCronRun.toISOString())}</dd>
+              <dd className="mt-1 text-foreground">{formatProjectDateTime(nextExpectedCronRun.toISOString())}</dd>
             </div>
           </dl>
           <p className="text-xs leading-5 text-muted-2">{overview.cronNote}</p>

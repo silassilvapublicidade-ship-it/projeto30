@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/field";
 import { TIP_CATEGORIES } from "@/features/admin/admin-tips.schemas";
 import { getTotalPages } from "@/features/admin/admin-analytics.schemas";
 import { describeInstrumentationWindow, formatCount } from "@/features/admin/admin-metrics.core";
+import { formatProjectDate } from "@/lib/format-date";
 import { getAdminTipsAnalytics } from "@/server/services/admin-analytics.service";
 import {
   ADMIN_TIP_PAGE_SIZE,
@@ -245,17 +246,17 @@ export default async function AdminDicasPage({ searchParams }: AdminDicasPagePro
                   <td className="px-4 py-3 text-muted">{statusLabels[tip.status] ?? tip.status}</td>
                   <td className="px-4 py-3 text-muted">{tip.display_order}</td>
                   <td className="px-4 py-3 text-muted">
-                    {new Date(tip.created_at).toLocaleDateString("pt-BR")}
+                    {formatProjectDate(tip.created_at)}
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {tip.published_at ? new Date(tip.published_at).toLocaleDateString("pt-BR") : "—"}
+                    {formatProjectDate(tip.published_at)}
                   </td>
                   <td className="px-4 py-3 text-muted">
                     {tip.starts_at || tip.ends_at ? (
                       <>
-                        {tip.starts_at ? new Date(tip.starts_at).toLocaleDateString("pt-BR") : "—"}
+                        {formatProjectDate(tip.starts_at)}
                         {" – "}
-                        {tip.ends_at ? new Date(tip.ends_at).toLocaleDateString("pt-BR") : "—"}
+                        {formatProjectDate(tip.ends_at)}
                       </>
                     ) : (
                       "Sempre"

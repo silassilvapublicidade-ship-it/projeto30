@@ -9,6 +9,7 @@ import { InstallAppPrompt } from "@/components/pwa/install-app-prompt";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isAdminRole } from "@/features/admin/admin-access.core";
+import { resolveUserDisplayName } from "@/lib/user-display";
 import { getMemberContext } from "@/server/services/member-area.service";
 
 export const metadata: Metadata = {
@@ -44,7 +45,7 @@ function ProfileSection({
 export default async function EditarPerfilPage() {
   const context = await getMemberContext();
   const profile = context.profile;
-  const displayName = profile.display_name || profile.name || profile.email;
+  const displayName = resolveUserDisplayName(profile);
 
   return (
     <div className="space-y-6">
