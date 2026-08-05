@@ -136,6 +136,39 @@ describe("/app/dashboard - Dashboard de Evolucao Pessoal, entrada principal da a
   });
 });
 
+describe("/app/dashboard - feedback discoverability fix", () => {
+  const source = readSource("src", "app", "(member)", "app", "(workspace)", "dashboard", "page.tsx");
+
+  it("renders DashboardFeedbackFooter unconditionally - it's the one path reachable in at most 2 taps from any screen (Dashboard is a mainItem, reachable from the mobile bottom nav)", () => {
+    expect(source).toContain("<DashboardFeedbackFooter />");
+    // Outside the {!hasAnyHistory ? ... : (...)} branch, so new users see it too.
+    const footerAt = source.indexOf("<DashboardFeedbackFooter");
+    const branchCloseAt = source.lastIndexOf(")}", footerAt);
+    expect(footerAt).toBeGreaterThan(branchCloseAt);
+  });
+
+  it("sits after every real content section - never in the first fold, never competing with the daily mission", () => {
+    const missionAt = source.indexOf("<DashboardMissionBlock");
+    const footerAt = source.indexOf("<DashboardFeedbackFooter");
+    expect(footerAt).toBeGreaterThan(missionAt);
+  });
+});
+
+describe("DashboardFeedbackFooter component", () => {
+  const source = readSource("src", "components", "member", "dashboard-feedback-footer.tsx");
+
+  it("links to both /app/feedback and /app/feedback/meus with the exact requested copy", () => {
+    expect(source).toContain('href="/app/feedback"');
+    expect(source).toContain('href="/app/feedback/meus"');
+    expect(source).toContain("Ajude a melhorar o Projeto 30");
+    expect(source).toContain(
+      "Encontrou algum problema ou teve uma ideia? Seu feedback ajuda a tornar a experiência melhor para todos.",
+    );
+    expect(source).toContain("Enviar feedback");
+    expect(source).toContain("Acompanhar meus feedbacks");
+  });
+});
+
 describe("/app/dashboard - dedicated loading skeleton", () => {
   const source = readSource("src", "app", "(member)", "app", "(workspace)", "dashboard", "loading.tsx");
 

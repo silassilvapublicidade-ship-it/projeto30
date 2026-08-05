@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bell, ChevronRight, MessageCircle, Settings } from "lucide-react";
+import { Bell, ChevronRight, MessageCircle, MessagesSquare, Settings } from "lucide-react";
 
 import { MemberEmptyPage } from "@/components/member/member-empty-page";
 import { Card } from "@/components/ui/card";
@@ -63,19 +63,38 @@ export default async function ConfiguracoesPage() {
         <ChevronRight aria-hidden="true" className="shrink-0 text-muted-2" size={16} />
       </Link>
 
-      <Link
-        className="mt-3 flex items-center gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
-        href="/app/feedback"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-action/12 text-action-soft">
-          <MessageCircle aria-hidden="true" size={16} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-foreground">Feedback</span>
-          <span className="block text-xs text-muted-2">Relate um problema, sugira algo ou avalie sua experiência</span>
-        </span>
-        <ChevronRight aria-hidden="true" className="shrink-0 text-muted-2" size={16} />
-      </Link>
+      <div className="mt-6">
+        <h2 className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-muted-2">A ajuda do Projeto 30</h2>
+        <div className="mt-3 space-y-3">
+          <Link
+            className="flex items-center gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
+            href="/app/feedback"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-action/12 text-action-soft">
+              <MessageCircle aria-hidden="true" size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-foreground">Enviar feedback</span>
+              <span className="block text-xs text-muted-2">Encontrou um problema ou tem uma sugestão? Conte para nós.</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="shrink-0 text-muted-2" size={16} />
+          </Link>
+
+          <Link
+            className="flex items-center gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.035] p-4 transition-colors hover:border-white/14 hover:bg-white/[0.05] focus-visible:outline-action-soft"
+            href="/app/feedback/meus"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-action/12 text-action-soft">
+              <MessagesSquare aria-hidden="true" size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-foreground">Meus feedbacks</span>
+              <span className="block text-xs text-muted-2">Acompanhe seus relatos e veja as respostas recebidas.</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="shrink-0 text-muted-2" size={16} />
+          </Link>
+        </div>
+      </div>
     </MemberEmptyPage>
   );
 }

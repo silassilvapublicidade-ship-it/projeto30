@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DashboardContextMessage } from "@/components/member/dashboard-context-message";
 import { DashboardExploreChallengesBanner, DashboardNewJourneyHero } from "@/components/member/dashboard-empty-state";
+import { DashboardFeedbackFooter } from "@/components/member/dashboard-feedback-footer";
 import { DashboardMissionBlock, type MissionCardData } from "@/components/member/dashboard-mission-block";
 import { DashboardNarrativeSummary } from "@/components/member/dashboard-narrative-summary";
 import { DashboardNextMilestone } from "@/components/member/dashboard-next-milestone";
@@ -333,6 +334,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <ProfileRecentEvolution days={recentEvolutionDays} period={period} />
         </>
       )}
+
+      <DashboardFeedbackFooter />
     </div>
   );
 }

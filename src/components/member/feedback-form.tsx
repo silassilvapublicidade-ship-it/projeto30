@@ -82,11 +82,16 @@ export function FeedbackForm({
 
   if (state.ok) {
     return (
-      <StatusCard
-        description={`Protocolo ${state.protocolCode}. Analisamos os relatos regularmente - a resposta pode levar alguns dias. Acompanhe em "Meus feedbacks".`}
-        title={FEEDBACK_SUBMITTED_MESSAGE}
-        tone="success"
-      />
+      <div className="space-y-4">
+        <StatusCard
+          description={`Protocolo ${state.protocolCode}. Analisamos os relatos regularmente - a resposta pode levar alguns dias.`}
+          title={FEEDBACK_SUBMITTED_MESSAGE}
+          tone="success"
+        />
+        <Button as="a" href="/app/feedback/meus">
+          Ver meus feedbacks
+        </Button>
+      </div>
     );
   }
 

@@ -50,7 +50,15 @@ export default async function MyFeedbackPage() {
 
         {items.length === 0 ? (
           <Card className="p-4 sm:p-6">
-            <EmptyState description="Você ainda não enviou nenhum feedback." title="Nada por aqui ainda" />
+            <EmptyState
+              action={
+                <Button as="a" href="/app/feedback">
+                  Enviar meu primeiro feedback
+                </Button>
+              }
+              description="Você ainda não enviou nenhum feedback."
+              title="Nada por aqui ainda"
+            />
           </Card>
         ) : (
           <ul className="space-y-3">
