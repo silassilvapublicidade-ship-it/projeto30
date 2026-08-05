@@ -57,7 +57,7 @@ describe("admin analytics SQL migration", () => {
     );
   });
 
-  it("only includes reflections in the participant detail payload for super_admin", () => {
+  it("originally gated reflection content behind super_admin - superseded by 0081, which now redacts content for every admin instead (see journal-privacy-hardening-sql-regression.test.ts)", () => {
     expect(migration).toContain("if v_role = 'super_admin' then");
     expect(migration).toContain("'reflections_visible', v_role = 'super_admin'");
   });

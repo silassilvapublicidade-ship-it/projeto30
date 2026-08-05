@@ -91,16 +91,7 @@ export default async function AdminParticipantDetailPage({
   const backHref = `/admin/desafios/${challengeId}/participantes`;
   const selfHref = `/admin/desafios/${challengeId}/participantes/${enrollmentId}`;
   const feedback = feedbackKey ? enrollmentFeedbackMessages[feedbackKey] : undefined;
-  const reflectionsWithContent = (data.reflections ?? []).filter((entry) =>
-    [
-      entry.content,
-      entry.gratitude,
-      entry.difficulty,
-      entry.victory,
-      entry.tomorrow_focus,
-      entry.mood,
-    ].some((value) => value && value.trim().length > 0),
-  );
+  const reflectionsWithContent = (data.reflections ?? []).filter((entry) => entry.has_content);
 
   return (
     <div className="space-y-6">
@@ -230,67 +221,31 @@ export default async function AdminParticipantDetailPage({
         >
           Reflexões
         </h2>
-        {!data.reflections_visible ? (
-          <div className="flex items-center gap-2 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted">
-            <Lock aria-hidden="true" size={15} />
-            Reflexões são visíveis apenas para super admin.
-          </div>
-        ) : reflectionsWithContent.length === 0 ? (
+        <p className="text-xs leading-5 text-muted-2">
+          O conteúdo do diário é privado. Aqui só é possível confirmar que uma reflexão existe, nunca lê-la.
+        </p>
+        {reflectionsWithContent.length === 0 ? (
           <EmptyState
             description="Este participante ainda não escreveu nenhuma reflexão."
             title="Sem reflexões"
           />
         ) : (
-          <div className="space-y-3">
+          <ul className="space-y-2">
             {reflectionsWithContent.map((entry) => (
-              <div
-                className="rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-4"
+              <li
+                className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-3 text-sm"
                 key={entry.log_date}
               >
-                <p className="font-mono text-xs uppercase tracking-[0.14em] text-action-soft">
+                <span className="font-mono text-xs uppercase tracking-[0.14em] text-action-soft">
                   {formatDate(entry.log_date)}
-                </p>
-                <dl className="mt-3 space-y-2 text-sm leading-6 text-muted">
-                  {entry.content ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">Como foi o dia</dt>
-                      <dd>{entry.content}</dd>
-                    </div>
-                  ) : null}
-                  {entry.gratitude ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">Gratidão</dt>
-                      <dd>{entry.gratitude}</dd>
-                    </div>
-                  ) : null}
-                  {entry.difficulty ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">O que pesou</dt>
-                      <dd>{entry.difficulty}</dd>
-                    </div>
-                  ) : null}
-                  {entry.victory ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">O que venceu</dt>
-                      <dd>{entry.victory}</dd>
-                    </div>
-                  ) : null}
-                  {entry.tomorrow_focus ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">Foco de amanhã</dt>
-                      <dd>{entry.tomorrow_focus}</dd>
-                    </div>
-                  ) : null}
-                  {entry.mood ? (
-                    <div>
-                      <dt className="font-semibold text-foreground">Humor</dt>
-                      <dd>{entry.mood}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              </div>
+                </span>
+                <span className="flex items-center gap-1.5 text-muted">
+                  <Lock aria-hidden="true" size={13} />
+                  {entry.character_count} caractere{entry.character_count === 1 ? "" : "s"}
+                </span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
     </div>

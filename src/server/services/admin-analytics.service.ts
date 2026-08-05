@@ -214,15 +214,15 @@ export type AdminParticipantDetail = {
   name: string | null;
   personal_start_date: string;
   points_total: number;
+  /**
+   * Metadados apenas - nunca o texto do diário (Parte A.2: privacidade do
+   * diário reavaliada, admin não lê mais conteúdo, só existência/tamanho).
+   */
   reflections:
     | Array<{
-        content: string | null;
-        difficulty: string | null;
-        gratitude: string | null;
+        character_count: number;
+        has_content: boolean;
         log_date: string;
-        mood: string | null;
-        tomorrow_focus: string | null;
-        victory: string | null;
       }>
     | null;
   reflections_visible: boolean;
