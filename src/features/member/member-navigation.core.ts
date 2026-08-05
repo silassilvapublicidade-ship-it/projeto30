@@ -1,13 +1,14 @@
 import {
   Bell,
+  Bug,
   Download,
   Flag,
   Home,
   LayoutDashboard,
   Lightbulb,
   LogOut,
+  Mail,
   MessageCircle,
-  MessagesSquare,
   Medal,
   NotebookPen,
   Route,
@@ -51,14 +52,24 @@ export const DICAS_ITEM: MemberNavItem = { href: "/app/dicas", icon: Lightbulb, 
 export const CONQUISTAS_ITEM: MemberNavItem = { href: "/app/conquistas", icon: Medal, label: "Conquistas" };
 export const DIARIO_ITEM: MemberNavItem = { href: "/app/diario", icon: NotebookPen, label: "Diário" };
 export const FEEDBACK_ITEM: MemberNavItem = { href: "/app/feedback", icon: MessageCircle, label: "Feedback" };
-export const ENVIAR_FEEDBACK_ITEM: MemberNavItem = {
-  href: "/app/feedback",
-  icon: MessageCircle,
-  label: "Enviar feedback",
+// Os 3 itens abaixo, em vez de um único "Enviar feedback" genérico, deixam
+// o convite mais humano e concreto - reaproveitam a MESMA rota/formulário,
+// só pré-selecionando o tipo via ?tipo= (já suportado pelo formulário
+// desde o botão "Relatar este problema" do error boundary - nenhuma rota
+// nova, nenhuma lógica nova no formulário).
+export const TENHO_UMA_IDEIA_ITEM: MemberNavItem = {
+  href: "/app/feedback?tipo=suggestion",
+  icon: Lightbulb,
+  label: "Tenho uma ideia",
+};
+export const ENCONTREI_UM_PROBLEMA_ITEM: MemberNavItem = {
+  href: "/app/feedback?tipo=problem",
+  icon: Bug,
+  label: "Encontrei um problema",
 };
 export const MEUS_FEEDBACKS_ITEM: MemberNavItem = {
   href: "/app/feedback/meus",
-  icon: MessagesSquare,
+  icon: Mail,
   label: "Meus feedbacks",
 };
 export const NOTIFICACOES_ITEM: MemberNavItem = { href: "/app/notificacoes", icon: Bell, label: "Notificações" };
@@ -130,10 +141,7 @@ export const MORE_HUB_GROUPS: MemberNavGroup[] = [
   },
   {
     icon: MessageCircle,
-    items: [
-      { ...ENVIAR_FEEDBACK_ITEM, description: "Encontrou um problema ou teve uma ideia?" },
-      { ...MEUS_FEEDBACKS_ITEM, description: "Acompanhe seus relatos e respostas." },
-    ],
+    items: [TENHO_UMA_IDEIA_ITEM, ENCONTREI_UM_PROBLEMA_ITEM, MEUS_FEEDBACKS_ITEM],
     title: "Ajude o Projeto 30",
   },
   { icon: Smartphone, items: [INSTALAR_APP_ITEM], title: "Aplicativo" },

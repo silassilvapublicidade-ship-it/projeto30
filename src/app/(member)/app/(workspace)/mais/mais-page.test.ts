@@ -53,11 +53,19 @@ describe("member-navigation.core.ts - MORE_HUB_GROUPS matches the exact structur
     expect(source).toContain("Conteúdos para apoiar sua jornada.");
   });
 
-  it("Ajude o Projeto 30: Enviar feedback and Meus feedbacks with the exact descriptions given", () => {
+  it("Ajude o Projeto 30: 3 human, concrete entry points instead of one generic 'Enviar feedback'", () => {
     const block = source.match(/title: "Ajude o Projeto 30",\s*\},/)?.[0] ?? "";
     expect(block).not.toBe("");
-    expect(source).toContain("Encontrou um problema ou teve uma ideia?");
-    expect(source).toContain("Acompanhe seus relatos e respostas.");
+    expect(source).toContain('label: "Tenho uma ideia"');
+    expect(source).toContain('href: "/app/feedback?tipo=suggestion"');
+    expect(source).toContain('label: "Encontrei um problema"');
+    expect(source).toContain('href: "/app/feedback?tipo=problem"');
+    expect(source).toContain('label: "Meus feedbacks"');
+    expect(source).toContain('href: "/app/feedback/meus"');
+  });
+
+  it("reuses the existing ?tipo= query param already supported by the feedback form (from the error boundary's 'Relatar este problema' button) - no new plumbing", () => {
+    expect(source).toContain("já suportado pelo formulário");
   });
 
   it("Aplicativo has only Instalar aplicativo, shown only when applicable (the widget itself decides visibility)", () => {
@@ -90,6 +98,24 @@ describe("MaisHeader - top section", () => {
   it("never shows the email as its own field - Parte E: 'não mostrar e-mail em destaque' (only used as a last-resort display-name fallback, same convention as ProfileHeader)", () => {
     expect(source).not.toMatch(/<[a-z]+[^>]*>\s*\{profile\.email\}/);
     expect(source).not.toContain("context.profile.email}</");
+  });
+
+  it("account summary (Projeto/Dia/Pontos/Sequência) reuses fields already on challenge_enrollments - no new query, not a second Dashboard", () => {
+    expect(source).toContain("firstEnrollment?.points_total");
+    expect(source).toContain("firstEnrollment?.streak_current");
+    expect(source).toContain("firstEnrollment?.current_day");
+    expect(source).toContain("firstEnrollment?.challenge?.duration_days");
+    expect(source).toContain("firstEnrollment?.challenge?.name");
+    expect(source).not.toContain("<ProfileMetricsGrid");
+  });
+
+  it("only shows the account summary with exactly one enrollment - never attributes points/streak to an ambiguous 'first of many' challenge", () => {
+    expect(source).toContain("const showAccountSummary = enrollmentCount === 1 && firstEnrollment !== null;");
+    expect(source).toContain("{showAccountSummary ? (");
+  });
+
+  it("streak label is singular for exactly 1 day", () => {
+    expect(source).toContain('dia${firstEnrollment?.streak_current === 1 ? "" : "s"}');
   });
 });
 

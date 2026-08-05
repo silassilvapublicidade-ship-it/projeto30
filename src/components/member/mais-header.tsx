@@ -6,9 +6,13 @@ import { Card } from "@/components/ui/card";
 import type { MemberContext } from "@/server/services/member-area.service";
 
 /**
- * Cabeçalho do hub /app/mais (Parte F). Mesma computação de "dia atual /
- * desafio ativo" já usada em member-shell.tsx - nenhuma consulta nova,
- * context já veio de getMemberContext() (Parte P).
+ * Cabeçalho do hub /app/mais (Parte F) - a "central da conta", nunca um
+ * segundo Dashboard: só texto compacto (projeto, dia, pontos, sequência),
+ * sem gráficos/cards de métrica como ProfileMetricsGrid. Todos os dados já
+ * vêm de getMemberContext() (points_total/streak_current/current_day já
+ * estão em challenge_enrollments) - nenhuma consulta nova (Parte O). Só
+ * aparece quando há exatamente UM ciclo em andamento - com 0 ou vários,
+ * atribuir esses números a "o" desafio seria ambíguo ou enganoso.
  */
 export function MaisHeader({ context }: { context: MemberContext }) {
   const profile = context.profile;
@@ -29,6 +33,9 @@ export function MaisHeader({ context }: { context: MemberContext }) {
       : enrollmentCount === 1
         ? (firstEnrollment?.challenge?.name ?? "Ciclo ativo")
         : "Veja cada um na tela Hoje.";
+
+  const showAccountSummary = enrollmentCount === 1 && firstEnrollment !== null;
+  const streakLabel = `Sequência ${firstEnrollment?.streak_current ?? 0} dia${firstEnrollment?.streak_current === 1 ? "" : "s"}`;
 
   return (
     <Card className="hover:translate-y-0" tone="accent">
@@ -53,6 +60,31 @@ export function MaisHeader({ context }: { context: MemberContext }) {
 
         <ProfileEditLink />
       </section>
+
+      {showAccountSummary ? (
+        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-white/[0.08] pt-4 sm:grid-cols-4">
+          <div className="min-w-0">
+            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">Projeto</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-foreground">
+              {firstEnrollment?.challenge?.name ?? "—"}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">Dia</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-foreground">
+              {firstEnrollment?.current_day} de {firstEnrollment?.challenge?.duration_days ?? firstEnrollment?.current_day}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">Pontos</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-foreground">{firstEnrollment?.points_total ?? 0}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="font-mono text-[0.62rem] uppercase tracking-[0.14em] text-muted-2">Sequência</dt>
+            <dd className="mt-0.5 truncate text-sm font-semibold text-foreground">{streakLabel}</dd>
+          </div>
+        </dl>
+      ) : null}
     </Card>
   );
 }
