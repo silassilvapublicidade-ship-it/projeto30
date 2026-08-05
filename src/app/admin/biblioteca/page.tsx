@@ -9,6 +9,7 @@ import { EmptyState, StatusCard } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/field";
 import { getTotalPages } from "@/features/admin/admin-analytics.schemas";
 import { formatProjectDate } from "@/lib/format-date";
+import { isLibraryAiEnabled } from "@/lib/env/server";
 import {
   LIBRARY_PILLARS,
   LIBRARY_PILLAR_LABELS,
@@ -83,9 +84,11 @@ export default async function AdminBibliotecaPage({ searchParams }: AdminBibliot
           </p>
         </div>
         <div className="flex gap-2">
-          <Button as="a" href="/admin/biblioteca/gerar" variant="secondary">
-            Gerar com IA
-          </Button>
+          {isLibraryAiEnabled() ? (
+            <Button as="a" href="/admin/biblioteca/gerar" variant="secondary">
+              Gerar com IA
+            </Button>
+          ) : null}
           <Button as="a" href="/admin/biblioteca/nova">
             Novo conteúdo
           </Button>

@@ -65,7 +65,8 @@ Ver `.env.example` para a lista completa e comentada. Resumo:
 | `AUTH_REDIRECT_URL` | Sim | Callback de OAuth/magic link |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Sim para push | Web Push (gerar com `npx web-push generate-vapid-keys`) |
 | `CRON_CONTROL_SECRET` | Sim para o cron de notificações | Autentica `/api/cron/notifications/process` |
-| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | Opcional | Geração assistida por IA da Biblioteca (`/admin/biblioteca/gerar`) — sem elas, o resto do app funciona normalmente e a rota mostra "IA não configurada" |
+| `LIBRARY_AI_ENABLED` | Não (padrão `false`) | Feature flag mestra da geração por IA da Biblioteca — enquanto não for exatamente `"true"`, nenhuma chamada ao provedor acontece e a UI mostra "Em breve" no lugar do botão "Gerar com IA" |
+| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | Opcional, só com a flag `true` | Provedor de IA da Biblioteca (`/admin/biblioteca/gerar`) — sem elas, a rota mostra "IA não configurada" em vez de quebrar |
 | `SENTRY_DSN` | Opcional | Observabilidade externa (hook reservado) |
 
 Nenhuma chave sensível é lida no client — `src/lib/env/server.ts` é
@@ -156,7 +157,11 @@ das variáveis de sistema da própria Vercel — usadas no cockpit
   `journal_entries`, `user_feedback`, `system_error_events`).
 - `SUPABASE_SERVICE_ROLE_KEY` só é lida em `src/lib/supabase/admin.ts`
   (`server-only`) — nunca em Client Components, nunca enviada ao browser.
-- IA (quando configurada) nunca tem acesso direto ao banco: o server
+- IA da Biblioteca vem **desligada por padrão** (`LIBRARY_AI_ENABLED`,
+  padrão `false`) — enquanto desligada, nenhuma chamada ao provedor, nenhuma
+  checagem de configuração e nenhum consumo de limite de geração acontece;
+  a arquitetura inteira (schema, RPCs, service, provider, prompts, testes)
+  continua intacta, só inativa. Quando configurada (flag `true`), o server
   monta um contexto explícito e restrito (allowlist) antes de qualquer
   chamada ao provedor; nenhum texto de usuário final (diário, feedback,
   e-mail, dado médico) entra nesse contexto. Saída sempre validada por

@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/env/server", () => ({ isLibraryAiEnabled: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createSupabaseServerClient: vi.fn() }));
 vi.mock("@/server/services/admin-library.service", () => ({ adminCreateLibraryContentAiDraft: vi.fn() }));
 vi.mock("@/server/services/system-observability.service", () => ({ recordSystemError: vi.fn() }));
 vi.mock("./ai-provider", () => ({ generateWithAiProvider: vi.fn(), isAiProviderConfigured: vi.fn() }));
 
+import { isLibraryAiEnabled } from "@/lib/env/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { adminCreateLibraryContentAiDraft } from "@/server/services/admin-library.service";
 import { recordSystemError } from "@/server/services/system-observability.service";
@@ -52,7 +54,29 @@ function validAiJson(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // Todo teste abaixo (exceto o describe "feature flag desligada") exercita
+  // o comportamento com a flag LIGADA - o gate em si tem sua própria
+  // cobertura dedicada, isolada, logo abaixo.
+  vi.mocked(isLibraryAiEnabled).mockReturnValue(true);
   mockRateLimit(0, 0);
+});
+
+describe("generateLibraryContentDraft - feature flag desligada (padrão)", () => {
+  it("retorna disabled sem checar o provider, sem consultar rate limit e sem tocar em nada mais - a flag off é o primeiro e único gate", async () => {
+    vi.mocked(isLibraryAiEnabled).mockReturnValue(false);
+
+    const result = await generateLibraryContentDraft(baseInput);
+
+    expect(result).toEqual({
+      message: "A geração assistida por IA está temporariamente desativada.",
+      ok: false,
+      reason: "disabled",
+    });
+    expect(isAiProviderConfigured).not.toHaveBeenCalled();
+    expect(createSupabaseServerClient).not.toHaveBeenCalled();
+    expect(generateWithAiProvider).not.toHaveBeenCalled();
+    expect(adminCreateLibraryContentAiDraft).not.toHaveBeenCalled();
+  });
 });
 
 describe("generateLibraryContentDraft - provider not configured", () => {

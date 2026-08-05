@@ -39,6 +39,14 @@ const serverEnvSchema = z.object({
   // declara) - só dentro de src/server/ai/ai-provider.ts.
   ANTHROPIC_API_KEY: optionalSecret,
   ANTHROPIC_MODEL: optionalSecret,
+  // Feature flag mestra da geração por IA (desligada por padrão - qualquer
+  // valor diferente de "true" conta como desligada, nunca o inverso). Este
+  // é o ÚNICO ponto que decide se a funcionalidade existe: nem
+  // generateLibraryContentDraft chama o provedor, nem a UI mostra "Gerar
+  // com IA" quando isLibraryAiEnabled() é false - ver seus dois únicos
+  // chamadores (library-content-generation.service.ts e as páginas de
+  // /admin/biblioteca). Nunca reimplementar esta checagem em outro lugar.
+  LIBRARY_AI_ENABLED: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -57,7 +65,19 @@ export function getServerEnv(): ServerEnv {
     CRON_CONTROL_SECRET: process.env.CRON_CONTROL_SECRET,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL: process.env.ANTHROPIC_MODEL,
+    LIBRARY_AI_ENABLED: process.env.LIBRARY_AI_ENABLED,
   });
+}
+
+/**
+ * Feature flag única da geração por IA da Biblioteca. Desligada por
+ * padrão (ausente, vazio, ou qualquer valor que não seja exatamente
+ * "true" conta como desligada) - nunca o inverso, para nunca ligar a
+ * funcionalidade por acidente num ambiente onde a variável simplesmente
+ * não foi definida.
+ */
+export function isLibraryAiEnabled(): boolean {
+  return getServerEnv().LIBRARY_AI_ENABLED === "true";
 }
 
 export function getRequiredServiceRoleKey() {

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 
 import { LibraryGenerationForm } from "@/components/admin/library-generation-form";
+import { isLibraryAiEnabled } from "@/lib/env/server";
 import { isAiProviderConfigured } from "@/server/ai/ai-provider";
 import { listChallengesForTipPicker } from "@/server/services/admin-tips.service";
 
@@ -11,7 +12,12 @@ export const metadata: Metadata = {
 };
 
 export default async function GerarConteudoBibliotecaPage() {
-  const configured = isAiProviderConfigured();
+  // Flag mestra checada primeiro (Parte A/C) - com ela desligada, esta
+  // página nem chega a perguntar se há chave configurada; a rota continua
+  // existindo (nunca 404, nunca erro), só mostra que o recurso está
+  // temporariamente desativado.
+  const aiEnabled = isLibraryAiEnabled();
+  const configured = aiEnabled && isAiProviderConfigured();
   const challenges = configured ? await listChallengesForTipPicker() : [];
 
   return (
@@ -30,7 +36,18 @@ export default async function GerarConteudoBibliotecaPage() {
         </p>
       </div>
 
-      {configured ? (
+      {!aiEnabled ? (
+        <div className="max-w-2xl rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-5">
+          <p className="text-sm font-semibold text-foreground">Geração assistida por IA — Em breve</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Recurso temporariamente desativado. Você ainda pode criar conteúdos manualmente em{" "}
+            <Link className="text-action-soft hover:underline" href="/admin/biblioteca/nova">
+              Novo conteúdo
+            </Link>
+            .
+          </p>
+        </div>
+      ) : configured ? (
         <LibraryGenerationForm challenges={challenges} />
       ) : (
         <div className="max-w-2xl rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-5">

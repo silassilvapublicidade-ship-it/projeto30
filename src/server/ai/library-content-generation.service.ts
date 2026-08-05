@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isLibraryAiEnabled } from "@/lib/env/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { suggestLibrarySlug, suggestsEnhancedReview } from "@/features/library/library.core";
 import { adminCreateLibraryContentAiDraft } from "@/server/services/admin-library.service";
@@ -24,7 +25,11 @@ export type GenerateLibraryContentInput = {
 
 export type GenerateLibraryContentResult =
   | { contentId: string; ok: true }
-  | { ok: false; reason: "not_configured" | "rate_limited" | "invalid_output" | "provider_error"; message: string };
+  | {
+      ok: false;
+      reason: "disabled" | "not_configured" | "rate_limited" | "invalid_output" | "provider_error";
+      message: string;
+    };
 
 const HOURLY_LIMIT = 10;
 const DAILY_LIMIT = 30;
@@ -133,6 +138,19 @@ function extractJson(text: string): unknown {
 export async function generateLibraryContentDraft(
   input: GenerateLibraryContentInput,
 ): Promise<GenerateLibraryContentResult> {
+  // Único ponto de saída quando a feature está desligada (Parte A/B): sai
+  // ANTES de checar a chave, ANTES do rate limit, ANTES de qualquer coisa -
+  // nenhuma validação de provider roda, nenhuma linha de limite é
+  // consumida, nenhuma tentativa de conexão acontece. Com a flag off, uma
+  // ANTHROPIC_API_KEY não precisa nem existir.
+  if (!isLibraryAiEnabled()) {
+    return {
+      message: "A geração assistida por IA está temporariamente desativada.",
+      ok: false,
+      reason: "disabled",
+    };
+  }
+
   if (!isAiProviderConfigured()) {
     return { message: "Nenhum provedor de IA está configurado. Peça ao responsável técnico para adicionar ANTHROPIC_API_KEY.", ok: false, reason: "not_configured" };
   }
