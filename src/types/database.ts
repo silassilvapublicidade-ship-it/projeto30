@@ -468,6 +468,53 @@ export type Database = {
           },
         ]
       }
+      challenge_launch_campaign_steps: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          days_offset: number
+          enabled: boolean
+          id: string
+          message: string
+          send_time: string
+          step_key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          days_offset: number
+          enabled?: boolean
+          id?: string
+          message: string
+          send_time?: string
+          step_key: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          days_offset?: number
+          enabled?: boolean
+          id?: string
+          message?: string
+          send_time?: string
+          step_key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_launch_campaign_steps_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenges: {
         Row: {
           cover_image_url: string | null
@@ -2750,6 +2797,13 @@ export type Database = {
         Returns: {
           challenge_id: string
           challenge_name: string
+          push_eligible: boolean
+          user_id: string
+        }[]
+      }
+      automation_resolve_challenge_launch_audience: {
+        Args: { p_challenge_id: string }
+        Returns: {
           push_eligible: boolean
           user_id: string
         }[]

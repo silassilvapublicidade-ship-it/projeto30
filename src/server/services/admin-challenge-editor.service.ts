@@ -1,6 +1,10 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  computeLaunchCampaignStepTargetDate,
+  getOrSeedChallengeLaunchCampaignSteps,
+} from "@/server/services/admin-challenge-launch-campaign.service";
 import type { Tables } from "@/types/database";
 
 export type ChallengeEditorHabit = Tables<"habits"> & {
@@ -13,12 +17,17 @@ export type ChallengeEditorDay = {
   message: string | null;
 };
 
+export type ChallengeEditorLaunchCampaignStep = Tables<"challenge_launch_campaign_steps"> & {
+  targetDate: string | null;
+};
+
 export type ChallengeEditorData = {
   challenge: Tables<"challenges">;
   days: ChallengeEditorDay[];
   daysCount: number;
   habits: ChallengeEditorHabit[];
   hasParticipants: boolean;
+  launchCampaignSteps: ChallengeEditorLaunchCampaignStep[];
   participantCount: number;
 };
 
@@ -58,6 +67,16 @@ export async function getChallengeEditorData(challengeId: string): Promise<Chall
     return null;
   }
 
+  const launchCampaignStepRows = await getOrSeedChallengeLaunchCampaignSteps(
+    supabase,
+    challenge.id,
+    challenge.name,
+  );
+  const launchCampaignSteps: ChallengeEditorLaunchCampaignStep[] = launchCampaignStepRows.map((step) => ({
+    ...step,
+    targetDate: computeLaunchCampaignStepTargetDate(challenge.start_date, step.days_offset),
+  }));
+
   const habitIds = (habits ?? []).map((habit) => habit.id);
   // Single extra query for every habit's notification config at once
   // (Modulo G, Parte 14 - never N+1 per habit row).
@@ -82,6 +101,7 @@ export async function getChallengeEditorData(challengeId: string): Promise<Chall
       notificationConfig: configByHabitId.get(habit.id) ?? null,
     })),
     hasParticipants: (participantCount ?? 0) > 0,
+    launchCampaignSteps,
     participantCount: participantCount ?? 0,
   };
 }

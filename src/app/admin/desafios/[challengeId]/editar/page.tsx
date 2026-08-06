@@ -7,6 +7,7 @@ import { ChallengeDayMessagesEditor } from "@/components/admin/challenge-day-mes
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
 import { HabitNotificationFields } from "@/components/admin/habit-notification-fields";
 import { HabitVisibilityFields } from "@/components/admin/habit-visibility-fields";
+import { LaunchCampaignStepFields } from "@/components/admin/launch-campaign-step-fields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,10 @@ import {
 import { describeChallengeLifecycleStage } from "@/features/admin/challenge-editor.core";
 import { describeChallengeStatus } from "@/features/admin/admin-metrics.core";
 import { upsertHabitNotificationConfigAction } from "@/features/admin/habit-notifications.actions";
+import {
+  sendChallengeLaunchStepTestAction,
+  upsertChallengeLaunchCampaignStepAction,
+} from "@/features/admin/launch-campaign.actions";
 import { describeHabitVisibility } from "@/features/journey/habit-visibility.core";
 import { getChallengeEditorData } from "@/server/services/admin-challenge-editor.service";
 
@@ -64,6 +69,41 @@ const feedbackMessages: Record<string, { description: string; title: string; ton
     tone: "error",
   },
   "identity-success": { description: "Identidade atualizada.", title: "Salvo", tone: "success" },
+  "launch-campaign-saved": {
+    description: "O passo da campanha de lançamento foi atualizado.",
+    title: "Campanha salva",
+    tone: "success",
+  },
+  "launch-campaign-invalid": {
+    description: "Revise título, mensagem e horário deste passo da campanha.",
+    title: "Dados inválidos",
+    tone: "error",
+  },
+  "launch-campaign-error": {
+    description: "Não foi possível salvar a campanha agora.",
+    title: "Erro",
+    tone: "error",
+  },
+  "launch-campaign-test-invalid": {
+    description: "Informe um e-mail válido para o teste.",
+    title: "Dados inválidos",
+    tone: "error",
+  },
+  "launch-campaign-test-user-not-found": {
+    description: "Nenhuma conta encontrada com esse e-mail.",
+    title: "Conta não encontrada",
+    tone: "error",
+  },
+  "launch-campaign-test-sent": {
+    description: "Notificação de teste enviada (push + central interna) para a conta informada.",
+    title: "Teste enviado",
+    tone: "success",
+  },
+  "launch-campaign-test-error": {
+    description: "Não foi possível enviar o teste agora.",
+    title: "Erro",
+    tone: "error",
+  },
   invalid: { description: "Revise os campos e tente novamente.", title: "Dados inválidos", tone: "error" },
   "message-saved": { description: "Mensagem do dia atualizada.", title: "Salvo", tone: "success" },
   "message-copied": {
@@ -516,6 +556,58 @@ export default async function EditarDesafioPage({ params, searchParams }: PagePr
         <div className="mt-4">
           <ChallengeDayMessagesEditor challengeId={challenge.id} days={editorData.days} durationDays={challenge.duration_days} />
         </div>
+      </Card>
+
+      <Card id="campanha-de-lancamento" tone="glass">
+        <CardHeader>
+          <CardTitle>Campanha de lançamento</CardTitle>
+          <CardDescription>
+            Sequência de pré-lançamento (convite) para quem ainda não se inscreveu - calculada
+            automaticamente a partir da data de início. Só passa a valer com o desafio publicado;
+            some automaticamente se ele voltar a rascunho, for pausado ou despublicado. Usa o
+            mesmo motor e cron das demais automações, respeita as preferências de notificação e
+            nunca duplica envios.
+          </CardDescription>
+        </CardHeader>
+        <ul className="mt-4 space-y-2">
+          {editorData.launchCampaignSteps.map((step) => (
+            <li
+              className="space-y-3 rounded-[var(--radius-card)] border border-white/[0.08] bg-white/[0.03] p-3"
+              key={step.id}
+            >
+              <details className="rounded-[var(--radius-control)] border border-white/[0.06] bg-black/15 p-3">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-muted">
+                  {step.title}
+                  {step.enabled ? " · ativo" : " · desativado"}
+                </summary>
+                <form action={upsertChallengeLaunchCampaignStepAction} className="mt-3 space-y-3">
+                  <input name="challengeId" type="hidden" value={challenge.id} />
+                  <input name="stepKey" type="hidden" value={step.step_key} />
+                  <LaunchCampaignStepFields step={step} targetDate={step.targetDate} />
+                  <Button size="sm" type="submit" variant="secondary">
+                    Salvar passo
+                  </Button>
+                </form>
+              </details>
+
+              <details className="rounded-[var(--radius-control)] border border-white/[0.06] bg-black/15 p-3">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-muted">
+                  Testar em uma conta
+                </summary>
+                <form action={sendChallengeLaunchStepTestAction} className="mt-3 flex flex-wrap items-end gap-3">
+                  <input name="challengeId" type="hidden" value={challenge.id} />
+                  <input name="stepKey" type="hidden" value={step.step_key} />
+                  <Field hint="Uma conta QA - nunca envie para um número grande de usuários por aqui." label="E-mail da conta">
+                    <Input maxLength={320} name="email" placeholder="qa@exemplo.com" required type="email" />
+                  </Field>
+                  <Button size="sm" type="submit" variant="secondary">
+                    Enviar teste
+                  </Button>
+                </form>
+              </details>
+            </li>
+          ))}
+        </ul>
       </Card>
 
       {challenge.status === "draft" ? (

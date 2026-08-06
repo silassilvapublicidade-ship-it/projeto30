@@ -58,16 +58,78 @@ describe("notification-automations.service.ts - safety contract", () => {
     expect(source).toContain('source: "automation"');
   });
 
-  it("runAllScheduledAutomations covers the 5 date-driven automations plus the smart tick (habit reminders + daily motivation) - new tip and achievement stay event-driven, triggered from their own call sites, not polled here", () => {
+  it("runAllScheduledAutomations covers the 5 date-driven automations plus the smart tick (habit reminders + daily motivation) and the generic launch campaign - new tip and achievement stay event-driven, triggered from their own call sites, not polled here", () => {
     const fn = source.slice(source.indexOf("export async function runAllScheduledAutomations"));
     expect(fn).toContain("runDailyReminderAutomation();");
     expect(fn).toContain("runChallengeStartingTomorrowAutomation();");
     expect(fn).toContain("runChallengeStartingTodayAutomation();");
     expect(fn).toContain("runChallengeEndingSoonAutomation();");
+    expect(fn).toContain("runChallengeLaunchCampaignAutomation();");
     expect(fn).toContain("runInactiveUserAutomation();");
     expect(fn).toContain("runSmartNotificationTick();");
     expect(fn).not.toContain("runNewTipPublishedAutomation");
     expect(fn).not.toContain("runAchievementUnlockedAutomation");
+  });
+});
+
+describe("notification-automations.service.ts - runChallengeLaunchCampaignAutomation (generic launch campaign)", () => {
+  const source = readSource();
+  const fn = source.slice(
+    source.indexOf("export async function runChallengeLaunchCampaignAutomation"),
+    source.indexOf("export async function sendChallengeLaunchStepTestNotification"),
+  );
+
+  it("only ever looks at published (active), non-deleted challenges - draft/paused/unpublished challenges are excluded by the query itself, never by an explicit cancel step", () => {
+    expect(fn).toContain('.eq("status", "active")');
+    expect(fn).toContain('.is("deleted_at", null)');
+  });
+
+  it("only considers steps the admin explicitly enabled, never all 5 by default", () => {
+    expect(fn).toContain('.eq("enabled", true)');
+  });
+
+  it("recomputes the target date from start_date + days_offset on every tick instead of reading a persisted target date, so a start_date edit reprograms the step automatically", () => {
+    expect(fn).toContain("computeLaunchCampaignStepTargetDate(challenge.start_date, step.days_offset)");
+    expect(fn).toContain("targetDate !== today");
+  });
+
+  it("idempotency key includes the recomputed target date, so a rescheduled step (new date) is never blocked by an old campaign row, and a same-day retry never double-sends", () => {
+    expect(fn).toContain(
+      "idempotencyKey: `challenge_launch:${challenge.id}:${step.step_key}:${targetDate}`",
+    );
+  });
+
+  it("resolves the audience via the dedicated not-yet-enrolled resolver, never the enrolled-only challenge_date resolver", () => {
+    expect(fn).toContain('"automation_resolve_challenge_launch_audience"');
+    expect(fn).not.toContain("automation_resolve_challenge_date_audience");
+  });
+
+  it("skips dispatch entirely when the resolved audience is empty, rather than creating an empty campaign", () => {
+    expect(fn).toContain("!audience || audience.length === 0");
+  });
+});
+
+describe("notification-automations.service.ts - sendChallengeLaunchStepTestNotification (QA test-send)", () => {
+  const source = readSource();
+  const fn = source.slice(
+    source.indexOf("export async function sendChallengeLaunchStepTestNotification"),
+    source.indexOf("export async function runInactiveUserAutomation"),
+  );
+
+  it("reads the persisted step content (title/message), never a separately-passed ad-hoc string, so the test always reflects what's actually saved", () => {
+    expect(fn).toContain('.eq("challenge_id", input.challengeId)');
+    expect(fn).toContain('.eq("step_key", input.stepKey)');
+    expect(fn).toContain("message: step.message");
+    expect(fn).toContain("title: step.title");
+  });
+
+  it("idempotency key includes Date.now() so a test send always goes out again, never blocked by a previous test's idempotency", () => {
+    expect(fn).toMatch(/idempotencyKey: `challenge_launch_test:.*\$\{Date\.now\(\)\}`/);
+  });
+
+  it("dispatches through the same real engine (getOrCreateAutomationCampaign + dispatchCampaignToAudience) to exactly one user, never a simulated/mocked send", () => {
+    expect(fn).toContain("getOrCreateAutomationCampaign(supabase, {");
+    expect(fn).toContain("dispatchCampaignToAudience(campaignId, [{ push_eligible: pushEligible, user_id: input.testUserId }])");
   });
 });
 

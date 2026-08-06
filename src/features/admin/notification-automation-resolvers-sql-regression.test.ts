@@ -105,3 +105,70 @@ describe("Migration 0048 - automation audience resolvers", () => {
     expect(achievementBody).toContain("coalesce((up.notifications ->> 'achievement_notifications')::boolean, true)");
   });
 });
+
+describe("Migration 0092 - generic challenge launch campaign", () => {
+  const migration = readMigration("0092_challenge_launch_campaign.sql");
+
+  it("creates the launch campaign steps table with a fixed 5-step_key CHECK and a unique(challenge_id, step_key) constraint", () => {
+    expect(migration).toContain("create table public.challenge_launch_campaign_steps");
+    for (const stepKey of [
+      "seven_days_before",
+      "three_days_before",
+      "one_day_before",
+      "launch_day",
+      "launch_day_followup",
+    ]) {
+      expect(migration).toContain(`'${stepKey}'`);
+    }
+    expect(migration).toContain(
+      "constraint challenge_launch_campaign_steps_challenge_step_key unique (challenge_id, step_key)",
+    );
+  });
+
+  it("mirrors challenge_habit_notifications' RLS shape - public read, admin-only write, no RPC needed", () => {
+    expect(migration).toContain('"Anyone can read launch campaign config"');
+    expect(migration).toContain("for select");
+    expect(migration).toContain('"Admins can manage launch campaign config"');
+    expect(migration).toContain("using (public.is_admin())");
+    expect(migration).toContain("with check (public.is_admin())");
+  });
+
+  it("resolver is security definer, locked search_path, granted to service_role only", () => {
+    const body = sliceFunction(migration, "automation_resolve_challenge_launch_audience");
+    expect(body).toContain("security definer");
+    expect(body).toContain("set search_path = public, pg_temp");
+    expect(migration).toContain(
+      "grant execute on function public.automation_resolve_challenge_launch_audience(uuid) to service_role;",
+    );
+    expect(migration).not.toMatch(/automation_resolve_challenge_launch_audience\([^)]*\) to authenticated/);
+  });
+
+  it("resolver is the mirror image of the enrolled-only reminder resolver - explicitly EXCLUDES already-enrolled users, reuses the existing challenge_start_notifications preference (no new preference key)", () => {
+    const body = sliceFunction(migration, "automation_resolve_challenge_launch_audience");
+    expect(body).toContain("not exists (");
+    expect(body).toContain("from public.challenge_enrollments ce");
+    expect(body).toContain("ce.challenge_id = p_challenge_id and ce.user_id = u.id");
+    expect(body).toContain("coalesce((up.notifications ->> 'challenge_start_notifications')::boolean, true)");
+  });
+
+  it("adds automation_challenge_launch to the audience_type CHECK without dropping any pre-existing value", () => {
+    for (const value of [
+      "automation_daily_reminder",
+      "automation_challenge_starting_tomorrow",
+      "automation_challenge_starting_today",
+      "automation_challenge_ending_soon",
+      "automation_new_tip",
+      "automation_achievement_unlocked",
+      "automation_inactive_user",
+      "streak_above_threshold",
+      "streak_lost",
+      "day_all_habits_completed",
+      "habit_keyword_not_completed_today",
+      "automation_habit_reminder",
+      "automation_daily_motivation",
+      "automation_challenge_launch",
+    ]) {
+      expect(migration).toContain(`'${value}'`);
+    }
+  });
+});

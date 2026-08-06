@@ -3,7 +3,9 @@ import "server-only";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/database";
 
+import { computeLaunchCampaignStepTargetDate } from "./admin-challenge-launch-campaign.service";
 import { dispatchCampaignToAudience, type AudienceEntry } from "./notification-dispatch.service";
+import { hasActivePushSubscription } from "./push-subscription.service";
 import { logRpcFailure } from "./rpc-logging.service";
 
 type AdminClient = ReturnType<typeof createSupabaseAdminClient>;
@@ -201,6 +203,132 @@ export async function runChallengeEndingSoonAutomation(): Promise<void> {
     titleTemplate: () => "Seu desafio está terminando",
     useStartDate: false,
   });
+}
+
+/**
+ * Sequencia de pre-lancamento generica (7/3/1 dias antes, dia do
+ * lancamento, reforco) configuravel por desafio no Admin - o oposto de
+ * runChallengeStartingTomorrow/TodayAutomation acima, que so avisam quem JA
+ * se inscreveu. Nunca dispara por conta propria: so entra em jogo quando o
+ * admin ativa cada step em challenge_launch_campaign_steps (migration 0092).
+ * Gate em status='active' cobre "so vale apos publicar" e "cancela se
+ * pausar/despublicar" automaticamente - nao ha nenhuma transicao explicita
+ * de cancelamento, o gate e sempre reavaliado a cada tick. A data-alvo
+ * nunca e persistida, so recalculada de start_date + days_offset a cada
+ * chamada - mudar start_date reprograma o step sozinho, via a chave de
+ * idempotencia (que inclui a data-alvo).
+ */
+export async function runChallengeLaunchCampaignAutomation(): Promise<void> {
+  const supabase = createSupabaseAdminClient();
+  const today = todayReferenceDate();
+
+  const { data: challenges, error: challengesError } = await supabase
+    .from("challenges")
+    .select("id, name, slug, start_date")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .not("start_date", "is", null);
+
+  if (challengesError || !challenges || challenges.length === 0) {
+    if (challengesError) logRpcFailure("challenges (challenge launch campaign)", challengesError);
+    return;
+  }
+
+  const challengeIds = challenges.map((challenge) => challenge.id);
+  const { data: steps, error: stepsError } = await supabase
+    .from("challenge_launch_campaign_steps")
+    .select("*")
+    .eq("enabled", true)
+    .in("challenge_id", challengeIds);
+
+  if (stepsError || !steps || steps.length === 0) {
+    if (stepsError) logRpcFailure("challenge_launch_campaign_steps", stepsError);
+    return;
+  }
+
+  const challengeById = new Map(challenges.map((challenge) => [challenge.id, challenge]));
+
+  for (const step of steps) {
+    const challenge = challengeById.get(step.challenge_id);
+    if (!challenge) continue;
+
+    const targetDate = computeLaunchCampaignStepTargetDate(challenge.start_date, step.days_offset);
+    if (targetDate !== today) continue;
+
+    const { data: audience, error: audienceError } = await supabase.rpc(
+      "automation_resolve_challenge_launch_audience",
+      { p_challenge_id: challenge.id },
+    );
+
+    if (audienceError || !audience || audience.length === 0) {
+      if (audienceError) logRpcFailure("automation_resolve_challenge_launch_audience", audienceError);
+      continue;
+    }
+
+    const campaignId = await getOrCreateAutomationCampaign(supabase, {
+      audienceType: "automation_challenge_launch",
+      automationType: `challenge_launch_${step.step_key}`,
+      challengeId: challenge.id,
+      destinationReferenceId: challenge.slug,
+      destinationType: "desafio",
+      idempotencyKey: `challenge_launch:${challenge.id}:${step.step_key}:${targetDate}`,
+      message: step.message,
+      title: step.title,
+    });
+
+    if (campaignId) {
+      await dispatchCampaignToAudience(campaignId, audience);
+    }
+  }
+}
+
+/**
+ * Disparo de teste real (um unico usuario, conta QA) para o botao "Testar
+ * em uma conta" do Admin - mesmo motor (getOrCreateAutomationCampaign +
+ * dispatchCampaignToAudience), nunca um envio simulado. A chave de
+ * idempotencia inclui Date.now() de proposito: um teste deve sempre
+ * reenviar, nunca ficar preso a idempotencia de um teste anterior.
+ */
+export async function sendChallengeLaunchStepTestNotification(input: {
+  challengeId: string;
+  stepKey: string;
+  testUserId: string;
+}): Promise<boolean> {
+  const supabase = createSupabaseAdminClient();
+
+  const [{ data: step }, { data: challenge }] = await Promise.all([
+    supabase
+      .from("challenge_launch_campaign_steps")
+      .select("*")
+      .eq("challenge_id", input.challengeId)
+      .eq("step_key", input.stepKey)
+      .maybeSingle(),
+    supabase.from("challenges").select("slug").eq("id", input.challengeId).maybeSingle(),
+  ]);
+
+  if (!step || !challenge) {
+    return false;
+  }
+
+  const pushEligible = await hasActivePushSubscription(supabase, input.testUserId);
+
+  const campaignId = await getOrCreateAutomationCampaign(supabase, {
+    audienceType: "automation_challenge_launch",
+    automationType: "challenge_launch_campaign_test",
+    challengeId: input.challengeId,
+    destinationReferenceId: challenge.slug,
+    destinationType: "desafio",
+    idempotencyKey: `challenge_launch_test:${input.challengeId}:${input.stepKey}:${input.testUserId}:${Date.now()}`,
+    message: step.message,
+    title: step.title,
+  });
+
+  if (!campaignId) {
+    return false;
+  }
+
+  await dispatchCampaignToAudience(campaignId, [{ push_eligible: pushEligible, user_id: input.testUserId }]);
+  return true;
 }
 
 export async function runInactiveUserAutomation(): Promise<void> {
@@ -480,6 +608,7 @@ export async function runAllScheduledAutomations(): Promise<void> {
   await runChallengeStartingTomorrowAutomation();
   await runChallengeStartingTodayAutomation();
   await runChallengeEndingSoonAutomation();
+  await runChallengeLaunchCampaignAutomation();
   await runInactiveUserAutomation();
   await runSmartNotificationTick();
 }
