@@ -18,7 +18,7 @@ export const SERVICE_WORKER_VERSION = "v1";
 
 // Mantido manualmente em sincronia com o nome do arquivo da migration mais
 // recente em supabase/migrations/. Atualizar ao criar uma nova migration.
-export const LATEST_MIGRATION_ID = "0090_drop_admin_audit_logs_ip_column";
+export const LATEST_MIGRATION_ID = "0091_health_status_ignore_info_events";
 
 export type DeployInfo = {
   commitSha: string | null;
